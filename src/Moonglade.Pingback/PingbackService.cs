@@ -1,11 +1,11 @@
-﻿using System;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Moonglade.Model;
+using MySql.Data.MySqlClient;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using System.Xml;
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Moonglade.Model;
 
 namespace Moonglade.Pingback
 {
@@ -35,7 +35,7 @@ namespace Moonglade.Pingback
         {
             try
             {
-                await using var conn = new SqlConnection(DatabaseConnectionString);
+                await using var conn = new MySqlConnection(DatabaseConnectionString);
 
                 if (string.IsNullOrWhiteSpace(requestBody))
                 {
@@ -103,7 +103,7 @@ namespace Moonglade.Pingback
         {
             try
             {
-                await using var conn = new SqlConnection(DatabaseConnectionString);
+                await using var conn = new MySqlConnection(DatabaseConnectionString);
                 var list = await _pingbackRepository.GetPingbackHistoryAsync(conn);
                 return list;
             }
@@ -118,7 +118,7 @@ namespace Moonglade.Pingback
         {
             try
             {
-                await using var conn = new SqlConnection(DatabaseConnectionString);
+                await using var conn = new MySqlConnection(DatabaseConnectionString);
                 await _pingbackRepository.DeletePingbackHistory(id, conn);
             }
             catch (Exception e)

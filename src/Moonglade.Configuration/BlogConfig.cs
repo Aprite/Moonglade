@@ -1,14 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
-using System.Threading.Tasks;
-using Dapper;
-using Microsoft.Data.SqlClient;
+﻿using Dapper;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Model;
+using MySql.Data.MySqlClient;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 
 namespace Moonglade.Configuration
 {
@@ -79,7 +79,7 @@ namespace Moonglade.Configuration
             async Task SetConfiguration(string key, string value)
             {
                 var connStr = _configuration.GetConnectionString(Constants.DbConnectionName);
-                await using var conn = new SqlConnection(connStr);
+                await using var conn = new MySqlConnection(connStr);
                 var sql = $"UPDATE {nameof(BlogConfiguration)} " +
                           $"SET {nameof(BlogConfiguration.CfgValue)} = @value, " +
                           $"{nameof(BlogConfiguration.LastModifiedTimeUtc)} = @lastModifiedTimeUtc " +
@@ -110,7 +110,7 @@ namespace Moonglade.Configuration
             try
             {
                 var connStr = _configuration.GetConnectionString(Constants.DbConnectionName);
-                using var conn = new SqlConnection(connStr);
+                using var conn = new MySqlConnection(connStr);
                 var sql = $"SELECT {nameof(BlogConfiguration.CfgKey)}, " +
                           $"{nameof(BlogConfiguration.CfgValue)} " +
                           $"FROM {nameof(BlogConfiguration)}";

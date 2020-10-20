@@ -3,6 +3,7 @@
 
 ## Sensitive data
 appsettings.Development.json
+appsettings.Production.json
 
 ## Auto Generated Files
 app-js-bundle.js

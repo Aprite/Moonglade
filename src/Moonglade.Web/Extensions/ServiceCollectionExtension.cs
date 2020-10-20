@@ -37,9 +37,18 @@ namespace Moonglade.Web.Extensions
         public static void AddDataStorage(this IServiceCollection services, string connectionString)
         {
             services.AddScoped(typeof(IRepository<>), typeof(DbContextRepository<>));
+            //services.AddDbContext<BlogDbContext>(options =>
+            //    options.UseLazyLoadingProxies()
+            //        .UseSqlServer(connectionString, sqlOptions =>
+            //        {
+            //            sqlOptions.EnableRetryOnFailure(
+            //                3,
+            //                TimeSpan.FromSeconds(30),
+            //                null);
+            //        }));
             services.AddDbContext<BlogDbContext>(options =>
                 options.UseLazyLoadingProxies()
-                    .UseSqlServer(connectionString, sqlOptions =>
+                    .UseMySql(connectionString, sqlOptions =>
                     {
                         sqlOptions.EnableRetryOnFailure(
                             3,

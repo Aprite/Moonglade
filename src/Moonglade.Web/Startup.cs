@@ -170,7 +170,7 @@ namespace Moonglade.Web
             TryUseUrlRewrite(app);
             app.UseMiddleware<PoweredByMiddleware>();
             app.UseMiddleware<DNTMiddleware>();
-            app.UseMiddleware<FirstRunMiddleware>();
+            //app.UseMiddleware<FirstRunMiddleware>();
             app.UseMiddleware<BlogGraphAPIGuardMiddleware>();
 
             if (_environment.IsDevelopment())
