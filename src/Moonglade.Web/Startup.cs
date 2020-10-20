@@ -100,6 +100,8 @@ namespace Moonglade.Web
             services.AddBlogNotification(_logger);
 
             services.AddDataStorage(_configuration.GetConnectionString(Constants.DbConnectionName));
+
+            services.AddWechat(_configuration);
         }
 
         public void Configure(

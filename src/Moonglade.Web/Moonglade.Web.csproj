@@ -35,5 +35,6 @@
     <ProjectReference Include="..\Moonglade.Setup\Moonglade.Setup.csproj" />
     <ProjectReference Include="..\Moonglade.Web.Authentication\Moonglade.Web.Authentication.csproj" />
     <ProjectReference Include="..\Moonglade.Web.SiteIconGenerator\Moonglade.Web.SiteIconGenerator.csproj" />
+    <ProjectReference Include="..\Moonglade.Wechat\Moonglade.Wechat.csproj" />
   </ItemGroup>
 </Project>

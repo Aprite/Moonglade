@@ -19,6 +19,9 @@ using Moonglade.ImageStorage.Providers;
 using Moonglade.Model.Settings;
 using Moonglade.Pingback;
 using Moonglade.Web.Filters;
+using Moonglade.Wechat;
+using Moonglade.Wechat.Common.Signature;
+using Moonglade.Wechat.Infrastructure;
 using Polly;
 
 namespace Moonglade.Web.Extensions
@@ -167,6 +170,22 @@ namespace Moonglade.Web.Extensions
                     var msg = $"Provider {imageStorageProvider} is not supported.";
                     throw new NotSupportedException(msg);
             }
+        }
+
+
+        public static void AddWechat(this IServiceCollection services, IConfiguration configuration)
+        {
+            var wechatSettings = new WechatSettings();
+            configuration.Bind(nameof(WechatSettings), wechatSettings);
+            services.Configure<WechatSettings>(configuration.GetSection(nameof(WechatSettings)));
+            services.AddHttpClient(WeChatConsts.HttpClientName, client =>
+            {
+                client.BaseAddress = new Uri(string.IsNullOrEmpty(wechatSettings.ApiHost) ? "https://api.weixin.qq.com" : wechatSettings.ApiHost);
+            });
+            services.AddTransient<ISignatureGenerator, DefaultSignatureGenerator>();
+            services.AddSingleton<IAccessTokenAccessor, DefaultAccessTokenAccessor>();
+            services.AddSingleton<IJsTicketAccessor, DefaultJsTicketAccessor>();
+            services.AddTransient<IJsSdkService, JsSdkService>();
         }
     }
 }

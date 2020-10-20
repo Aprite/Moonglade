@@ -13,5 +13,7 @@ namespace Moonglade.Configuration
         public bool EnablePingBackReceive { get; set; }
 
         public bool EnableOpenGraph { get; set; }
+
+        public bool EnableWechat { get; set; }
     }
 }

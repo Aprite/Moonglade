@@ -64,6 +64,7 @@
     <partial name="_Favicons" />
     <link href="~/css/mooglade-css-bundle.min.css" rel="stylesheet" asp-append-version="true" />
     <script src="~/js/dist/app-js-bundle.min.js" asp-append-version="true"></script>
+    <script src="~/js/app/jweixin-1.6.0.js"></script>
     @await RenderSectionAsync("head", false)
     <environment include="Production">
         @Html.Raw(JavaScriptSnippet.FullScript)
@@ -198,6 +199,39 @@
                     themeModeSwitcher.useLightMode();
                 }
             }
+        </script>
+    }
+    @if (BlogConfig.AdvancedSettings.EnableWechat)
+    {
+        <script type="text/javascript">
+            var shareData = {
+                title: '@(ViewBag?.TitlePrefix)@(null == ViewBag?.TitlePrefix ? string.Empty : " - ")@BlogConfig.GeneralSettings.SiteTitle', // 分享标题
+                link: "", // 分享链接
+                imgUrl: '', // 分享图标
+                desc: '@BlogConfig.GeneralSettings.MetaDescription', // 分享描述
+                success: function () {
+                    //$("#sharetips").hide();
+                },
+                cancel: function () {
+
+                }
+            }
+            wx.ready(function () {
+                shareData["link"] = document.location.href;
+                shareData["imgUrl"] = document.location.origin + "/favicon-96x96.png";
+                wx.updateAppMessageShareData(shareData);
+                wx.updateTimelineShareData(shareData);
+            });
+            $.get("/wechat/js-sdk-config?jsUrl=" + encodeURIComponent(document.location.href), function (data) {
+                wx.config({
+                    debug: false, // 开启调试模式,调用的所有api的返回值会在客户端alert出来，若要查看传入的参数，可以在pc端打开，参数信息会通过log打出，仅在pc端时才会打印。
+                    appId: data.appId, // 必填，公众号的唯一标识
+                    timestamp: data.timestamp, // 必填，生成签名的时间戳
+                    nonceStr: data.nonceStr, // 必填，生成签名的随机串
+                    signature: data.signature,// 必填，签名
+                    jsApiList: ["updateAppMessageShareData","updateTimelineShareData"] // 必填，需要使用的JS接口列表
+                });
+            });
         </script>
     }
 </body>

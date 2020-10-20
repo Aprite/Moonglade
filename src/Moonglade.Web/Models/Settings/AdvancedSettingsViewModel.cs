@@ -22,5 +22,8 @@ namespace Moonglade.Web.Models.Settings
 
         [Display(Name = "Enable OpenGraph")]
         public bool EnableOpenGraph { get; set; }
+
+        [Display(Name = "Enable Wechat")]
+        public bool EnableWechat { get; set; }
     }
 }

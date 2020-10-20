@@ -537,7 +537,8 @@ namespace Moonglade.Web.Controllers
                 RobotsTxtContent = settings.RobotsTxtContent,
                 EnablePingbackSend = settings.EnablePingBackSend,
                 EnablePingbackReceive = settings.EnablePingBackReceive,
-                EnableOpenGraph = settings.EnableOpenGraph
+                EnableOpenGraph = settings.EnableOpenGraph,
+                EnableWechat = settings.EnableWechat
             };
 
             return View(vm);
@@ -557,6 +558,7 @@ namespace Moonglade.Web.Controllers
             settings.EnablePingBackSend = model.EnablePingbackSend;
             settings.EnablePingBackReceive = model.EnablePingbackReceive;
             settings.EnableOpenGraph = model.EnableOpenGraph;
+            settings.EnableWechat = model.EnableWechat;
 
             await _blogConfig.SaveConfigurationAsync(settings);
             _blogConfig.RequireRefresh();
