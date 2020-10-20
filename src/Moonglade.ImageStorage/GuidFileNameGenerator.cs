@@ -9,7 +9,7 @@ namespace Moonglade.ImageStorage
 
         public Guid UniqueId { get; }
 
-        public string GetFileName(string fileName, string appendixName = "")
+        public string GetFileName(string fileName, string appendixName = "",string type = "img")
         {
             if (string.IsNullOrWhiteSpace(fileName))
             {
@@ -23,7 +23,7 @@ namespace Moonglade.ImageStorage
                 throw new ArgumentException("Invalid File Name", nameof(fileName));
             }
 
-            var newFileName = $"img-{UniqueId}{(string.IsNullOrWhiteSpace(appendixName) ? string.Empty : "-" + appendixName)}{ext}".ToLower();
+            var newFileName = $"{type}-{UniqueId}{(string.IsNullOrWhiteSpace(appendixName) ? string.Empty : "-" + appendixName)}{ext}".ToLower();
             return newFileName;
         }
 

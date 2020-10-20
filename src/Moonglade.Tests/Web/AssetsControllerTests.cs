@@ -61,7 +61,7 @@ namespace Moonglade.Tests.Web
                 _webHostEnvMock.Object);
 
             var memCacheMock = new Mock<IMemoryCache>();
-            var result = await ctl.GetImageAsync(filename, memCacheMock.Object);
+            var result = await ctl.GetAsync(filename, memCacheMock.Object);
             Assert.IsInstanceOf(typeof(RedirectResult), result);
             if (result is RedirectResult rdResult)
             {
@@ -86,7 +86,7 @@ namespace Moonglade.Tests.Web
                 _webHostEnvMock.Object);
 
             var memCacheMock = new Mock<IMemoryCache>();
-            var result = await ctl.GetImageAsync(filename, memCacheMock.Object);
+            var result = await ctl.GetAsync(filename, memCacheMock.Object);
             Assert.IsInstanceOf(typeof(BadRequestObjectResult), result);
         }
 

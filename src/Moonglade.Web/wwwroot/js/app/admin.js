@@ -140,6 +140,57 @@ var postEditor = {
                 paste_data_images: true,
                 images_upload_url: '/upload-image',
                 images_upload_credentials: true,
+                file_picker_types: 'media',
+                //be used to add custom file picker to those dialogs that have it.
+                file_picker_callback: function (cb, value, meta) {
+                    //当点击meidia图标上传时,判断meta.filetype == 'media'有必要，因为file_picker_callback是media(媒体)、image(图片)、file(文件)的共同入口
+                    if (meta.filetype == 'media') {
+                        //创建一个隐藏的type=file的文件选择input
+                        let input = document.createElement('input');
+                        input.setAttribute('type', 'file');
+                        input.onchange = function () {
+                            let file = this.files[0];//只选取第一个文件。如果要选取全部，后面注意做修改
+                            let xhr, formData;
+                            xhr = new XMLHttpRequest();
+                            xhr.open('POST', '/upload-media');
+                            xhr.withCredentials = true;
+                            xhr.upload.onprogress = function (e) {
+                                // 进度(e.loaded / e.total * 100)
+                                let percent = e.loaded / e.total * 100;
+                                if (percent < 100) {
+                                    tinymce.activeEditor.setProgressState(true);//是否显示loading状态：1（显示）0（隐藏）
+                                } else {
+                                    tinymce.activeEditor.setProgressState(false);
+                                }
+                            };
+                            xhr.onerror = function () {
+                                //根据自己的需要添加代码
+                                console.log(xhr.status);
+                                tinymce.activeEditor.setProgressState(false);
+                                return;
+                            };
+                            xhr.onload = function () {
+                                let json;
+                                if (xhr.status < 200 || xhr.status >= 300) {
+                                    console.log('HTTP 错误: ' + xhr.status);
+                                    return;
+                                }
+                                json = JSON.parse(xhr.responseText);
+                                //接口返回的文件保存地址
+                                let mediaLocation = json.location;
+                                //cb()回调函数，将mediaLocation显示在弹框输入框中
+                                cb(mediaLocation, { title: json.filename });
+                            };
+                            formData = new FormData();
+                            //假设接口接收参数为file,值为选中的文件
+                            formData.append('file', file);
+                            //正式使用将下面被注释的内容恢复
+                            xhr.send(formData);
+                        }
+                        //触发点击
+                        input.click();
+                    }
+                },
                 body_class: 'post-content',
                 content_css: '/css/tinymce-editor-bs-bundle.min.css',
                 codesample_languages: [

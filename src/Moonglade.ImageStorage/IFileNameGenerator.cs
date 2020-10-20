@@ -4,6 +4,6 @@
     {
         string Name { get; }
 
-        string GetFileName(string fileName, string appendixName = "");
+        string GetFileName(string fileName, string appendixName = "", string type = "img");
     }
 }

@@ -50,8 +50,8 @@ namespace Moonglade.Web.Controllers
 
         #region Blog Post Images
 
-        [Route(@"uploads/{filename:regex((?!-)([[a-z0-9-]]+)\.(png|jpg|jpeg|gif|bmp))}")]
-        public async Task<IActionResult> GetImageAsync(string filename, [FromServices] IMemoryCache cache)
+        [Route(@"uploads/{filename:regex((?!-)([[a-z0-9-]]+)\.(png|jpg|jpeg|gif|bmp|mp4))}")]
+        public async Task<IActionResult> GetAsync(string filename, [FromServices] IMemoryCache cache)
         {
             try
             {
@@ -151,6 +151,52 @@ namespace Moonglade.Web.Controllers
                     var arr = stream.ToArray();
                     _ = Task.Run(async () => await _imageStorage.InsertAsync(secondaryFieName, arr));
                 }
+
+                Logger.LogInformation($"Image '{primaryFileName}' uloaded.");
+
+                return Json(new
+                {
+                    location = $"/uploads/{finalFileName}",
+                    filename = finalFileName
+                });
+            }
+            catch (Exception e)
+            {
+                Logger.LogError(e, "Error uploading image.");
+                return ServerError();
+            }
+        }
+
+
+        [Authorize]
+        [HttpPost("upload-media"), IgnoreAntiforgeryToken]
+        public async Task<IActionResult> UploadMediaAsync(IFormFile file, [FromServices] IFileNameGenerator fileNameGenerator)
+        {
+            try
+            {
+                if (null == file || file.Length <= 0)
+                {
+                    Logger.LogError("file is null.");
+                    return BadRequest();
+                }
+
+                var name = Path.GetFileName(file.FileName);
+                if (name == null) return BadRequest();
+
+                var ext = Path.GetExtension(name).ToLower();
+                var allowedMediaFormats = new[] { ".mp4" };
+                if (!allowedMediaFormats.Contains(ext))
+                {
+                    Logger.LogError($"Invalid file extension: {ext}");
+                    return BadRequest();
+                }
+
+                var primaryFileName = fileNameGenerator.GetFileName(name, type: "media");
+
+                await using var stream = new MemoryStream();
+                await file.CopyToAsync(stream);
+                var finalFileName = await _imageStorage.InsertAsync(primaryFileName,
+                        stream.ToArray());
 
                 Logger.LogInformation($"Image '{primaryFileName}' uloaded.");
 
