@@ -135,7 +135,7 @@ namespace Moonglade.Core
             // Regex performance best practice
             // See https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices
 
-            const string pattern = @"^[a-zA-Z 0-9\.\-\+\#\s]*$";
+            const string pattern = @"^[a-zA-Z \u4e00-\u9fa5 0-9\.\-\+\#\s]*$";
             return Regex.IsMatch(tagDisplayName, pattern);
         }
     }

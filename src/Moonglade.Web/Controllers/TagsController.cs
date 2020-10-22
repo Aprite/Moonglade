@@ -42,7 +42,7 @@ namespace Moonglade.Web.Controllers
             }
         }
 
-        [Route("list/{normalizedName:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
+        [Route("list/{normalizedName:regex(^(?!-)([[a-zA-Z\u4e00-\u9fa50-9-]]+)$)}")]
         public async Task<IActionResult> List(string normalizedName)
         {
             try

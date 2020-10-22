@@ -281,7 +281,7 @@ var postEditor = {
         });
 
         $('#Tags').on('beforeItemAdd', function (event) {
-            if (!/^[a-zA-Z 0-9\.\-\+\#\s]*$/i.test(event.item)) {
+            if (!/^[a-zA-Z \u4e00-\u9fa5 0-9\.\-\+\#\s]*$/i.test(event.item)) {
                 console.warn(`Invalid tag name: ${event.item}`);
                 toastr.warning(`Invalid tag name: ${event.item}`);
                 event.cancel = true;
