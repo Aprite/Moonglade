@@ -4,9 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Web.Controllers
 {
@@ -14,22 +12,17 @@ namespace Moonglade.Web.Controllers
     {
         protected ILogger<ControllerBase> Logger { get; }
 
-        protected AppSettings AppSettings { get; set; }
+        protected string RootUrl => $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
 
-        protected string SiteRootUrl => $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}";
+        protected string DataDirectory => AppDomain.CurrentDomain.GetData(Constants.DataDirectory)?.ToString();
 
-        protected string SiteDataDirectory => AppDomain.CurrentDomain.GetData(Constants.DataDirectory)?.ToString();
-
-        protected string SiteIconDirectory => Path.Join(SiteDataDirectory, "siteicons");
+        protected string SiteIconDirectory => Path.Join(DataDirectory, "siteicons");
 
         protected bool DNT => (bool)HttpContext.Items["DNT"];
 
-        public BlogController(
-            ILogger<ControllerBase> logger,
-            IOptions<AppSettings> settings = null)
+        public BlogController(ILogger<ControllerBase> logger)
         {
             if (null != logger) Logger = logger;
-            if (null != settings) AppSettings = settings.Value;
         }
 
         [Route("server-error")]

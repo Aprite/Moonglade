@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Text.RegularExpressions;
 using Markdig;
 
 namespace Moonglade.Core
 {
-    public static class BlogContentProcessor
+    public static class ContentProcessor
     {
         public static string AddLazyLoadToImgTag(string rawHtmlContent)
         {

@@ -49,7 +49,13 @@ namespace Moonglade.Web
             _configuration = configuration;
             _environment = env;
             _appSettings = _configuration.GetSection(nameof(AppSettings));
-            _supportedCultures = new[] { "en-US", "zh-CN" }.Select(p => new CultureInfo(p)).ToList();
+
+            // Workaround stupid ASP.NET Core "by design" issue
+            // https://github.com/aspnet/Configuration/issues/451
+            _supportedCultures = _appSettings.GetSection("SupportedCultures")
+                .GetChildren()
+                .Select(p => new CultureInfo(p.Value))
+                .ToList();
         }
 
         public void ConfigureServices(IServiceCollection services)
@@ -83,9 +89,9 @@ namespace Moonglade.Web
 
             services.AddAntiforgery(options =>
             {
-                const string cookieBaseName = "CSRF-TOKEN-MOONGLADE";
-                options.Cookie.Name = $"X-{cookieBaseName}";
-                options.FormFieldName = $"{cookieBaseName}-FORM";
+                const string csrfCookieName = "CSRF-TOKEN-MOONGLADE";
+                options.Cookie.Name = $"X-{csrfCookieName}";
+                options.FormFieldName = $"{csrfCookieName}-FORM";
             });
 
             services.AddPingback();
@@ -111,7 +117,6 @@ namespace Moonglade.Web
             TelemetryConfiguration configuration)
         {
             _logger = logger;
-            var allowExtScripts = bool.Parse(_appSettings[nameof(AppSettings.AllowExternalScripts)]);
 
             // Support Chinese contents
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -137,39 +142,8 @@ namespace Moonglade.Web
                 _logger.LogInformation("Moonglade stopped.");
             });
 
-            app.UseSecurityHeaders(new HeaderPolicyCollection()
-                .AddFrameOptionsSameOrigin()
-                .AddXssProtectionEnabled()
-                .AddContentTypeOptionsNoSniff()
-                .AddContentSecurityPolicy(csp =>
-                {
-                    csp.AddFormAction().Self();
-
-                    if (!allowExtScripts)
-                    {
-                        csp.AddScriptSrc()
-                            .Self()
-                            .UnsafeInline()
-                            .UnsafeEval()
-                            // Whitelist Azure Application Insights
-                            .From("https://*.vo.msecnd.net")
-                            .From("https://*.services.visualstudio.com");
-                    }
-                })
-                .AddFeaturePolicy(builder =>
-                {
-                    builder.AddCamera().None();
-                    builder.AddMicrophone().None();
-                    builder.AddPayment().None();
-                    builder.AddUsb().None();
-                    builder.AddAccelerometer().None();
-                })
-                .RemoveServerHeader()
-            );
-
             app.UseRobotsTxt();
 
-            TryUseUrlRewrite(app);
             app.UseMiddleware<PoweredByMiddleware>();
             app.UseMiddleware<DNTMiddleware>();
             //app.UseMiddleware<FirstRunMiddleware>();
@@ -224,22 +198,6 @@ namespace Moonglade.Web
                     "{controller=Home}/{action=Index}/{id?}");
                 endpoints.MapRazorPages();
             });
-        }
-
-        private void TryUseUrlRewrite(IApplicationBuilder app)
-        {
-            try
-            {
-                var options = new RewriteOptions()
-                    .AddRedirect("(.*)/$", "$1")
-                    .AddRedirect("(index|default).(aspx?|htm|s?html|php|pl|jsp|cfm)", "/");
-
-                app.UseRewriter(options);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, nameof(TryUseUrlRewrite));
-            }
         }
     }
 }

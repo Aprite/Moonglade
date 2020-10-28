@@ -1,17 +1,14 @@
 ﻿using System;
-using System.Net;
 using System.Threading.Tasks;
 using Edi.Captcha;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Core.Notification;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 using Moonglade.Web.Models;
 using X.PagedList;
 
@@ -30,11 +27,10 @@ namespace Moonglade.Web.Controllers
 
         public CommentController(
             ILogger<CommentController> logger,
-            IOptions<AppSettings> settings,
             CommentService commentService,
             IBlogConfig blogConfig,
             IBlogNotificationClient notificationClient = null)
-            : base(logger, settings)
+            : base(logger)
         {
             _blogConfig = blogConfig;
 
@@ -43,39 +39,26 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> NewComment(PostSlugViewModelWrapper model,
-            [FromServices] ISessionBasedCaptcha captcha)
+        public async Task<IActionResult> NewComment(
+            PostSlugViewModelWrapper model, [FromServices] ISessionBasedCaptcha captcha)
         {
             try
             {
-                if (!ModelState.IsValid)
-                {
-                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    return Json(new CommentResponse(false, CommentResponseCode.InvalidModel));
-                }
+                if (!ModelState.IsValid) return BadRequest(ModelState);
+                if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
 
-                if (!_blogConfig.ContentSettings.EnableComments)
-                {
-                    Response.StatusCode = (int)HttpStatusCode.Forbidden;
-                    return Json(new CommentResponse(false, CommentResponseCode.CommentDisabled));
-                }
-
-                // Validate BasicCaptcha Code
                 if (!captcha.ValidateCaptchaCode(model.NewCommentViewModel.CaptchaCode, HttpContext.Session))
                 {
-                    Logger.LogWarning("Wrong Captcha Code");
                     ModelState.AddModelError(nameof(model.NewCommentViewModel.CaptchaCode), "Wrong Captcha Code");
-
-                    Response.StatusCode = (int)HttpStatusCode.BadRequest;
-                    return Json(new CommentResponse(false, CommentResponseCode.WrongCaptcha));
+                    return Conflict(ModelState);
                 }
 
-                var commentPostModel = model.NewCommentViewModel;
-                var response = await _commentService.CreateAsync(new NewCommentRequest(commentPostModel.PostId)
+                var newComment = model.NewCommentViewModel;
+                var response = await _commentService.CreateAsync(new CommentRequest(newComment.PostId)
                 {
-                    Username = commentPostModel.Username,
-                    Content = commentPostModel.Content,
-                    Email = commentPostModel.Email,
+                    Username = newComment.Username,
+                    Content = newComment.Content,
+                    Email = newComment.Email,
                     IpAddress = HttpContext.Connection.RemoteIpAddress.ToString()
                 });
 
@@ -83,21 +66,22 @@ namespace Moonglade.Web.Controllers
                 {
                     _ = Task.Run(async () =>
                     {
-                        await _notificationClient.NotifyCommentAsync(response, s => BlogContentProcessor.MarkdownToContent(s, BlogContentProcessor.MarkdownConvertType.Html));
+                        await _notificationClient.NotifyCommentAsync(response,
+                            s => ContentProcessor.MarkdownToContent(s, ContentProcessor.MarkdownConvertType.Html));
                     });
                 }
-                var cResponse = new CommentResponse(true,
-                    _blogConfig.ContentSettings.RequireCommentReview ?
-                        CommentResponseCode.Success :
-                        CommentResponseCode.SuccessNonReview);
 
-                return Json(cResponse);
+                if (_blogConfig.ContentSettings.RequireCommentReview)
+                {
+                    return Created("moonglade://empty", response);
+                }
+
+                return Ok();
             }
             catch (Exception e)
             {
                 Logger.LogError(e, "Error NewComment");
-                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                return Json(new CommentResponse(false, CommentResponseCode.UnknownError));
+                return ServerError(e.Message);
             }
         }
 
@@ -108,17 +92,17 @@ namespace Moonglade.Web.Controllers
         public async Task<IActionResult> Manage(int page = 1)
         {
             const int pageSize = 10;
-            var commentList = await _commentService.GetCommentsAsync(pageSize, page);
-            var commentsAsIPagedList =
-                new StaticPagedList<CommentDetailedItem>(commentList, page, pageSize, _commentService.Count());
-            return View("~/Views/Admin/ManageComments.cshtml", commentsAsIPagedList);
+            var comments = await _commentService.GetCommentsAsync(pageSize, page);
+            var list =
+                new StaticPagedList<CommentDetailedItem>(comments, page, pageSize, _commentService.Count());
+            return View("~/Views/Admin/ManageComments.cshtml", list);
         }
 
         [Authorize]
         [HttpPost("set-approval-status")]
         public async Task<IActionResult> SetApprovalStatus(Guid commentId)
         {
-            await _commentService.ToggleApprovalStatusAsync(new[] { commentId });
+            await _commentService.ToggleApprovalAsync(new[] { commentId });
             return Json(commentId);
         }
 

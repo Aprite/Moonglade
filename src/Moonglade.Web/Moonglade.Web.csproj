@@ -21,8 +21,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http.Polly" Version="3.1.9" />
-    <PackageReference Include="Microsoft.Web.LibraryManager.Build" Version="2.1.76" />
-    <PackageReference Include="NetEscapades.AspNetCore.SecurityHeaders" Version="0.12.1" />
+    <PackageReference Include="Microsoft.Web.LibraryManager.Build" Version="2.1.113" />
     <PackageReference Include="UAParser" Version="3.1.44" />
     <PackageReference Include="X.PagedList" Version="8.0.7" />
     <PackageReference Include="X.PagedList.Mvc.Core" Version="8.0.7" />

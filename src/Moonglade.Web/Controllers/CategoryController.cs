@@ -4,12 +4,10 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Caching;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 using Moonglade.Web.Models;
 using X.PagedList;
 
@@ -25,12 +23,11 @@ namespace Moonglade.Web.Controllers
 
         public CategoryController(
             ILogger<CategoryController> logger,
-            IOptions<AppSettings> settings,
             CategoryService categoryService,
             PostService postService,
             IBlogConfig blogConfig,
             IBlogCache blogCache)
-            : base(logger, settings)
+            : base(logger)
         {
             _postService = postService;
             _categoryService = categoryService;
@@ -70,12 +67,12 @@ namespace Moonglade.Web.Controllers
         [HttpGet("manage")]
         public async Task<IActionResult> Manage()
         {
-            string viewLocation = "~/Views/Admin/ManageCategory.cshtml";
+            string viewPath = "~/Views/Admin/ManageCategory.cshtml";
 
             try
             {
-                var allCats = await _categoryService.GetAllAsync();
-                return View(viewLocation, new CategoryManageViewModel { Categories = allCats });
+                var cats = await _categoryService.GetAllAsync();
+                return View(viewPath, new CategoryManageViewModel { Categories = cats });
             }
             catch (Exception e)
             {
@@ -83,7 +80,7 @@ namespace Moonglade.Web.Controllers
 
                 ViewBag.HasError = true;
                 ViewBag.ErrorMessage = e.Message;
-                return View(viewLocation, new CategoryManageViewModel());
+                return View(viewPath, new CategoryManageViewModel());
             }
         }
 
@@ -186,7 +183,7 @@ namespace Moonglade.Web.Controllers
         {
             try
             {
-                var path = Path.Join($"{SiteDataDirectory}", $"{Constants.OpmlFileName}");
+                var path = Path.Join($"{DataDirectory}", $"{Constants.OpmlFileName}");
                 System.IO.File.Delete(path);
                 Logger.LogInformation("OPML file is deleted.");
             }

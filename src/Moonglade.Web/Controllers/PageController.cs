@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -20,14 +22,20 @@ namespace Moonglade.Web.Controllers
     {
         private readonly IBlogCache _cache;
         private readonly PageService _pageService;
-        private static string[] InvalidPageRouteNames => new[] { "index", "manage" };
+        private readonly AppSettings _settings;
+
+        private static IEnumerable<string> ReservedRouteNames => 
+            typeof(PageController)
+                .GetMethods(BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.Instance)
+                .Select(p => p.Name.ToLower());
 
         public PageController(
             ILogger<PageController> logger,
             IOptions<AppSettings> settings,
             IBlogCache cache,
-            PageService pageService) : base(logger, settings)
+            PageService pageService) : base(logger)
         {
+            _settings = settings.Value;
             _cache = cache;
             _pageService = pageService;
         }
@@ -39,7 +47,7 @@ namespace Moonglade.Web.Controllers
 
             var page = await _cache.GetOrCreateAsync(CacheDivision.Page, slug.ToLower(), async entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromMinutes(AppSettings.CacheSlidingExpirationMinutes["Page"]);
+                entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Page"]);
 
                 var p = await _pageService.GetAsync(slug);
                 return p;
@@ -76,7 +84,7 @@ namespace Moonglade.Web.Controllers
         public async Task<IActionResult> Manage()
         {
             var pageSegments = await _pageService.ListSegmentAsync();
-            return View("~/Views/Admin/ManageCustomPage.cshtml", pageSegments);
+            return View("~/Views/Admin/ManagePage.cshtml", pageSegments);
         }
 
         [Authorize]
@@ -122,7 +130,7 @@ namespace Moonglade.Web.Controllers
                     return Json("Invalid ModelState");
                 }
 
-                if (InvalidPageRouteNames.Contains(model.Slug.ToLower()))
+                if (ReservedRouteNames.Contains(model.Slug.ToLower()))
                 {
                     ModelState.AddModelError(nameof(model.Slug), "Reserved Slug.");
                     return View("CreateOrEdit", model);

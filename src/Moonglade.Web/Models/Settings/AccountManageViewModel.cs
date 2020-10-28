@@ -1,8 +1,22 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using Moonglade.Model;
 
-namespace Moonglade.Web.Models
+namespace Moonglade.Web.Models.Settings
 {
-    public class SignInViewModel
+    public class AccountManageViewModel
+    {
+        public AccountEditViewModel AccountEditViewModel { get; set; }
+
+        public IReadOnlyList<Account> Accounts { get; set; }
+
+        public AccountManageViewModel()
+        {
+            Accounts = new List<Account>();
+        }
+    }
+
+    public class AccountEditViewModel
     {
         [Required(ErrorMessage = "Please enter a username.")]
         [Display(Name = "Username")]
@@ -12,8 +26,8 @@ namespace Moonglade.Web.Models
 
         [Required(ErrorMessage = "Please enter a password.")]
         [Display(Name = "Password")]
-        [DataType(DataType.Password)]
         [MinLength(8, ErrorMessage = "Password must be at least 8 characters"), MaxLength(32)]
+        [DataType(DataType.Password)]
         [RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$", ErrorMessage = "Password must be minimum eight characters, at least one letter and one number")]
         public string Password { get; set; }
     }

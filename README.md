@@ -8,8 +8,6 @@ The [.NET Core](https://dotnet.microsoft.com/) blog system of [edi.wang](https:/
 
 ## 📦 Deployment
 
-> The system design DOES NOT couple with Azure, but the blog works best on Azure. Every part of the system, like Authentication and Image Storage, can be configured to use non-Azure options.
-
 ### ☁ Full Deploy on Azure (Recommend)
 
 This is the way https://edi.wang is deployed, by taking advantage of as many Azure services as possible, the blog can run very fast and secure with only ~$300 USD/month.
@@ -22,34 +20,11 @@ This diagram shows a recommended full feature Azure deployment for Moonglade. It
 
 ### 🐋 Quick Deploy on Azure with/out Docker 
 
-If you just want to quickly get it running on Azure without knowing every detail. You can have a minimal deployment that use Docker Container to run on App Service (Linux) by executing the quick start deployment script in PowerShell Core:
-
-`./Deployment/AzureAppServiceDeploy.ps1`
-
-Please edit the script file and replace these items with your own values:
-
-```powershell
-# Replace with your own values
-$subscriptionName = "Microsoft MVP"
-$rsgName = "Moonglade-Test-RSG"
-$regionName = "East Asia"
-$webAppName = "moonglade-test-web"
-$aspName = "moonglade-test-plan"
-$storageAccountName = "moongladeteststorage"
-$storageContainerName = "moongladetestimages"
-$sqlServerName = "moongladetestsqlsvr"
-$sqlServerUsername = "moonglade"
-$sqlServerPassword = "DotNetM00n8!@d3"
-$sqlDatabaseName = "moonglade-test-db"
-$cdnProfileName = "moonglade-test-cdn"
-[bool] $useLinuxPlanWithDocker = 1
-```
-
-Set `$useLinuxPlanWithDocker` to `1` will use Docker on Linux App Service plan, it will be a ready to run deployment. Set it to `0` will only deploy infrastructure without the application code, and leave the deployment in your control.
+Follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Deploy-on-Azure-with-out-Docker)
 
 ### 🐧 Quick Deploy on Linux
 
-To quickly get it running on a new Linux machine without Docker, please follow the steps [here](./Deployment.md).
+To quickly get it running on a new Linux machine without Docker, follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Install-on-Linux-Machine).
 
 ## 🐵 Development
 
@@ -77,8 +52,8 @@ Example
 
 Build and run `./src/Moonglade.sln`
 - Admin entrance: `/admin`
-- Default Admin username: `admin`
-- Default Admin password: `admin123`
+- Default username: `admin`
+- Default password: `admin123`
 
 ## ⚙ Configuration
 
@@ -92,8 +67,8 @@ Build and run `./src/Moonglade.sln`
 
 - Register an App in **Azure Active Directory**
 - Set Redirection URI to **"https://yourdomain/signin-oidc"** (For local debugging, also add URL to https://localhost:1055/signin-oidc)
-- Check `ID Tokens` checkbox under 'Advanced settings'.
-- Copy ```appId``` to set as ```AzureAd:ClientId``` in **appsettings.[env].json** file
+- Check `ID Tokens` checkbox under the 'Authentication' page in Azure Portal.
+- Copy `appId` to set as `AzureAd:ClientId` in **appsettings.[env].json** file
 
 ```json
 "Authentication": {
@@ -101,29 +76,23 @@ Build and run `./src/Moonglade.sln`
   "AzureAd": {
     "Domain": "{YOUR-VALUE}",
     "TenantId": "{YOUR-VALUE}",
-    "ClientId": "{YOUR-VALUE}",
+    "ClientId": "{YOUR-VALUE}"
   }
 }
 ```
 
 #### Local Account (Alternative)
 
-Set ```Authentication:Provider``` to ```"Local"``` and assign a pair of username and password. 
-
-*Password is not encrypted, use it at your own risk.*
+Set `Authentication:Provider` to `"Local"`. You can manage accounts in `/admin/settings/account`
 
 ```json
 "Authentication": {
-  "Provider": "Local",
-  "Local": {
-    "Username": "admin",
-    "Password": "admin123",
-  }
+  "Provider": "Local"
 }
 ```
 
 ### 🖼 Image Storage
-```AppSettings:ImageStorage``` controls how blog post images are stored.
+`AppSettings:ImageStorage` controls how blog post images are stored.
 
 #### [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) (Preferred)
 
@@ -169,7 +138,7 @@ You need to hava an [**Minio Server**](https://docs.min.io/).
   "AccessKey": "Your Access Key",
   "SecretKey": "Your Secret Key",
   "BucketName": "Your BucketName",
-  "WithSSL": false,
+  "WithSSL": false
 }
 ```
 
@@ -183,24 +152,10 @@ If you need email notification for new comments, new replies and pingbacks, you 
   "AzureFunctionEndpoint": "{PROD-ENV-VARIABLE}"
 }
 ```
+### 🔩 Others
 
-### 🖥 System Setttings
-
-Key | Data Type | Description
---- | --- | ---
-```AllowExternalScripts``` | ```bool``` | If CSP should enable external JavaScript links
-```CaptchaSettings:ImageWidth``` | ```int``` | Pixel Width of Captcha Image
-```CaptchaSettings:ImageHeight``` | ```int``` | Pixel Height of Captcha Image
-```Editor``` | ```string``` | ```HTML``` or ```Markdown```
-```EnableAudit``` | ```bool``` | Enable Audit Log or not
-```EnableWebApi``` | ```bool``` | Enable REST API
-```CacheSlidingExpirationMinutes:Post``` | ```int``` | Time for cached posts to expire
-```CacheSlidingExpirationMinutes:Page``` | ```int``` | Time for cached pages to expire
-```CacheSlidingExpirationMinutes:Image``` | ```int``` | Time for cached image to expire
-```PostAbstractWords``` | ```int``` | How may words to show in post list abstract
-```SystemNavMenus:Categories``` | ```bool``` | Show 'Categories' Menu
-```SystemNavMenus:Tags``` | ```bool``` | Show 'Tags' Menu
-```SystemNavMenus:Archive``` | ```bool``` | Show 'Archive' Menu
+- [System Settings](https://github.com/EdiWang/Moonglade/wiki/System-Settings)
+- [Security Headers (CSP, XSS, etc.)](https://github.com/EdiWang/Moonglade/wiki/Security-Headers-(CSP,-XSS,-etc.))
 
 ## 🎉 Blog Protocols or Standards
 

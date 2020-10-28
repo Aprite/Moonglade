@@ -3,11 +3,9 @@ using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Web.Controllers
 {
@@ -17,9 +15,8 @@ namespace Moonglade.Web.Controllers
 
         public SearchController(
             ILogger<SearchController> logger,
-            IOptions<AppSettings> settings,
             SearchService searchService)
-            : base(logger, settings)
+            : base(logger)
         {
             _searchService = searchService;
         }
@@ -27,12 +24,12 @@ namespace Moonglade.Web.Controllers
         [Route("opensearch")]
         public async Task<IActionResult> OpenSearch()
         {
-            var openSearchDataFile = Path.Join($"{SiteDataDirectory}", $"{Constants.OpenSearchFileName}");
+            var openSearchDataFile = Path.Join(DataDirectory, Constants.OpenSearchFileName);
             if (!System.IO.File.Exists(openSearchDataFile))
             {
                 Logger.LogInformation($"OpenSearch file not found, writing new file on {openSearchDataFile}");
 
-                await _searchService.WriteOpenSearchFileAsync(SiteRootUrl, SiteDataDirectory);
+                await _searchService.WriteOpenSearchFileAsync(RootUrl, DataDirectory);
                 if (!System.IO.File.Exists(openSearchDataFile))
                 {
                     Logger.LogError("OpenSearch file still not found, what the heck?!");
@@ -51,30 +48,30 @@ namespace Moonglade.Web.Controllers
         [Route("sitemap.xml")]
         public async Task<IActionResult> SiteMap([FromServices] IBlogConfig blogConfig)
         {
-            var siteMapDataFile = Path.Join($"{SiteDataDirectory}", $"{Constants.SiteMapFileName}");
-            if (!System.IO.File.Exists(siteMapDataFile))
+            var siteMapFile = Path.Join(DataDirectory, Constants.SiteMapFileName);
+            if (!System.IO.File.Exists(siteMapFile))
             {
-                Logger.LogInformation($"SiteMap file not found, writing new file on {siteMapDataFile}");
+                Logger.LogInformation($"SiteMap file not found, writing new file on {siteMapFile}");
 
-                var url = SiteRootUrl;
+                var url = RootUrl;
                 var canonicalUrl = blogConfig.GeneralSettings.CanonicalPrefix;
                 if (!string.IsNullOrWhiteSpace(canonicalUrl))
                 {
                     url = canonicalUrl;
                 }
 
-                await _searchService.WriteSiteMapFileAsync(url, SiteDataDirectory);
+                await _searchService.WriteSiteMapFileAsync(url, DataDirectory);
 
-                if (!System.IO.File.Exists(siteMapDataFile))
+                if (!System.IO.File.Exists(siteMapFile))
                 {
                     Logger.LogError("SiteMap file still not found, what the heck?!");
                     return NotFound();
                 }
             }
 
-            if (System.IO.File.Exists(siteMapDataFile))
+            if (System.IO.File.Exists(siteMapFile))
             {
-                return PhysicalFile(siteMapDataFile, "text/xml");
+                return PhysicalFile(siteMapFile, "text/xml");
             }
 
             return NotFound();

@@ -67,7 +67,10 @@
     <script src="~/js/app/jweixin-1.6.0.js"></script>
     @await RenderSectionAsync("head", false)
     <environment include="Production">
-        @Html.Raw(JavaScriptSnippet.FullScript)
+        @if (!(bool)Context.Items["DNT"])
+        {
+            @Html.Raw(JavaScriptSnippet.FullScript)
+        }
     </environment>
     <link href="~/css/theme/@BlogConfig.GeneralSettings.ThemeFileName" rel="stylesheet" asp-append-version="true" />
 </head>

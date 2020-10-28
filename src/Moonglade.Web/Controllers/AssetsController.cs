@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -30,7 +29,8 @@ namespace Moonglade.Web.Controllers
         private readonly IBlogImageStorage _imageStorage;
         private readonly ISiteIconGenerator _siteIconGenerator;
         private readonly IWebHostEnvironment _env;
-        private readonly CDNSettings _cdnSettings;
+        private readonly ImageStorageSettings _imageStorageSettings;
+        private readonly AppSettings _settings;
 
         public AssetsController(
             ILogger<AssetsController> logger,
@@ -39,13 +39,14 @@ namespace Moonglade.Web.Controllers
             IBlogImageStorage imageStorage,
             IBlogConfig blogConfig,
             ISiteIconGenerator siteIconGenerator,
-            IWebHostEnvironment env) : base(logger, settings)
+            IWebHostEnvironment env) : base(logger)
         {
+            _settings = settings.Value;
             _blogConfig = blogConfig;
             _siteIconGenerator = siteIconGenerator;
             _env = env;
             _imageStorage = imageStorage;
-            _cdnSettings = imageStorageSettings.Value?.CDNSettings;
+            _imageStorageSettings = imageStorageSettings.Value;
         }
 
         #region Blog Post Images
@@ -64,9 +65,9 @@ namespace Moonglade.Web.Controllers
 
                 Logger.LogTrace($"Requesting image file {filename}");
 
-                if (_cdnSettings.EnableCDNRedirect)
+                if (_imageStorageSettings.CDNSettings.EnableCDNRedirect)
                 {
-                    var imageUrl = Utils.CombineUrl(_cdnSettings.CDNEndpoint, filename);
+                    var imageUrl = Utils.CombineUrl(_imageStorageSettings.CDNSettings.CDNEndpoint, filename);
                     return Redirect(imageUrl);
                 }
 
@@ -74,7 +75,7 @@ namespace Moonglade.Web.Controllers
                 {
                     Logger.LogTrace($"Image file {filename} not on cache, fetching image...");
 
-                    entry.SlidingExpiration = TimeSpan.FromMinutes(AppSettings.CacheSlidingExpirationMinutes["Image"]);
+                    entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Image"]);
                     var imgBytesResponse = await _imageStorage.GetAsync(filename);
                     return imgBytesResponse;
                 });
@@ -101,6 +102,11 @@ namespace Moonglade.Web.Controllers
         [HttpPost("upload-image"), IgnoreAntiforgeryToken]
         public async Task<IActionResult> UploadImageAsync(IFormFile file, [FromServices] IFileNameGenerator fileNameGenerator)
         {
+            static bool IsValidColorValue(int colorValue)
+            {
+                return colorValue >= 0 && colorValue <= 255;
+            }
+
             try
             {
                 if (null == file || file.Length <= 0)
@@ -113,7 +119,13 @@ namespace Moonglade.Web.Controllers
                 if (name == null) return BadRequest();
 
                 var ext = Path.GetExtension(name).ToLower();
-                var allowedImageFormats = new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif" };
+                var allowedImageFormats = _imageStorageSettings.AllowedExtensions;
+
+                if (null == allowedImageFormats || !allowedImageFormats.Any())
+                {
+                    throw new InvalidDataException($"{nameof(ImageStorageSettings.AllowedExtensions)} is empty.");
+                }
+
                 if (!allowedImageFormats.Contains(ext))
                 {
                     Logger.LogError($"Invalid file extension: {ext}");
@@ -128,17 +140,38 @@ namespace Moonglade.Web.Controllers
 
                 // Add watermark
                 MemoryStream watermarkedStream = null;
-                if (_blogConfig.WatermarkSettings.IsEnabled && ext != ".gif")
+                if (_blogConfig.WatermarkSettings.IsEnabled)
                 {
-                    using var watermarker = new ImageWatermarker(stream, ext);
+                    if (null == _imageStorageSettings.NoWatermarkExtensions
+                        || _imageStorageSettings.NoWatermarkExtensions.All(
+                            p => string.Compare(p, ext, StringComparison.OrdinalIgnoreCase) != 0))
+                    {
+                        using var watermarker = new ImageWatermarker(stream, ext);
+                        watermarker.SkipImageSize(Constants.SmallImagePixelsThreshold);
 
-                    watermarker.SkipImageSize(Constants.SmallImagePixelsThreshold);
-                    watermarkedStream = watermarker.AddWatermark(
-                        _blogConfig.WatermarkSettings.WatermarkText,
-                        Color.FromArgb(128, 128, 128, 128),
-                        WatermarkPosition.BottomRight,
-                        15,
-                        _blogConfig.WatermarkSettings.FontSize);
+                        // Get ARGB values
+                        var colorArray = _settings.WatermarkARGB;
+                        if (colorArray.Length != 4)
+                        {
+                            throw new InvalidDataException($"'{nameof(_settings.WatermarkARGB)}' must be an integer array with 4 items.");
+                        }
+
+                        if (colorArray.Any(c => !IsValidColorValue(c)))
+                        {
+                            throw new InvalidDataException($"'{nameof(_settings.WatermarkARGB)}' values must all fall in range 0-255.");
+                        }
+
+                        watermarkedStream = watermarker.AddWatermark(
+                            _blogConfig.WatermarkSettings.WatermarkText,
+                            Color.FromArgb(colorArray[0], colorArray[1], colorArray[2], colorArray[3]),
+                            WatermarkPosition.BottomRight,
+                            15,
+                            _blogConfig.WatermarkSettings.FontSize);
+                    }
+                    else
+                    {
+                        Logger.LogInformation($"Skipped watermark for extension name: {ext}");
+                    }
                 }
 
                 var finalFileName = await _imageStorage.InsertAsync(primaryFileName,
@@ -218,8 +251,8 @@ namespace Moonglade.Web.Controllers
         [Route("get-captcha-image")]
         public IActionResult GetCaptchaImage([FromServices] ISessionBasedCaptcha captcha)
         {
-            var w = AppSettings.CaptchaSettings.ImageWidth;
-            var h = AppSettings.CaptchaSettings.ImageHeight;
+            var w = _settings.CaptchaSettings.ImageWidth;
+            var h = _settings.CaptchaSettings.ImageHeight;
 
             // prevent crazy size
             if (w > 640) w = 640;
@@ -380,15 +413,7 @@ namespace Moonglade.Web.Controllers
                 Name = _blogConfig.GeneralSettings.SiteTitle,
                 Description = _blogConfig.GeneralSettings.SiteTitle,
                 StartUrl = "/",
-                Icons = new List<ManifestIcon>
-                {
-                    new ManifestIcon("/android-icon-{0}.png",36,"0.75"),
-                    new ManifestIcon("/android-icon-{0}.png",48,"1.0"),
-                    new ManifestIcon("/android-icon-{0}.png",72,"1.5"),
-                    new ManifestIcon("/android-icon-{0}.png",96,"2.0"),
-                    new ManifestIcon("/android-icon-{0}.png",144,"3.0"),
-                    new ManifestIcon("/android-icon-{0}.png",192,"4.0")
-                },
+                Icons = _settings.ManifestIcons,
                 BackgroundColor = themeColor,
                 ThemeColor = themeColor,
                 Display = "standalone",
