@@ -14,8 +14,7 @@ namespace Moonglade.Web.Controllers
         private readonly IJsSdkService _jsSdkService;
         public WechatController(
             ILogger<WechatController> logger,
-            IOptions<AppSettings> settings,
-            IJsSdkService jsSdkService) : base(logger, settings)
+            IJsSdkService jsSdkService) : base(logger)
         {
             _jsSdkService = jsSdkService;
         }
