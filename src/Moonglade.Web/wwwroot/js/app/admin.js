@@ -11,6 +11,25 @@ function slugify(text) {
         .replace(/ +/g, '-');
 }
 
+function buildErrorMessage(responseObject) {
+    if (responseObject.responseJSON) {
+        var json = responseObject.responseJSON;
+        var errorMessage = 'Error(s):\n\r';
+
+        Object.keys(json).forEach(function (k) {
+            errorMessage += (k + ': ' + json[k]) + '\n\r';
+        });
+
+        return errorMessage;
+    }
+
+    if (responseObject.responseText) {
+        return responseObject.responseText.trim();
+    }
+
+    return responseObject.status;
+}
+
 function ImageUploader(targetName, hw, imgMimeType) {
     var imgDataUrl = '';
 
@@ -32,9 +51,29 @@ function ImageUploader(targetName, hw, imgMimeType) {
                     d = new Date();
                     $(`.blogadmin-${targetName}`).attr('src', `/${targetName}?${d.getTime()}`);
                 },
+                statusCode: {
+                    400: function (responseObject, textStatus, jqXHR) {
+                        var message = buildErrorMessage(responseObject);
+                        toastr.error(message);
+                    },
+                    401: function (responseObject, textStatus, jqXHR) {
+                        toastr.error('Unauthorized');
+                    },
+                    404: function (responseObject, textStatus, jqXHR) {
+                        toastr.error('Endpoint not found');
+                    },
+                    409: function (responseObject, textStatus, jqXHR) {
+                        var message = buildErrorMessage(responseObject);
+                        toastr.error(message);
+                    },
+                    500: function (responseObject, textStatus, jqXHR) {
+                        toastr.error('Server went boom');
+                    },
+                    503: function (responseObject, textStatus, jqXHR) {
+                        toastr.error('Server went boom boom');
+                    }
+                },
                 error: function (xhr, status, err) {
-                    console.error(err);
-                    toastr.error('Upload failed.');
                     $(`#btn-upload-${targetName}`).removeClass('disabled');
                     $(`#btn-upload-${targetName}`).removeAttr('disabled');
                 }
@@ -396,11 +435,12 @@ var onUpdateSettingsSuccess = function (context) {
 };
 
 var onUpdateSettingsFailed = function (context) {
-    var errCode = context.status;
+    var message = buildErrorMessage(context);
+
     if (window.toastr) {
-        window.toastr.error(`Error: ${errCode}`);
+        window.toastr.error(message);
     } else {
-        alert(`Error Code: ${errCode}`);
+        alert(message);
     }
 };
 
@@ -427,7 +467,7 @@ var onClearCacheSuccess = function (context) {
 };
 
 var onClearCacheFailed = function (context) {
-    var msg = context.responseJSON.message;
+    var msg = buildErrorMessage(context);
     if (window.toastr) {
         window.toastr.error(`Server Error: ${msg}`);
     } else {
@@ -461,7 +501,7 @@ var onPostCreateEditSuccess = function (data) {
 };
 
 var onPostCreateEditFailed = function (context) {
-    var message = context.responseJSON.message;
+    var message = buildErrorMessage(context);
     if (window.toastr) {
         window.toastr.error(message);
     } else {
@@ -499,7 +539,8 @@ var onPageCreateEditSuccess = function (data) {
 };
 
 var onPageCreateEditFailed = function (context) {
-    var message = context.responseJSON.message;
+    var message = buildErrorMessage(context);
+
     if (window.toastr) {
         window.toastr.error(message);
     } else {

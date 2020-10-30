@@ -26,6 +26,7 @@ using Moonglade.Setup;
 using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 using Moonglade.Web.Models.Settings;
+using NUglify;
 using X.PagedList;
 
 namespace Moonglade.Web.Controllers
@@ -98,10 +99,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("general-settings")]
         public async Task<IActionResult> General(GeneralSettingsViewModel model, [FromServices] IDateTimeResolver dateTimeResolver)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             _blogConfig.GeneralSettings.MetaKeyword = model.MetaKeyword;
             _blogConfig.GeneralSettings.MetaDescription = model.MetaDescription;
@@ -155,10 +153,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("content")]
         public async Task<IActionResult> Content(ContentSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             _blogConfig.ContentSettings.DisharmonyWords = model.DisharmonyWords;
             _blogConfig.ContentSettings.EnableComments = model.EnableComments;
@@ -203,10 +198,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("notification")]
         public async Task<IActionResult> Notification(NotificationSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var settings = _blogConfig.NotificationSettings;
             settings.AdminEmail = model.AdminEmail;
@@ -256,10 +248,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("subscription")]
         public async Task<IActionResult> Subscription(SubscriptionSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var settings = _blogConfig.FeedSettings;
             settings.AuthorName = model.AuthorName;
@@ -300,10 +289,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("watermark")]
         public async Task<IActionResult> Watermark(WatermarkSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var settings = _blogConfig.WatermarkSettings;
             settings.IsEnabled = model.IsEnabled;
@@ -352,10 +338,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("friendlink")]
         public async Task<IActionResult> FriendLink(FriendLinkSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var fs = _blogConfig.FriendLinksSettings;
             fs.ShowFriendLinksSection = model.ShowFriendLinksSection;
@@ -370,7 +353,7 @@ namespace Moonglade.Web.Controllers
         {
             try
             {
-                if (!ModelState.IsValid) return BadRequest();
+                if (!ModelState.IsValid) return BadRequest(ModelState);
 
                 await _friendLinkService.AddAsync(viewModel.Title, viewModel.LinkUrl);
                 return Json(viewModel);
@@ -388,7 +371,7 @@ namespace Moonglade.Web.Controllers
             try
             {
                 var link = await _friendLinkService.GetAsync(id);
-                if (null == link) return BadRequest();
+                if (null == link) return NotFound();
 
                 var obj = new FriendLinkEditViewModel
                 {
@@ -442,7 +425,7 @@ namespace Moonglade.Web.Controllers
                 if (!Utils.TryParseBase64(base64Img, out var base64Chars))
                 {
                     Logger.LogWarning("Bad base64 is used when setting avatar.");
-                    return BadRequest();
+                    return Conflict("Bad base64 data");
                 }
 
                 try
@@ -450,16 +433,14 @@ namespace Moonglade.Web.Controllers
                     using var bmp = new Bitmap(new MemoryStream(base64Chars));
                     if (bmp.Height != bmp.Width || bmp.Height + bmp.Width != 600)
                     {
-                        Logger.LogWarning("Avatar size is not 300x300, rejecting request.");
-
                         // Normal uploaded avatar should be a 300x300 pixel image
-                        return BadRequest();
+                        return Conflict("Avatar size must be 300x300.");
                     }
                 }
                 catch (Exception e)
                 {
                     Logger.LogError("Invalid base64img Image", e);
-                    return BadRequest();
+                    return ServerError(e.Message);
                 }
 
                 _blogConfig.GeneralSettings.AvatarBase64 = base64Img;
@@ -491,18 +472,18 @@ namespace Moonglade.Web.Controllers
                 if (!Utils.TryParseBase64(base64Img, out var base64Chars))
                 {
                     Logger.LogWarning("Bad base64 is used when setting site icon.");
-                    return BadRequest();
+                    return Conflict("Bad base64 data");
                 }
 
                 try
                 {
                     using var bmp = new Bitmap(new MemoryStream(base64Chars));
-                    if (bmp.Height != bmp.Width) return BadRequest();
+                    if (bmp.Height != bmp.Width) return Conflict("image height must be equal to width");
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError("Invalid base64img Image", e);
-                    return BadRequest();
+                    Logger.LogError(e.Message, e);
+                    return ServerError(e.Message);
                 }
 
                 _blogConfig.GeneralSettings.SiteIconBase64 = base64Img;
@@ -550,10 +531,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("advanced")]
         public async Task<IActionResult> Advanced(AdvancedSettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var settings = _blogConfig.AdvancedSettings;
             settings.DNSPrefetchEndpoint = model.DNSPrefetchEndpoint;
@@ -615,10 +593,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("security")]
         public async Task<IActionResult> Security(SecuritySettingsViewModel model)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var settings = _blogConfig.SecuritySettings;
             settings.WarnExternalLink = model.WarnExternalLink;
@@ -630,6 +605,56 @@ namespace Moonglade.Web.Controllers
             _blogConfig.RequireRefresh();
 
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "Security Settings updated.");
+            return Ok();
+        }
+
+        #endregion
+
+        #region CustomCss
+
+        [HttpGet("custom-css")]
+        public IActionResult CustomStyleSheet()
+        {
+            var settings = _blogConfig.CustomStyleSheetSettings;
+            var vm = new CustomStyleSheetSettingsViewModel
+            {
+                EnableCustomCss = settings.EnableCustomCss,
+                CssCode = settings.CssCode
+            };
+
+            return View(vm);
+        }
+
+        [HttpPost("custom-css")]
+        public async Task<IActionResult> CustomStyleSheet(CustomStyleSheetSettingsViewModel model)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var settings = _blogConfig.CustomStyleSheetSettings;
+
+            if (model.EnableCustomCss && string.IsNullOrWhiteSpace(model.CssCode))
+            {
+                ModelState.AddModelError(nameof(CustomStyleSheetSettingsViewModel.CssCode), "CSS Code is required");
+                return BadRequest(ModelState);
+            }
+
+            var uglifyTest = Uglify.Css(model.CssCode);
+            if (uglifyTest.HasErrors)
+            {
+                foreach (var err in uglifyTest.Errors)
+                {
+                    ModelState.AddModelError(model.CssCode, err.ToString());
+                }
+                return BadRequest(ModelState);
+            }
+
+            settings.EnableCustomCss = model.EnableCustomCss;
+            settings.CssCode = model.CssCode;
+
+            await _blogConfig.SaveConfigurationAsync(settings);
+            _blogConfig.RequireRefresh();
+
+            await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "Custom Style Sheet Settings updated.");
             return Ok();
         }
 
@@ -648,7 +673,7 @@ namespace Moonglade.Web.Controllers
                     return View();
                 }
 
-                if (page < 0) return BadRequest();
+                if (page < 0) return BadRequest(ModelState);
 
                 var skip = (page - 1) * 20;
 
@@ -671,7 +696,7 @@ namespace Moonglade.Web.Controllers
         {
             try
             {
-                if (!_settings.EnableAudit) return BadRequest();
+                if (!_settings.EnableAudit) return Conflict("Audit is disabled");
 
                 await _blogAudit.ClearAuditLog();
                 return RedirectToAction("AuditLogs");
@@ -714,7 +739,7 @@ namespace Moonglade.Web.Controllers
                 case ExportFormat.ZippedJsonFiles:
                     return PhysicalFile(exportResult.ZipFilePath, "application/zip", Path.GetFileName(exportResult.ZipFilePath));
                 default:
-                    return BadRequest();
+                    return BadRequest(ModelState);
             }
         }
 
@@ -725,15 +750,12 @@ namespace Moonglade.Web.Controllers
         {
             static void DeleteIfExists(string path)
             {
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path);
-                }
+                if (Directory.Exists(path)) Directory.Delete(path);
             }
 
             try
             {
-                if (!ModelState.IsValid) return Conflict(ModelState);
+                if (!ModelState.IsValid) return BadRequest(ModelState);
 
                 if (cachedObjectValues.Contains("MCO_IMEM"))
                 {
@@ -786,13 +808,13 @@ namespace Moonglade.Web.Controllers
         [HttpPost("account/create")]
         public async Task<IActionResult> CreateAccount(AccountEditViewModel model, [FromServices] LocalAccountService accountService)
         {
-            if (!ModelState.IsValid) return BadRequest("Invalid ModelState");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
             if (accountService.Exist(model.Username))
             {
                 ModelState.AddModelError("username", $"User '{model.Username}' already exist.");
                 return Conflict(ModelState);
             }
-            
+
             var uid = await accountService.CreateAsync(model.Username, model.Password);
             return Json(uid);
         }

@@ -53,13 +53,13 @@ namespace Moonglade.Web.Controllers
                     return Conflict(ModelState);
                 }
 
-                var newComment = model.NewCommentViewModel;
-                var response = await _commentService.CreateAsync(new CommentRequest(newComment.PostId)
+                var comment = model.NewCommentViewModel;
+                var response = await _commentService.CreateAsync(new CommentRequest(comment.PostId)
                 {
-                    Username = newComment.Username,
-                    Content = newComment.Content,
-                    Email = newComment.Email,
-                    IpAddress = HttpContext.Connection.RemoteIpAddress.ToString()
+                    Username = comment.Username,
+                    Content = comment.Content,
+                    Email = comment.Email,
+                    IpAddress = DNT ? "N/A" : HttpContext.Connection.RemoteIpAddress.ToString()
                 });
 
                 if (_blogConfig.NotificationSettings.SendEmailOnNewComment && null != _notificationClient)
