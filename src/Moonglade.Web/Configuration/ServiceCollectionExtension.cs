@@ -22,6 +22,7 @@ using Moonglade.Model;
 using Moonglade.Model.Settings;
 using Moonglade.Syndication;
 using Moonglade.Web.Filters;
+using MySql.Data.MySqlClient;
 using Polly;
 using SiteIconGenerator;
 
@@ -43,17 +44,26 @@ namespace Moonglade.Web.Configuration
         {
             var connStr = configuration.GetConnectionString(Constants.DbConnectionName);
 
-            services.AddTransient<IDbConnection>(c => new SqlConnection(connStr));
+            var mySqlConnection = new MySqlConnection(connStr);
+
+            services.AddTransient<IDbConnection>(c => mySqlConnection);
             services.AddScoped(typeof(IRepository<>), typeof(DbContextRepository<>));
             services.AddDbContext<BlogDbContext>(options =>
                 options.UseLazyLoadingProxies()
-                    .UseSqlServer(connStr, sqlOptions =>
+                    .UseMySql(connStr, ServerVersion.AutoDetect(connStr), sqlOptions =>
                     {
                         sqlOptions.EnableRetryOnFailure(
                             3,
                             TimeSpan.FromSeconds(30),
                             null);
                     }));
+                    //.UseSqlServer(connStr, sqlOptions =>
+                    //{
+                    //    sqlOptions.EnableRetryOnFailure(
+                    //        3,
+                    //        TimeSpan.FromSeconds(30),
+                    //        null);
+                    //}));
         }
 
         public static void AddBlogCache(this IServiceCollection services)

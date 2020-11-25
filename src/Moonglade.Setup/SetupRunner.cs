@@ -28,12 +28,12 @@ namespace Moonglade.Setup
         /// </summary>
         public bool IsFirstRun()
         {
-            var tableExists = conn.ExecuteScalar<int>("SELECT TOP 1 1 " +
+            var tableExists = conn.ExecuteScalar<int>("SELECT 1 " +
                                                       "FROM INFORMATION_SCHEMA.TABLES " +
                                                       "WHERE TABLE_NAME = N'BlogConfiguration'") == 1;
             if (tableExists)
             {
-                var dataExists = conn.ExecuteScalar<int>("SELECT TOP 1 1 FROM BlogConfiguration") == 1;
+                var dataExists = conn.ExecuteScalar<int>("SELECT 1 FROM BlogConfiguration") == 1;
                 return !dataExists;
             }
 

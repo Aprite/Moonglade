@@ -12,11 +12,13 @@ namespace Moonglade.Web.Controllers
     public class WechatController : BlogController
     {
         private readonly IJsSdkService _jsSdkService;
+        private readonly ILogger<WechatController> _logger;
         public WechatController(
             ILogger<WechatController> logger,
-            IJsSdkService jsSdkService) : base(logger)
+            IJsSdkService jsSdkService)
         {
             _jsSdkService = jsSdkService;
+            _logger = logger;
         }
 
         [HttpGet("js-sdk-config"), IgnoreAntiforgeryToken]
@@ -26,19 +28,19 @@ namespace Moonglade.Web.Controllers
             {
                 if (string.IsNullOrEmpty(jsUrl))
                 {
-                    Logger.LogError("url is null.");
+                    _logger.LogError("url is null.");
                     return BadRequest();
                 }
 
                 var config = await _jsSdkService.GetJsSdkUiPackageAsync(jsUrl);
 
-                Logger.LogInformation($"JsSdkConfig:'{config}'.");
+                _logger.LogInformation($"JsSdkConfig:'{config}'.");
 
                 return Json(config);
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error uploading image.");
+                _logger.LogError(e, "Error uploading image.");
                 return ServerError();
             }
         }

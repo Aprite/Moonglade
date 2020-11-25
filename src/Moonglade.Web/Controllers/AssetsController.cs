@@ -207,7 +207,7 @@ namespace Moonglade.Web.Controllers
             {
                 if (null == file || file.Length <= 0)
                 {
-                    Logger.LogError("file is null.");
+                    _logger.LogError("file is null.");
                     return BadRequest();
                 }
 
@@ -218,7 +218,7 @@ namespace Moonglade.Web.Controllers
                 var allowedMediaFormats = new[] { ".mp4" };
                 if (!allowedMediaFormats.Contains(ext))
                 {
-                    Logger.LogError($"Invalid file extension: {ext}");
+                    _logger.LogError($"Invalid file extension: {ext}");
                     return BadRequest();
                 }
 
@@ -229,7 +229,7 @@ namespace Moonglade.Web.Controllers
                 var finalFileName = await _imageStorage.InsertAsync(primaryFileName,
                         stream.ToArray());
 
-                Logger.LogInformation($"Image '{primaryFileName}' uloaded.");
+                _logger.LogInformation($"Image '{primaryFileName}' uloaded.");
 
                 return Json(new
                 {
@@ -239,7 +239,7 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error uploading image.");
+                _logger.LogError(e, "Error uploading image.");
                 return ServerError();
             }
         }
