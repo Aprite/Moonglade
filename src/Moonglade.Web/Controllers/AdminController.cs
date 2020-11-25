@@ -12,8 +12,11 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
 using Moonglade.Core;
+using Moonglade.Model;
+using Moonglade.Pingback;
 using Moonglade.Web.Authentication;
 using Moonglade.Web.Models;
+using X.PagedList;
 
 namespace Moonglade.Web.Controllers
 {
@@ -24,17 +27,17 @@ namespace Moonglade.Web.Controllers
         private readonly AuthenticationSettings _authenticationSettings;
         private readonly LocalAccountService _localAccountService;
         private readonly IBlogAudit _blogAudit;
+        private readonly ILogger<AdminController> _logger;
 
-        public AdminController(
-            ILogger<AdminController> logger,
+        public AdminController(ILogger<AdminController> logger,
             IOptions<AuthenticationSettings> authSettings,
             IBlogAudit blogAudit,
             LocalAccountService localAccountService)
-            : base(logger)
         {
             _blogAudit = blogAudit;
             _localAccountService = localAccountService;
             _authenticationSettings = authSettings.Value;
+            _logger = logger;
         }
 
         [Route("")]
@@ -58,7 +61,7 @@ namespace Moonglade.Web.Controllers
             switch (_authenticationSettings.Provider)
             {
                 case AuthenticationProvider.AzureAD:
-                    var redirectUrl = Url.Action(nameof(PostController.Index), "Post");
+                    var redirectUrl = Url.Action(nameof(HomeController.Index), "Home");
                     return Challenge(
                         new AuthenticationProperties { RedirectUri = redirectUrl },
                         OpenIdConnectDefaults.AuthenticationScheme);
@@ -88,22 +91,22 @@ namespace Moonglade.Web.Controllers
                     {
                         var claims = new List<Claim>
                         {
-                            new Claim(ClaimTypes.Name, model.Username),
-                            new Claim(ClaimTypes.Role, "Administrator"),
-                            new Claim("uid", uid.ToString())
+                            new (ClaimTypes.Name, model.Username),
+                            new (ClaimTypes.Role, "Administrator"),
+                            new ("uid", uid.ToString())
                         };
                         var ci = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                         var p = new ClaimsPrincipal(ci);
 
                         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, p);
                         await _localAccountService.LogSuccessLoginAsync(uid,
-                            HttpContext.Connection.RemoteIpAddress.ToString());
+                            HttpContext.Connection.RemoteIpAddress?.ToString());
 
                         var successMessage = $@"Authentication success for local account ""{model.Username}""";
 
-                        Logger.LogInformation(successMessage);
+                        _logger.LogInformation(successMessage);
                         await _blogAudit.AddAuditEntry(EventType.Authentication, AuditEventId.LoginSuccessLocal, successMessage);
-                        
+
                         return RedirectToAction("Index");
                     }
                     ModelState.AddModelError(string.Empty, "Invalid Login Attempt.");
@@ -112,7 +115,7 @@ namespace Moonglade.Web.Controllers
 
                 var failMessage = $@"Authentication failed for local account ""{model.Username}""";
 
-                Logger.LogWarning(failMessage);
+                _logger.LogWarning(failMessage);
                 await _blogAudit.AddAuditEntry(EventType.Authentication, AuditEventId.LoginFailedLocal, failMessage);
 
                 Response.StatusCode = StatusCodes.Status400BadRequest;
@@ -121,7 +124,7 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception e)
             {
-                Logger.LogWarning($@"Authentication failed for local account ""{model.Username}""");
+                _logger.LogWarning($@"Authentication failed for local account ""{model.Username}""");
 
                 ModelState.AddModelError(string.Empty, e.Message);
                 return View(model);
@@ -129,10 +132,8 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpGet("signout")]
-        public async Task<IActionResult> SignOut()
+        public async Task<IActionResult> SignOut(int nounce = 1055)
         {
-            Logger.LogInformation($"User '{User.Identity.Name}' signing out.'");
-
             switch (_authenticationSettings.Provider)
             {
                 case AuthenticationProvider.AzureAD:
@@ -152,22 +153,77 @@ namespace Moonglade.Web.Controllers
                     throw new ArgumentOutOfRangeException();
             }
 
-            return RedirectToAction("Index", "Post");
+            return RedirectToAction("Index", "Home");
         }
 
         [HttpGet("signedout")]
         [AllowAnonymous]
         public IActionResult SignedOut()
         {
-            return RedirectToAction(nameof(PostController.Index), "Post");
+            return RedirectToAction(nameof(HomeController.Index), "Home");
         }
 
         [AllowAnonymous]
         [HttpGet("accessdenied")]
         public IActionResult AccessDenied()
         {
-            HttpContext.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Forbid();
+        }
+
+        [HttpGet("about")]
+        public IActionResult About()
+        {
             return View();
+        }
+
+        [HttpGet("category")]
+        public async Task<IActionResult> Category([FromServices] CategoryService categoryService)
+        {
+            var cats = await categoryService.GetAllAsync();
+            return View(new CategoryManageViewModel { Categories = cats });
+        }
+
+        [HttpGet("page")]
+        public async Task<IActionResult> Page([FromServices] PageService pageService)
+        {
+            var pageSegments = await pageService.ListSegmentAsync();
+            return View(pageSegments);
+        }
+
+        [Route("tags")]
+        public async Task<IActionResult> Tags([FromServices] TagService tagService)
+        {
+            var tags = await tagService.GetAllAsync();
+            return View(tags);
+        }
+
+        [Route("comments")]
+        public async Task<IActionResult> Comments([FromServices] CommentService commentService, int page = 1)
+        {
+            const int pageSize = 10;
+            var comments = await commentService.GetCommentsAsync(pageSize, page);
+            var list =
+                new StaticPagedList<CommentDetailedItem>(comments, page, pageSize, commentService.Count());
+            return View(list);
+        }
+
+        [HttpGet("menu")]
+        public async Task<IActionResult> Menu([FromServices] MenuService menuService)
+        {
+            var menus = await menuService.GetAllAsync();
+            var model = new MenuManageViewModel
+            {
+                MenuItems = menus
+            };
+
+            return View(model);
+        }
+
+        [Route("pingback")]
+        public async Task<IActionResult> Pingback([FromServices] IPingbackService pingbackService)
+        {
+            var list = await pingbackService.GetPingbackHistoryAsync();
+            return View(list);
         }
 
         #endregion

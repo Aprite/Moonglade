@@ -1,4 +1,6 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
+using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -6,13 +8,11 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Microsoft.FeatureManagement;
+using Microsoft.FeatureManagement.Mvc;
 using Moonglade.Auditing;
 using Moonglade.Caching;
 using Moonglade.Configuration.Abstraction;
@@ -20,7 +20,6 @@ using Moonglade.Core;
 using Moonglade.Core.Notification;
 using Moonglade.DataPorting;
 using Moonglade.DateTimeOps;
-using Moonglade.Model;
 using Moonglade.Model.Settings;
 using Moonglade.Setup;
 using Moonglade.Web.Filters;
@@ -38,41 +37,26 @@ namespace Moonglade.Web.Controllers
         #region Private Fields
 
         private readonly FriendLinkService _friendLinkService;
-        private readonly AppSettings _settings;
         private readonly IBlogConfig _blogConfig;
         private readonly IBlogAudit _blogAudit;
+        private readonly ILogger<SettingsController> _logger;
 
         #endregion
 
         public SettingsController(
-            ILogger<SettingsController> logger,
-            IOptionsSnapshot<AppSettings> settings,
             FriendLinkService friendLinkService,
             IBlogConfig blogConfig,
-            IBlogAudit blogAudit)
-            : base(logger)
+            IBlogAudit blogAudit,
+            ILogger<SettingsController> logger)
         {
-            _settings = settings.Value;
             _blogConfig = blogConfig;
             _blogAudit = blogAudit;
 
             _friendLinkService = friendLinkService;
+            _logger = logger;
         }
 
-        [AllowAnonymous]
-        [HttpGet("set-lang")]
-        public IActionResult SetLanguage(string culture, string returnUrl)
-        {
-            Response.Cookies.Append(
-                CookieRequestCultureProvider.DefaultCookieName,
-                CookieRequestCultureProvider.MakeCookieValue(new RequestCulture(culture)),
-                new CookieOptions { Expires = DateTimeOffset.UtcNow.AddYears(1) }
-            );
-
-            return LocalRedirect(returnUrl);
-        }
-
-        [HttpGet("general-settings")]
+        [HttpGet("general")]
         public IActionResult General([FromServices] IDateTimeResolver dateTimeResolver)
         {
             var vm = new GeneralSettingsViewModel
@@ -96,7 +80,7 @@ namespace Moonglade.Web.Controllers
             return View(vm);
         }
 
-        [HttpPost("general-settings")]
+        [HttpPost("general")]
         public async Task<IActionResult> General(GeneralSettingsViewModel model, [FromServices] IDateTimeResolver dateTimeResolver)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -122,7 +106,7 @@ namespace Moonglade.Web.Controllers
 
             AppDomain.CurrentDomain.SetData("CurrentThemeColor", null);
 
-            Logger.LogInformation($"User '{User.Identity.Name}' updated GeneralSettings");
+            _logger.LogInformation($"User '{User.Identity.Name}' updated GeneralSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "General Settings updated.");
 
             return Ok();
@@ -172,7 +156,7 @@ namespace Moonglade.Web.Controllers
             await _blogConfig.SaveConfigurationAsync(_blogConfig.ContentSettings);
             _blogConfig.RequireRefresh();
 
-            Logger.LogInformation($"User '{User.Identity.Name}' updated ContentSettings");
+            _logger.LogInformation($"User '{User.Identity.Name}' updated ContentSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedContent, "Content Settings updated.");
 
             return Ok();
@@ -210,7 +194,7 @@ namespace Moonglade.Web.Controllers
             await _blogConfig.SaveConfigurationAsync(settings);
             _blogConfig.RequireRefresh();
 
-            Logger.LogInformation($"User '{User.Identity.Name}' updated EmailSettings");
+            _logger.LogInformation($"User '{User.Identity.Name}' updated EmailSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedNotification, "Notification Settings updated.");
 
             return Ok();
@@ -261,7 +245,7 @@ namespace Moonglade.Web.Controllers
             await _blogConfig.SaveConfigurationAsync(settings);
             _blogConfig.RequireRefresh();
 
-            Logger.LogInformation($"User '{User.Identity.Name}' updated FeedSettings");
+            _logger.LogInformation($"User '{User.Identity.Name}' updated FeedSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedSubscription, "Subscription Settings updated.");
 
             return Ok();
@@ -300,7 +284,7 @@ namespace Moonglade.Web.Controllers
             await _blogConfig.SaveConfigurationAsync(settings);
             _blogConfig.RequireRefresh();
 
-            Logger.LogInformation($"User '{User.Identity.Name}' updated WatermarkSettings");
+            _logger.LogInformation($"User '{User.Identity.Name}' updated WatermarkSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedWatermark, "Watermark Settings updated.");
 
             return Ok();
@@ -313,26 +297,17 @@ namespace Moonglade.Web.Controllers
         [HttpGet("friendlink")]
         public async Task<IActionResult> FriendLink()
         {
-            try
+            var links = await _friendLinkService.GetAllAsync();
+            var vm = new FriendLinkSettingsViewModelWrap
             {
-                var links = await _friendLinkService.GetAllAsync();
-                var vm = new FriendLinkSettingsViewModelWrap
+                FriendLinkSettingsViewModel = new FriendLinkSettingsViewModel
                 {
-                    FriendLinkSettingsViewModel = new FriendLinkSettingsViewModel
-                    {
-                        ShowFriendLinksSection = _blogConfig.FriendLinksSettings.ShowFriendLinksSection
-                    },
-                    FriendLinks = links
-                };
+                    ShowFriendLinksSection = _blogConfig.FriendLinksSettings.ShowFriendLinksSection
+                },
+                FriendLinks = links
+            };
 
-                return View(vm);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, e.Message);
-                SetFriendlyErrorMessage();
-                return View();
-            }
+            return View(vm);
         }
 
         [HttpPost("friendlink")]
@@ -349,20 +324,12 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("friendlink/create")]
-        public async Task<IActionResult> CreateFriendLink(FriendLinkEditViewModel viewModel)
+        public async Task<IActionResult> CreateFriendLink([FromBody] FriendLinkEditViewModel viewModel)
         {
-            try
-            {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-                await _friendLinkService.AddAsync(viewModel.Title, viewModel.LinkUrl);
-                return Json(viewModel);
-            }
-            catch (Exception e)
-            {
-                ModelState.AddModelError(string.Empty, e.Message);
-                return ServerError();
-            }
+            await _friendLinkService.AddAsync(viewModel.Title, viewModel.LinkUrl);
+            return Ok(viewModel);
         }
 
         [HttpGet("friendlink/edit/{id:guid}")]
@@ -390,25 +357,25 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("friendlink/edit")]
-        public async Task<IActionResult> EditFriendLink(FriendLinkEditViewModel viewModel)
+        public async Task<IActionResult> EditFriendLink([FromBody] FriendLinkEditViewModel viewModel)
         {
-            try
-            {
-                await _friendLinkService.UpdateAsync(viewModel.Id, viewModel.Title, viewModel.LinkUrl);
-                return Json(viewModel);
-            }
-            catch (Exception e)
-            {
-                ModelState.AddModelError(string.Empty, e.Message);
-                return ServerError();
-            }
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            await _friendLinkService.UpdateAsync(viewModel.Id, viewModel.Title, viewModel.LinkUrl);
+            return Ok(viewModel);
         }
 
-        [HttpPost("friendlink/delete")]
+        [HttpDelete("friendlink/{id:guid}")]
         public async Task<IActionResult> DeleteFriendLink(Guid id)
         {
+            if (id == Guid.Empty)
+            {
+                ModelState.AddModelError(nameof(id), "value is empty");
+                return BadRequest(ModelState);
+            }
+
             await _friendLinkService.DeleteAsync(id);
-            return Json(id);
+            return Ok();
         }
 
         #endregion
@@ -424,7 +391,7 @@ namespace Moonglade.Web.Controllers
                 base64Img = base64Img.Trim();
                 if (!Utils.TryParseBase64(base64Img, out var base64Chars))
                 {
-                    Logger.LogWarning("Bad base64 is used when setting avatar.");
+                    _logger.LogWarning("Bad base64 is used when setting avatar.");
                     return Conflict("Bad base64 data");
                 }
 
@@ -433,13 +400,12 @@ namespace Moonglade.Web.Controllers
                     using var bmp = new Bitmap(new MemoryStream(base64Chars));
                     if (bmp.Height != bmp.Width || bmp.Height + bmp.Width != 600)
                     {
-                        // Normal uploaded avatar should be a 300x300 pixel image
-                        return Conflict("Avatar size must be 300x300.");
+                        return Conflict("Image size must be 300x300.");
                     }
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError("Invalid base64img Image", e);
+                    _logger.LogError("Invalid base64img Image", e);
                     return ServerError(e.Message);
                 }
 
@@ -447,14 +413,14 @@ namespace Moonglade.Web.Controllers
                 await _blogConfig.SaveConfigurationAsync(_blogConfig.GeneralSettings);
                 _blogConfig.RequireRefresh();
 
-                Logger.LogInformation($"User '{User.Identity.Name}' updated avatar.");
+                _logger.LogInformation($"User '{User.Identity.Name}' updated avatar.");
                 await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "Avatar updated.");
 
                 return Json(true);
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error uploading avatar image.");
+                _logger.LogError(e, "Error uploading avatar image.");
                 return ServerError();
             }
         }
@@ -471,7 +437,7 @@ namespace Moonglade.Web.Controllers
                 base64Img = base64Img.Trim();
                 if (!Utils.TryParseBase64(base64Img, out var base64Chars))
                 {
-                    Logger.LogWarning("Bad base64 is used when setting site icon.");
+                    _logger.LogWarning("Bad base64 is used when setting site icon.");
                     return Conflict("Bad base64 data");
                 }
 
@@ -482,7 +448,7 @@ namespace Moonglade.Web.Controllers
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError(e.Message, e);
+                    _logger.LogError(e.Message, e);
                     return ServerError(e.Message);
                 }
 
@@ -495,14 +461,14 @@ namespace Moonglade.Web.Controllers
                     Directory.Delete(SiteIconDirectory, true);
                 }
 
-                Logger.LogInformation($"User '{User.Identity.Name}' updated site icon.");
+                _logger.LogInformation($"User '{User.Identity.Name}' updated site icon.");
                 await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "Site icon updated.");
 
                 return Json(true);
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error uploading avatar image.");
+                _logger.LogError(e, "Error uploading avatar image.");
                 return ServerError();
             }
         }
@@ -549,26 +515,25 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("shutdown")]
-        public IActionResult Shutdown(int nonce, [FromServices] IHostApplicationLifetime applicationLifetime)
+        public IActionResult Shutdown([FromServices] IHostApplicationLifetime applicationLifetime)
         {
-            Logger.LogWarning($"Shutdown is requested by '{User.Identity.Name}'. Nonce value: {nonce}");
+            _logger.LogWarning($"Shutdown is requested by '{User.Identity.Name}'.");
             applicationLifetime.StopApplication();
-            return Ok();
+            return Accepted();
         }
 
         [HttpPost("reset")]
-        public async Task<IActionResult> Reset(int nonce, [FromServices] IConfiguration configuration, [FromServices] IHostApplicationLifetime applicationLifetime)
+        public async Task<IActionResult> Reset([FromServices] IDbConnection dbConnection, [FromServices] IHostApplicationLifetime applicationLifetime)
         {
-            Logger.LogWarning($"System reset is requested by '{User.Identity.Name}', IP: {HttpContext.Connection.RemoteIpAddress}. Nonce value: {nonce}");
+            _logger.LogWarning($"System reset is requested by '{User.Identity.Name}', IP: {HttpContext.Connection.RemoteIpAddress}.");
 
-            var conn = configuration.GetConnectionString(Constants.DbConnectionName);
-            var setupHelper = new SetupRunner(conn);
+            var setupHelper = new SetupRunner(dbConnection);
             setupHelper.ClearData();
 
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "System reset.");
 
             applicationLifetime.StopApplication();
-            return Ok();
+            return Accepted();
         }
 
         #endregion
@@ -663,57 +628,30 @@ namespace Moonglade.Web.Controllers
         #region Audit Logs
 
         [HttpGet("auditlogs")]
-        public async Task<IActionResult> AuditLogs(int page = 1)
+        public async Task<IActionResult> AuditLogs([FromServices] IFeatureManager featureManager, int page = 1)
         {
-            try
-            {
-                if (!_settings.EnableAudit)
-                {
-                    ViewBag.AuditLogDisabled = true;
-                    return View();
-                }
+            var flag = await featureManager.IsEnabledAsync(nameof(FeatureFlags.EnableAudit));
+            if (!flag) return View();
 
-                if (page < 0) return BadRequest(ModelState);
+            if (page < 0) return BadRequest(ModelState);
 
-                var skip = (page - 1) * 20;
+            var skip = (page - 1) * 20;
 
-                var entries = await _blogAudit.GetAuditEntries(skip, 20);
-                var list = new StaticPagedList<AuditEntry>(entries.Entries, page, 20, entries.Count);
+            var (Entries, Count) = await _blogAudit.GetAuditEntries(skip, 20);
+            var list = new StaticPagedList<AuditEntry>(Entries, page, 20, Count);
 
-                return View(list);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, e.Message);
-
-                SetFriendlyErrorMessage();
-                return View();
-            }
+            return View(list);
         }
 
         [HttpGet("clear-auditlogs")]
+        [FeatureGate(FeatureFlags.EnableAudit)]
         public async Task<IActionResult> ClearAuditLogs()
         {
-            try
-            {
-                if (!_settings.EnableAudit) return Conflict("Audit is disabled");
-
-                await _blogAudit.ClearAuditLog();
-                return RedirectToAction("AuditLogs");
-            }
-            catch (Exception e)
-            {
-                return ServerError(e.Message);
-            }
+            await _blogAudit.ClearAuditLog();
+            return RedirectToAction("AuditLogs");
         }
 
         #endregion
-
-        [HttpGet("settings-about")]
-        public IActionResult About()
-        {
-            return View();
-        }
 
         #region DataPorting
 
@@ -762,24 +700,6 @@ namespace Moonglade.Web.Controllers
                     cache.RemoveAllCache();
                 }
 
-                if (cachedObjectValues.Contains("MCO_OPML"))
-                {
-                    var opmlDataFile = Path.Join($"{DataDirectory}", $"{Constants.OpmlFileName}");
-                    DeleteIfExists(opmlDataFile);
-                }
-
-                if (cachedObjectValues.Contains("MCO_FEED"))
-                {
-                    var feedDir = Path.Join($"{DataDirectory}", "feed");
-                    DeleteIfExists(feedDir);
-                }
-
-                if (cachedObjectValues.Contains("MCO_OPSH"))
-                {
-                    var openSearchDataFile = Path.Join($"{DataDirectory}", $"{Constants.OpenSearchFileName}");
-                    DeleteIfExists(openSearchDataFile);
-                }
-
                 if (cachedObjectValues.Contains("MCO_SICO"))
                 {
                     DeleteIfExists(SiteIconDirectory);
@@ -806,7 +726,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("account/create")]
-        public async Task<IActionResult> CreateAccount(AccountEditViewModel model, [FromServices] LocalAccountService accountService)
+        public async Task<IActionResult> CreateAccount([FromBody] AccountEditViewModel model, [FromServices] LocalAccountService accountService)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (accountService.Exist(model.Username))
@@ -815,13 +735,19 @@ namespace Moonglade.Web.Controllers
                 return Conflict(ModelState);
             }
 
-            var uid = await accountService.CreateAsync(model.Username, model.Password);
-            return Json(uid);
+            await accountService.CreateAsync(model.Username, model.Password);
+            return Ok();
         }
 
-        [HttpPost("account/delete")]
+        [HttpDelete("account/{id:guid}")]
         public async Task<IActionResult> DeleteAccount(Guid id, [FromServices] LocalAccountService accountService)
         {
+            if (id == Guid.Empty)
+            {
+                ModelState.AddModelError(nameof(id), "value is empty");
+                return BadRequest(ModelState);
+            }
+
             var uidClaim = User.Claims.FirstOrDefault(c => c.Type == "uid");
             if (null == uidClaim || string.IsNullOrWhiteSpace(uidClaim.Value))
             {
@@ -840,31 +766,31 @@ namespace Moonglade.Web.Controllers
             }
 
             await accountService.DeleteAsync(id);
-            return Json(id);
+            return Ok();
         }
 
-        [HttpPost("account/reset-password")]
-        public async Task<IActionResult> ResetAccountPassword(Guid id, string newPassword, [FromServices] LocalAccountService accountService)
+        [HttpPost("account/{id:guid}/reset-password")]
+        public async Task<IActionResult> ResetAccountPassword(
+            Guid id, [FromBody] ResetPasswordRequest request, [FromServices] LocalAccountService accountService)
         {
-            if (id == Guid.Empty)
-            {
-                return Conflict("Id can not be empty.");
-            }
+            if (id == Guid.Empty) ModelState.AddModelError(nameof(id), "value is empty");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            if (string.IsNullOrWhiteSpace(newPassword))
-            {
-                return Conflict("newPassword can not be empty.");
-            }
-
-            if (!Regex.IsMatch(newPassword, @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"))
+            if (!Regex.IsMatch(request.NewPassword, @"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$"))
             {
                 return Conflict("Password must be minimum eight characters, at least one letter and one number");
             }
 
-            await accountService.UpdatePasswordAsync(id, newPassword);
-            return Json(id);
+            await accountService.UpdatePasswordAsync(id, request.NewPassword);
+            return Ok();
         }
 
         #endregion
+    }
+
+    public class ResetPasswordRequest
+    {
+        [Required]
+        public string NewPassword { get; set; }
     }
 }

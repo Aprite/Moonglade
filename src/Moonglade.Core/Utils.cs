@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Reflection;
 using System.Linq;
 using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Microsoft.Win32;
 
 namespace Moonglade.Core
 {
@@ -13,6 +15,31 @@ namespace Moonglade.Core
     {
         public static string AppVersion =>
             Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+
+        public static string TryGetFullOSVersion()
+        {
+            var osVer = Environment.OSVersion;
+
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                try
+                {
+                    var currentVersion = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
+                    var name = currentVersion.GetValue("ProductName", "Microsoft Windows NT");
+                    var ubr = currentVersion.GetValue("UBR", string.Empty).ToString();
+                    if (!string.IsNullOrWhiteSpace(ubr))
+                    {
+                        return $"{name} {osVer.Version.Major}.{osVer.Version.Minor}.{osVer.Version.Build}.{ubr}";
+                    }
+                }
+                catch
+                {
+                    return osVer.VersionString;
+                }
+            }
+
+            return osVer.VersionString;
+        }
 
         public static async Task<string> GetThemeColorAsync(string webRootPath, string currentTheme)
         {
@@ -27,7 +54,7 @@ namespace Moonglade.Core
             {
                 var lines = await File.ReadAllLinesAsync(cssPath);
                 var accentColorLine = lines.FirstOrDefault(l => l.Contains("accent-color1"));
-                if (null != accentColorLine)
+                if (accentColorLine is not null)
                 {
                     var regex = new Regex("#(?:[0-9a-f]{3}){1,2}");
                     var match = regex.Match(accentColorLine);
@@ -44,10 +71,7 @@ namespace Moonglade.Core
 
         public static string ResolveCanonicalUrl(string prefix, string path)
         {
-            if (string.IsNullOrWhiteSpace(prefix))
-            {
-                return string.Empty;
-            }
+            if (string.IsNullOrWhiteSpace(prefix)) return string.Empty;
             path ??= string.Empty;
 
             if (!prefix.IsValidUrl())
@@ -61,14 +85,20 @@ namespace Moonglade.Core
                 string.Empty;
         }
 
-        // Regex.IsMatch(ip, @"(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)")
-        // Regex has bad performance, this is better
+        /// <summary>
+        /// Test an IPv4 address is LAN or not.
+        /// </summary>
+        /// <param name="ip">IPv4 address</param>
+        /// <returns>bool</returns>
         public static bool IsPrivateIP(string ip) => IPAddress.Parse(ip).GetAddressBytes() switch
         {
-            var x when x[0] == 192 && x[1] == 168 => true,
-            var x when x[0] == 10 => true,
-            var x when x[0] == 127 => true,
-            var x when x[0] == 172 && x[1] >= 16 && x[1] <= 31 => true,
+            // Regex.IsMatch(ip, @"(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)")
+            // Regex has bad performance, this is better
+
+            var x when x[0] is 192 && x[1] is 168 => true,
+            var x when x[0] is 10 => true,
+            var x when x[0] is 127 => true,
+            var x when x[0] is 172 && x[1] is >= 16 and <= 31 => true,
             _ => false
         };
 
@@ -106,6 +136,10 @@ namespace Moonglade.Core
             }
         }
 
+        /// <summary>
+        /// Get values from `MOONGLADE_TAGS` Environment Variable
+        /// </summary>
+        /// <returns>string values</returns>
         public static IEnumerable<string> GetEnvironmentTags()
         {
             var tagsEnv = Environment.GetEnvironmentVariable("MOONGLADE_TAGS");

@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Moonglade.Syndication;
 using NUnit.Framework;
@@ -8,10 +7,11 @@ using NUnit.Framework;
 namespace Moonglade.Tests
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class FileSystemOpmlWriterTests
     {
         [Test]
-        public async Task TestWriteOpmlFileAsync()
+        public async Task WriteOpmlFile()
         {
             var catInfos = new List<KeyValuePair<string, string>>
             {
@@ -25,16 +25,14 @@ namespace Moonglade.Tests
                 CategoryInfo = catInfos,
                 HtmlUrl = $"{siteRootUrl}/post",
                 XmlUrl = $"{siteRootUrl}/rss",
-                CategoryXmlUrlTemplate = $"{siteRootUrl}/rss/category/[catTitle]",
-                CategoryHtmlUrlTemplate = $"{siteRootUrl}/category/list/[catTitle]"
+                CategoryXmlUrlTemplate = $"{siteRootUrl}/rss/[catTitle]",
+                CategoryHtmlUrlTemplate = $"{siteRootUrl}/category/[catTitle]"
             };
 
-            var path = Path.Join(Path.GetTempPath(), $"Moonglade-UT-OPML-{Guid.NewGuid()}.xml");
+            var writer = new MemoryStreamOpmlWriter();
+            var bytes = await writer.GetOpmlStreamDataAsync(info);
 
-            var writer = new FileSystemOpmlWriter();
-            await writer.WriteOpmlFileAsync(path, info);
-
-            Assert.IsTrue(File.Exists(path));
+            Assert.IsNotNull(bytes);
         }
     }
 }

@@ -1,17 +1,17 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using Moonglade.ImageStorage.Providers;
 using NUnit.Framework;
 
 namespace Moonglade.Tests
 {
     [TestFixture]
+    //[Platform(Include = "Win")]
+    [ExcludeFromCodeCoverage]
     public class ImageStorageTests
     {
         [Test]
-        [Platform(Include = "Win")]
-        public void TestResolveImageStoragePathValidAbsolute()
+        public void ResolveImageStoragePath_Valid_Absolute()
         {
             var contentRootPath = @"C:\Moonglade";
             var path = @"C:\MoongladeData\Uploads";
@@ -21,8 +21,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        [Platform(Include = "Win")]
-        public void TestResolveImageStoragePathValidRelative()
+        public void ResolveImageStoragePath_Valid_Relative()
         {
             var contentRootPath = @"C:\Moonglade";
             var path = @"${basedir}\Uploads";
@@ -32,8 +31,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        [Platform(Include = "Win")]
-        public void TestResolveImageStoragePathInvalidRelative()
+        public void TestResolveImageStoragePath_Invalid_Relative()
         {
             var contentRootPath = @"C:\Moonglade";
             var path = @"..\${basedir}\Uploads";
@@ -42,8 +40,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        [Platform(Include = "Win")]
-        public void TestResolveImageStoragePathInvalidChar()
+        public void TestResolveImageStoragePath_Invalid_Char()
         {
             var contentRootPath = @"C:\Moonglade";
             var path = @"${basedir}\Uploads<>|foo";
@@ -54,8 +51,7 @@ namespace Moonglade.Tests
         [TestCase("")]
         [TestCase(" ")]
         [TestCase(null)]
-        [Platform(Include = "Win")]
-        public void TestResolveImageStoragePathEmptyParameter(string path)
+        public void TestResolveImageStoragePath_EmptyParameter(string path)
         {
             var contentRootPath = @"C:\Moonglade";
             Assert.Catch<ArgumentNullException>(() => { FileSystemImageStorage.ResolveImageStoragePath(contentRootPath, path); });

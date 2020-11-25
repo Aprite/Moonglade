@@ -17,7 +17,7 @@
                     @Html.Raw(Utils.FormatCopyright2Html(BlogConfig.GeneralSettings.Copyright))
                 </div>
                 <small>
-                    <a href="https://moonglade.blog" target="_blank">Moonglade</a> @Utils.AppVersion / .NET Core @Environment.Version
+                    <a href="https://moonglade.blog" target="_blank">Moonglade</a> @Utils.AppVersion / @System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription
                     <br />
                     <span class="d-none d-sm-block">Developed by <a href="https://edi.wang" target="_blank">Edi Wang</a></span>
                 </small>
@@ -41,7 +41,7 @@
                     @foreach (var item in cultureItems)
                     {
                         <li>
-                            <a asp-controller="Settings" asp-action="SetLanguage" asp-route-returnUrl="@returnUrl" asp-route-culture="@item.Value">@item.NativeName</a>
+                            <a asp-controller="Home" asp-action="SetLanguage" asp-route-returnUrl="@returnUrl" asp-route-culture="@item.Value">@item.NativeName</a>
                         </li>
                     }
                 </ul>

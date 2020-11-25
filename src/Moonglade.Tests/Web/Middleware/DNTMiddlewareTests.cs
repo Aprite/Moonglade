@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
@@ -9,10 +10,11 @@ using NUnit.Framework;
 namespace Moonglade.Tests.Web.Middleware
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class DNTMiddlewareTests
     {
         [Test]
-        public async Task TestDNTHeader()
+        public async Task DNTHeader()
         {
             var headersArray = new Dictionary<string, StringValues> { { "DNT", "1" } };
 

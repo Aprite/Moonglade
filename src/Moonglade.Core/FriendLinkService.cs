@@ -1,14 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
@@ -18,10 +15,8 @@ namespace Moonglade.Core
         private readonly IBlogAudit _audit;
 
         public FriendLinkService(
-            ILogger<FriendLinkService> logger,
-            IOptions<AppSettings> settings,
             IRepository<FriendLinkEntity> friendlinkRepo,
-            IBlogAudit audit) : base(logger, settings)
+            IBlogAudit audit)
         {
             _friendlinkRepo = friendlinkRepo;
             _audit = audit;
@@ -82,7 +77,7 @@ namespace Moonglade.Core
             }
 
             var fdlink = await _friendlinkRepo.GetAsync(id);
-            if (null != fdlink)
+            if (fdlink is not null)
             {
                 fdlink.Title = newTitle;
                 fdlink.LinkUrl = newLinkUrl;

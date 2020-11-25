@@ -11,25 +11,6 @@ function slugify(text) {
         .replace(/ +/g, '-');
 }
 
-function buildErrorMessage(responseObject) {
-    if (responseObject.responseJSON) {
-        var json = responseObject.responseJSON;
-        var errorMessage = 'Error(s):\n\r';
-
-        Object.keys(json).forEach(function (k) {
-            errorMessage += (k + ': ' + json[k]) + '\n\r';
-        });
-
-        return errorMessage;
-    }
-
-    if (responseObject.responseText) {
-        return responseObject.responseText.trim();
-    }
-
-    return responseObject.status;
-}
-
 function ImageUploader(targetName, hw, imgMimeType) {
     var imgDataUrl = '';
 
@@ -41,9 +22,9 @@ function ImageUploader(targetName, hw, imgMimeType) {
             var rawData = { base64Img: imgDataUrl.replace(/^data:image\/(png|jpeg|jpg);base64,/, '') };
             $.ajax({
                 type: 'POST',
-                headers: { csrfFieldName: $(`input[name=${csrfFieldName}]`).val() },
+                headers: { 'XSRF-TOKEN': $(`input[name=${csrfFieldName}]`).val() },
                 url: uploadUrl,
-                data: makeCSRFExtendedData(rawData),
+                data: rawData,
                 success: function (data) {
                     console.info(data);
                     $(`#${targetName}modal`).modal('hide');
@@ -299,7 +280,7 @@ var postEditor = {
             datumTokenizer: Bloodhound.tokenizers.obj.whitespace('name'),
             queryTokenizer: Bloodhound.tokenizers.whitespace,
             prefetch: {
-                url: '/tags/get-all-tag-names',
+                url: '/api/tags/names',
                 filter: function (list) {
                     return $.map(list, function (tagname) {
                         return { name: tagname };
@@ -389,92 +370,6 @@ var postEditor = {
     }
 };
 
-var sendTestEmail = function () {
-    $('#a-send-test-mail').text('Sending...');
-    $('#a-send-test-mail').addClass('disabled');
-    $('#a-send-test-mail').attr('disabled', 'disabled');
-
-    $.post('/admin/settings/send-test-email',
-        function (data) {
-            if (data.isSuccess) {
-                window.toastr.success('Email is sent.');
-            } else {
-                window.toastr.error(data.message);
-            }
-        })
-        .fail(function (xhr, status, error) {
-            var responseJson = $.parseJSON(xhr.responseText);
-            window.toastr.error(responseJson.message);
-        })
-        .always(function () {
-            $('#a-send-test-mail').text('Send Test Email');
-            $('#a-send-test-mail').removeClass('disabled');
-            $('#a-send-test-mail').removeAttr('disabled');
-        });
-};
-
-var btnSaveSettings = '#btn-save-settings';
-var onUpdateSettingsBegin = function () {
-    $(btnSaveSettings).text('Processing...');
-    $(btnSaveSettings).addClass('disabled');
-    $(btnSaveSettings).attr('disabled', 'disabled');
-};
-
-var onUpdateSettingsComplete = function () {
-    $(btnSaveSettings).text('Save');
-    $(btnSaveSettings).removeClass('disabled');
-    $(btnSaveSettings).removeAttr('disabled');
-};
-
-var onUpdateSettingsSuccess = function (context) {
-    if (window.toastr) {
-        window.toastr.success('Settings Updated');
-    } else {
-        alert('Settings Updated');
-    }
-};
-
-var onUpdateSettingsFailed = function (context) {
-    var message = buildErrorMessage(context);
-
-    if (window.toastr) {
-        window.toastr.error(message);
-    } else {
-        alert(message);
-    }
-};
-
-var btnClearCache = '.btn-clearcache';
-var onClearCacheBegin = function () {
-    $(btnClearCache).text('Processing...');
-    $(btnClearCache).addClass('disabled');
-    $(btnClearCache).attr('disabled', 'disabled');
-};
-
-var onClearCacheComplete = function () {
-    $(btnClearCache).text('Clear');
-    $(btnClearCache).removeClass('disabled');
-    $(btnClearCache).removeAttr('disabled');
-};
-
-var onClearCacheSuccess = function (context) {
-    $('#cacheModal').modal('hide');
-    if (window.toastr) {
-        window.toastr.success('Cleared Cache');
-    } else {
-        alert('Cleared Cache');
-    }
-};
-
-var onClearCacheFailed = function (context) {
-    var msg = buildErrorMessage(context);
-    if (window.toastr) {
-        window.toastr.error(`Server Error: ${msg}`);
-    } else {
-        alert(`Error Code: ${msg}`);
-    }
-};
-
 var btnSubmitPost = '#btn-save';
 var onPostCreateEditBegin = function () {
     $(btnSubmitPost).text('Saving...');
@@ -548,43 +443,147 @@ var onPageCreateEditFailed = function (context) {
     }
 };
 
-function tryRestartWebsite() {
-    var nonce = Math.floor((Math.random() * 128) + 1);
-    ajaxPostWithCSRFToken('shutdown', { nonce }, function () { });
-    $('.btn-restart').text('Wait...');
-    $('.btn-restart').addClass('disabled');
-    $('.btn-restart').attr('disabled', 'disabled');
-    startTimer(30, $('.btn-restart'));
-    setTimeout(function () {
-        location.href = '/admin/settings';
-    }, 30000);
+function deletePost(postid) {
+    $(`#span-processing-${postid}`).show();
+    callApi(`/post/manage/${postid}/destroy`, 'DELETE', {},
+        (resp) => {
+            $(`#tr-${postid}`).hide();
+            toastr.success('Post deleted');
+        });
 }
 
-function tryResetWebsite() {
-    var nonce = Math.floor((Math.random() * 128) + 1);
-    ajaxPostWithCSRFToken('reset', { nonce }, function () { });
-    $('.btn-reset').text('Wait...');
-    $('.btn-reset').addClass('disabled');
-    $('.btn-reset').attr('disabled', 'disabled');
-    startTimer(30, $('.btn-reset'));
-    setTimeout(function () {
-        location.href = '/';
-    }, 30000);
+function restorePost(postid) {
+    $(`#span-processing-${postid}`).show();
+    callApi(`/post/manage/${postid}/restore`, 'POST', {},
+        (resp) => {
+            $(`#tr-${postid}`).hide();
+            toastr.success('Post restored');
+        });
 }
 
-function startTimer(duration, display) {
-    var timer = duration, minutes, seconds;
-    setInterval(function () {
-        minutes = parseInt(timer / 60, 10);
-        seconds = parseInt(timer % 60, 10);
+function deleteFriendLink(friendlinkid) {
+    $(`#span-processing-${friendlinkid}`).show();
 
-        minutes = minutes < 10 ? '0' + minutes : minutes;
-        seconds = seconds < 10 ? '0' + seconds : seconds;
+    callApi(`/admin/settings/friendlink/${friendlinkid}`, 'DELETE', {},
+        (resp) => {
+            $(`#tr-${friendlinkid}`).hide();
+        });
+}
 
-        display.text(minutes + ':' + seconds);
+function deleteMenu(menuid) {
+    $(`#span-processing-${menuid}`).show();
 
-        if (--timer < 0) {
-            timer = duration;
-        }
-    }, 1000);
+    callApi(`/api/menu/${menuid}`, 'DELETE', {},
+        (resp) => {
+            $(`#tr-${menuid}`).hide();
+        });
+}
+
+function initCreateFriendLink() {
+    $("#FriendLinkEditViewModel_Id").val(emptyGuid);
+    $("#edit-form")[0].reset();
+    $('#editFriendlinkModal').modal();
+}
+
+function editFriendLink(id) {
+    $.get(`/admin/settings/friendlink/edit/${id}`, function (data) {
+        $("#FriendLinkEditViewModel_Id").val(data.id);
+        $("#FriendLinkEditViewModel_Title").val(data.title);
+        $("#FriendLinkEditViewModel_LinkUrl").val(data.linkUrl);
+        $("#editFriendlinkModal").modal();
+    });
+}
+
+function deleteAccount(accountid) {
+    $(`#span-processing-${accountid}`).show();
+
+    callApi(`/admin/settings/account/${accountid}`, 'DELETE', {},
+        (resp) => {
+            $(`#tr-${accountid}`).hide();
+        });
+}
+
+function deleteSelectedComments() {
+    var cids = [];
+    $('.chk-cid:checked').each(function () {
+        cids.push($(this).data('cid'));
+    });
+
+    callApi('/api/comment/delete', 'DELETE', cids,
+        (success) => {
+            $.each(cids, function (index, value) {
+                $(`#panel-comment-${value}`).slideUp();
+            });
+        });
+}
+
+function initCreateCategory() {
+    $("#CategoryEditViewModel_Id").val(emptyGuid);
+    $("#edit-form")[0].reset();
+    $('#editCatModal').modal();
+}
+
+function editCat(id) {
+    callApi(`/api/category/edit/${id}`, 'GET', {},
+        async (resp) => {
+            var data = await resp.json();
+            $("#CategoryEditViewModel_Id").val(data.id);
+            $("#CategoryEditViewModel_RouteName").val(data.routeName);
+            $("#CategoryEditViewModel_DisplayName").val(data.displayName);
+            $("#CategoryEditViewModel_Note").val(data.note);
+            $("#editCatModal").modal();
+        });
+}
+
+function deleteCat(catid) {
+    $(`#span-processing-${catid}`).show();
+
+    callApi(`/api/category/delete/${catid}`, 'DELETE', {},
+        (resp) => {
+            $(`#card-${catid}`).hide();
+            toastr.success('Category deleted');
+        });
+}
+
+function initCreateMenu() {
+    $("#MenuEditViewModel_Id").val(emptyGuid);
+    $("#edit-form")[0].reset();
+    $('#editMenuModal').modal();
+}
+
+function editMenu(id) {
+    callApi(`/api/menu/edit/${id}`, 'GET', {},
+        async (resp) => {
+            var data = await resp.json();
+            $("#MenuEditViewModel_Id").val(data.id);
+            $("#MenuEditViewModel_Title").val(data.title);
+            $("#MenuEditViewModel_Url").val(data.url);
+            $("#MenuEditViewModel_Icon").val(data.icon);
+            $("#MenuEditViewModel_DisplayOrder").val(data.displayOrder);
+            if (data.isOpenInNewTab) {
+                $("#MenuEditViewModel_IsOpenInNewTab").prop('checked', 'checked');
+            }
+            $("#editMenuModal").modal();
+        });
+}
+
+function deletePage(pageid, slug) {
+    $(`#span-processing-${pageid}`).show();
+
+    callApi(`/page/${pageid}/${slug}`,
+        'DELETE',
+        {},
+        (resp) => {
+            $(`#card-${pageid}`).hide();
+            toastr.success("Page deleted");
+        });
+}
+
+function deletePingback(pingbackId) {
+    $(`#span-processing-${pingbackId}`).show();
+
+    callApi(`/pingback/${pingbackId}`, 'DELETE', {},
+        (resp) => {
+            $(`#pingback-box-${pingbackId}`).slideUp();
+        });
 }

@@ -1,0 +1,91 @@
+﻿@using System.Diagnostics
+@using Moonglade.Core
+@using Moonglade.Model
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
+
+@{
+    Layout = "_LayoutAdmin";
+}
+
+<h3>
+    @Localizer["About"]
+</h3>
+<hr />
+
+<div class="mb-4">
+    <h5>@Localizer["Server Information"]</h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th class="w-25">@Localizer["Item"]</th>
+                <th>@Localizer["Value"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@Localizer["System"]</td>
+                <td>@Utils.TryGetFullOSVersion()</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Directory"]</td>
+                <td>@Environment.CurrentDirectory</td>
+            </tr>
+            <tr>
+                <td>@Localizer["64 Bit Process"]</td>
+                <td>@Environment.Is64BitProcess</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Machine Name"]</td>
+                <td>@Environment.MachineName</td>
+            </tr>
+            <tr>
+                <td>@Localizer["User Name"]</td>
+                <td>@Environment.UserName</td>
+            </tr>
+            <tr>
+                <td>@Localizer[".NET Version"]</td>
+                <td>@Environment.Version</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Worker Process"]</td>
+                <td>@Process.GetCurrentProcess().ProcessName</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Running Docker Container"]</td>
+                <td>@(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="mb-1">
+    <h5>
+        @Localizer["Moonglade Configuration"]
+    </h5>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th class="w-25">@Localizer["Item"]</th>
+                <th>@Localizer["Value"]</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>@Localizer["Version"]</td>
+                <td>@Utils.AppVersion</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Data Directory"]</td>
+                <td>@AppDomain.CurrentDomain.GetData(Constants.DataDirectory)</td>
+            </tr>
+            <tr>
+                <td>@Localizer["App Base Directory"]</td>
+                <td>@WebHostEnvironment.ContentRootPath</td>
+            </tr>
+            <tr>
+                <td>@Localizer["Editor"]</td>
+                <td>@Settings.Value.Editor</td>
+            </tr>
+        </tbody>
+    </table>
+</div>

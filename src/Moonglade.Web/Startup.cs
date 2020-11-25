@@ -20,16 +20,12 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moonglade.Auditing;
+using Moonglade.Configuration;
 using Moonglade.Core;
-using Moonglade.DataPorting;
-using Moonglade.Model;
 using Moonglade.Model.Settings;
-using Moonglade.Syndication;
 using Moonglade.Web.Authentication;
-using Moonglade.Web.Extensions;
+using Moonglade.Web.Configuration;
 using Moonglade.Web.Middleware;
-using Moonglade.Web.SiteIconGenerator;
 
 #endregion
 
@@ -49,7 +45,7 @@ namespace Moonglade.Web
             _environment = env;
             _appSettings = _configuration.GetSection(nameof(AppSettings));
 
-            // Workaround stupid ASP.NET Core "by design" issue
+            // Workaround stupid ASP.NET "by design" issue
             // https://github.com/aspnet/Configuration/issues/451
             _supportedCultures = _appSettings.GetSection("SupportedCultures")
                 .GetChildren()
@@ -88,25 +84,19 @@ namespace Moonglade.Web
 
             services.AddAntiforgery(options =>
             {
-                const string csrfCookieName = "CSRF-TOKEN-MOONGLADE";
-                options.Cookie.Name = $"X-{csrfCookieName}";
-                options.FormFieldName = $"{csrfCookieName}-FORM";
+                const string csrfName = "CSRF-TOKEN-MOONGLADE";
+                options.Cookie.Name = $"X-{csrfName}";
+                options.FormFieldName = $"{csrfName}-FORM";
+                options.HeaderName = "XSRF-TOKEN";
             });
 
             services.AddPingback();
             services.AddImageStorage(_configuration, _environment);
             services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
-            services.AddScoped<IBlogAudit, BlogAudit>();
-            services.AddScoped<ISiteIconGenerator, FileSystemSiteIconGenerator>();
-            services.AddScoped<IExportManager, ExportManager>();
-            services.AddScoped<IFileSystemOpmlWriter, FileSystemOpmlWriter>();
             services.AddSessionBasedCaptcha();
             services.AddBlogServices();
             services.AddBlogNotification(_logger);
-
-            services.AddDataStorage(_configuration.GetConnectionString(Constants.DbConnectionName));
-
-            services.AddWechat(_configuration);
+            services.AddDataStorage(_configuration);
         }
 
         public void Configure(
@@ -128,30 +118,20 @@ namespace Moonglade.Web
                 TelemetryDebugWriter.IsTracingDisabled = true;
             }
 
-            appLifetime.ApplicationStarted.Register(() =>
-            {
-                _logger.LogInformation("Moonglade started.");
-            });
             appLifetime.ApplicationStopping.Register(() =>
             {
                 _logger.LogInformation("Moonglade is stopping...");
-            });
-            appLifetime.ApplicationStopped.Register(() =>
-            {
-                _logger.LogInformation("Moonglade stopped.");
             });
 
             app.UseRobotsTxt();
 
             app.UseMiddleware<PoweredByMiddleware>();
             app.UseMiddleware<DNTMiddleware>();
-            //app.UseMiddleware<FirstRunMiddleware>();
-            app.UseMiddleware<BlogGraphAPIGuardMiddleware>();
+            app.UseMiddleware<FirstRunMiddleware>();
 
             if (_environment.IsDevelopment())
             {
                 app.UseRouteDebugger();
-                _logger.LogWarning($"Running in environment: {_environment.EnvironmentName}. Detailed error page enabled.");
                 app.UseDeveloperExceptionPage();
             }
             else
@@ -189,8 +169,7 @@ namespace Moonglade.Web
                         EnvironmentTags = Utils.GetEnvironmentTags()
                     };
 
-                    var json = System.Text.Json.JsonSerializer.Serialize(obj);
-                    await context.Response.WriteAsync(json, Encoding.UTF8);
+                    await context.Response.WriteAsync(obj.ToJson(), Encoding.UTF8);
                 });
                 endpoints.MapControllerRoute(
                     "default",

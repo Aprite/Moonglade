@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Text;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Moonglade.Pingback;
 using Moq;
@@ -12,10 +10,11 @@ using NUnit.Framework;
 namespace Moonglade.Tests
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class PingbackServiceTests
     {
         private Mock<ILogger<PingbackService>> _loggerMock;
-        private Mock<IConfiguration> _configurationMock;
+        private Mock<IDbConnection> _dbConnectionMock;
         private Mock<IPingSourceInspector> _pingSourceInspectorMock;
         private Mock<IPingbackRepository> _pingTargetFinderMock;
 
@@ -25,7 +24,7 @@ namespace Moonglade.Tests
         public void Setup()
         {
             _loggerMock = new Mock<ILogger<PingbackService>>();
-            _configurationMock = new Mock<IConfiguration>();
+            _dbConnectionMock = new Mock<IDbConnection>();
             _pingSourceInspectorMock = new Mock<IPingSourceInspector>();
             _pingTargetFinderMock = new Mock<IPingbackRepository>();
             _fakePingRequest = @"<?xml version=""1.0"" encoding=""iso-8859-1""?>
@@ -41,11 +40,11 @@ namespace Moonglade.Tests
         [TestCase(" ", ExpectedResult = PingbackResponse.GenericError)]
         [TestCase("", ExpectedResult = PingbackResponse.GenericError)]
         [TestCase(null, ExpectedResult = PingbackResponse.GenericError)]
-        public async Task<PingbackResponse> TestProcessReceivedPayloadAsyncEmptyRequest(string requestBody)
+        public async Task<PingbackResponse> ProcessReceivedPayload_EmptyRequest(string requestBody)
         {
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -54,11 +53,11 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncNoMethod()
+        public async Task ProcessReceivedPayload_NoMethod()
         {
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -67,7 +66,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncInvalidRequest()
+        public async Task ProcessReceivedPayload_InvalidRequest()
         {
             var tcs = new TaskCompletionSource<PingRequest>();
             tcs.SetResult(null);
@@ -77,7 +76,7 @@ namespace Moonglade.Tests
 
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -86,7 +85,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncError17()
+        public async Task ProcessReceivedPayload_Error17()
         {
             var tcs = new TaskCompletionSource<PingRequest>();
             tcs.SetResult(new PingRequest
@@ -99,7 +98,7 @@ namespace Moonglade.Tests
 
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -108,7 +107,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncSpam()
+        public async Task ProcessReceivedPayload_Spam()
         {
             var tcs = new TaskCompletionSource<PingRequest>();
             tcs.SetResult(new PingRequest
@@ -122,7 +121,7 @@ namespace Moonglade.Tests
 
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -131,7 +130,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncTargetNotFound()
+        public async Task ProcessReceivedPayload_TargetNotFound()
         {
             var tcsPr = new TaskCompletionSource<PingRequest>();
             tcsPr.SetResult(new PingRequest
@@ -149,7 +148,7 @@ namespace Moonglade.Tests
 
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 
@@ -158,7 +157,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public async Task TestProcessReceivedPayloadAsyncAlreadyPinged()
+        public async Task ProcessReceivedPayload_AlreadyPinged()
         {
             var tcsPr = new TaskCompletionSource<PingRequest>();
             tcsPr.SetResult(new PingRequest
@@ -183,7 +182,7 @@ namespace Moonglade.Tests
 
             var pingbackService = new PingbackService(
                 _loggerMock.Object,
-                _configurationMock.Object,
+                _dbConnectionMock.Object,
                 _pingSourceInspectorMock.Object,
                 _pingTargetFinderMock.Object);
 

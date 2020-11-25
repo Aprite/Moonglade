@@ -18,9 +18,8 @@ using Moonglade.Core;
 using Moonglade.ImageStorage;
 using Moonglade.Model;
 using Moonglade.Model.Settings;
-using Moonglade.Web.Models;
-using Moonglade.Web.SiteIconGenerator;
 using NUglify;
+using SiteIconGenerator;
 
 namespace Moonglade.Web.Controllers
 {
@@ -32,6 +31,7 @@ namespace Moonglade.Web.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly ImageStorageSettings _imageStorageSettings;
         private readonly AppSettings _settings;
+        private readonly ILogger<AssetsController> _logger;
 
         public AssetsController(
             ILogger<AssetsController> logger,
@@ -40,7 +40,7 @@ namespace Moonglade.Web.Controllers
             IBlogImageStorage imageStorage,
             IBlogConfig blogConfig,
             ISiteIconGenerator siteIconGenerator,
-            IWebHostEnvironment env) : base(logger)
+            IWebHostEnvironment env)
         {
             _settings = settings.Value;
             _blogConfig = blogConfig;
@@ -48,6 +48,7 @@ namespace Moonglade.Web.Controllers
             _env = env;
             _imageStorage = imageStorage;
             _imageStorageSettings = imageStorageSettings.Value;
+            _logger = logger;
         }
 
         #region Blog Post Images
@@ -60,11 +61,10 @@ namespace Moonglade.Web.Controllers
                 var invalidChars = Path.GetInvalidFileNameChars();
                 if (filename.IndexOfAny(invalidChars) >= 0)
                 {
-                    Logger.LogWarning($"Invalid filename attempt '{filename}'.");
                     return BadRequest("invalid filename");
                 }
 
-                Logger.LogTrace($"Requesting image file {filename}");
+                _logger.LogTrace($"Requesting image file {filename}");
 
                 if (_imageStorageSettings.CDNSettings.EnableCDNRedirect)
                 {
@@ -74,7 +74,7 @@ namespace Moonglade.Web.Controllers
 
                 var imageEntry = await cache.GetOrCreateAsync(filename, async entry =>
                 {
-                    Logger.LogTrace($"Image file {filename} not on cache, fetching image...");
+                    _logger.LogTrace($"Image file {filename} not on cache, fetching image...");
 
                     entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Image"]);
                     var imgBytesResponse = await _imageStorage.GetAsync(filename);
@@ -83,8 +83,6 @@ namespace Moonglade.Web.Controllers
 
                 if (null == imageEntry)
                 {
-                    Logger.LogError($"Error getting image, filename: {filename}");
-
                     return _blogConfig.ContentSettings.UseFriendlyNotFoundImage
                         ? (IActionResult)File("~/images/image-not-found.png", "image/png")
                         : NotFound();
@@ -94,7 +92,7 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception e)
             {
-                Logger.LogError(e, $"Error requesting image {filename}");
+                _logger.LogError(e, $"Error requesting image {filename}");
                 return ServerError();
             }
         }
@@ -105,19 +103,18 @@ namespace Moonglade.Web.Controllers
         {
             static bool IsValidColorValue(int colorValue)
             {
-                return colorValue >= 0 && colorValue <= 255;
+                return colorValue is >= 0 and <= 255;
             }
 
             try
             {
-                if (null == file || file.Length <= 0)
+                if (file is null or { Length: <= 0 })
                 {
-                    Logger.LogError("file is null.");
+                    _logger.LogError("file is null.");
                     return BadRequest();
                 }
 
                 var name = Path.GetFileName(file.FileName);
-                if (name == null) return BadRequest();
 
                 var ext = Path.GetExtension(name).ToLower();
                 var allowedImageFormats = _imageStorageSettings.AllowedExtensions;
@@ -129,7 +126,7 @@ namespace Moonglade.Web.Controllers
 
                 if (!allowedImageFormats.Contains(ext))
                 {
-                    Logger.LogError($"Invalid file extension: {ext}");
+                    _logger.LogError($"Invalid file extension: {ext}");
                     return BadRequest();
                 }
 
@@ -148,7 +145,7 @@ namespace Moonglade.Web.Controllers
                             p => string.Compare(p, ext, StringComparison.OrdinalIgnoreCase) != 0))
                     {
                         using var watermarker = new ImageWatermarker(stream, ext);
-                        watermarker.SkipImageSize(Constants.SmallImagePixelsThreshold);
+                        watermarker.SkipImageSize(_settings.WatermarkSkipPixel);
 
                         // Get ARGB values
                         var colorArray = _settings.WatermarkARGB;
@@ -171,12 +168,12 @@ namespace Moonglade.Web.Controllers
                     }
                     else
                     {
-                        Logger.LogInformation($"Skipped watermark for extension name: {ext}");
+                        _logger.LogInformation($"Skipped watermark for extension name: {ext}");
                     }
                 }
 
                 var finalFileName = await _imageStorage.InsertAsync(primaryFileName,
-                    watermarkedStream != null ?
+                    watermarkedStream is not null ?
                         watermarkedStream.ToArray() :
                         stream.ToArray());
 
@@ -186,7 +183,7 @@ namespace Moonglade.Web.Controllers
                     _ = Task.Run(async () => await _imageStorage.InsertAsync(secondaryFieName, arr));
                 }
 
-                Logger.LogInformation($"Image '{primaryFileName}' uloaded.");
+                _logger.LogInformation($"Image '{primaryFileName}' uloaded.");
 
                 return Json(new
                 {
@@ -196,7 +193,7 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error uploading image.");
+                _logger.LogError(e, "Error uploading image.");
                 return ServerError();
             }
         }
@@ -275,21 +272,21 @@ namespace Moonglade.Web.Controllers
 
             try
             {
-                return cache.GetOrCreate(CacheDivision.General, "avatar", entry =>
+                return cache.GetOrCreate(CacheDivision.General, "avatar", _ =>
                 {
-                    Logger.LogTrace("Avatar not on cache, getting new avatar image...");
+                    _logger.LogTrace("Avatar not on cache, getting new avatar image...");
                     var avatarBytes = Convert.FromBase64String(_blogConfig.GeneralSettings.AvatarBase64);
                     return File(avatarBytes, "image/png");
                 });
             }
             catch (FormatException e)
             {
-                Logger.LogError($"Error {nameof(Avatar)}(), Invalid Base64 string", e);
+                _logger.LogError($"Error {nameof(Avatar)}(), Invalid Base64 string", e);
                 return PhysicalFile(fallbackImageFile, "image/png");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error {nameof(Avatar)}()", ex);
+                _logger.LogError($"Error {nameof(Avatar)}()", ex);
                 return new EmptyResult();
             }
         }
@@ -300,6 +297,10 @@ namespace Moonglade.Web.Controllers
         [Route(@"/{filename:regex((?!-)([[a-z0-9-]]+)\.(png|ico))}")]
         public IActionResult SiteIcon(string filename)
         {
+            // BUG:
+            // When `RefreshSiteIconCache()` is not finished, not all icons are there
+            // And the second request hits this `if` statement
+            // It is `false`, so the requested filename will be 404 because it's not there at this time
             if (!Directory.Exists(SiteIconDirectory) || !Directory.GetFiles(SiteIconDirectory).Any())
             {
                 RefreshSiteIconCache();
@@ -336,12 +337,12 @@ namespace Moonglade.Web.Controllers
             }
             catch (FormatException e)
             {
-                Logger.LogError($"Error {nameof(SiteIconOrigin)}(), Invalid Base64 string", e);
+                _logger.LogError($"Error {nameof(SiteIconOrigin)}(), Invalid Base64 string", e);
                 return PhysicalFile(fallbackImageFile, "image/png");
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error {nameof(SiteIconOrigin)}()", ex);
+                _logger.LogError($"Error {nameof(SiteIconOrigin)}()", ex);
                 return new EmptyResult();
             }
         }
@@ -379,12 +380,12 @@ namespace Moonglade.Web.Controllers
                 }
                 catch (Exception e)
                 {
-                    Logger.LogError($"Error {nameof(RefreshSiteIconCache)}()", e);
+                    _logger.LogError($"Error {nameof(RefreshSiteIconCache)}()", e);
                 }
 
                 if (string.IsNullOrWhiteSpace(iconTemplatPath))
                 {
-                    Logger.LogWarning("SiteIconBase64 is empty or not valid, fall back to default image.");
+                    _logger.LogWarning("SiteIconBase64 is empty or not valid, fall back to default image.");
                     iconTemplatPath = Path.Join($"{_env.WebRootPath}", "images", "siteicon-default.png");
                 }
 
@@ -395,7 +396,7 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Error {nameof(RefreshSiteIconCache)}()", ex);
+                _logger.LogError($"Error {nameof(RefreshSiteIconCache)}()", ex);
             }
         }
 

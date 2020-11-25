@@ -1,120 +1,48 @@
 ﻿using System;
-using System.IO;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using Moonglade.Caching;
-using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Model;
 using Moonglade.Web.Models;
-using X.PagedList;
 
 namespace Moonglade.Web.Controllers
 {
-    [Route("category")]
-    public class CategoryController : BlogController
+    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CategoryController : ControllerBase
     {
-        private readonly PostService _postService;
         private readonly CategoryService _categoryService;
-        private readonly IBlogConfig _blogConfig;
-        private readonly IBlogCache _blogCache;
 
-        public CategoryController(
-            ILogger<CategoryController> logger,
-            CategoryService categoryService,
-            PostService postService,
-            IBlogConfig blogConfig,
-            IBlogCache blogCache)
-            : base(logger)
+        public CategoryController(CategoryService categoryService)
         {
-            _postService = postService;
             _categoryService = categoryService;
-
-            _blogConfig = blogConfig;
-            _blogCache = blogCache;
         }
 
-        [Route("list/{routeName:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
-        public async Task<IActionResult> List(string routeName, int page = 1)
-        {
-            if (string.IsNullOrWhiteSpace(routeName)) return NotFound();
-
-            var pageSize = _blogConfig.ContentSettings.PostListPageSize;
-            var cat = await _categoryService.GetAsync(routeName);
-
-            if (null == cat)
-            {
-                Logger.LogWarning($"Category '{routeName}' not found.");
-                return NotFound();
-            }
-
-            ViewBag.CategoryDisplayName = cat.DisplayName;
-            ViewBag.CategoryRouteName = cat.RouteName;
-            ViewBag.CategoryDescription = cat.Note;
-
-            var postCount = _blogCache.GetOrCreate(CacheDivision.PostCountCategory, cat.Id.ToString(),
-                entry => _postService.CountByCategoryId(cat.Id));
-
-            var postList = await _postService.GetPagedPostsAsync(pageSize, page, cat.Id);
-
-            var postsAsIPagedList = new StaticPagedList<PostListEntry>(postList, page, pageSize, postCount);
-            return View(postsAsIPagedList);
-        }
-
-        [Authorize]
-        [HttpGet("manage")]
-        public async Task<IActionResult> Manage()
-        {
-            string viewPath = "~/Views/Admin/ManageCategory.cshtml";
-
-            try
-            {
-                var cats = await _categoryService.GetAllAsync();
-                return View(viewPath, new CategoryManageViewModel { Categories = cats });
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, $"Error {nameof(Manage)}()");
-
-                ViewBag.HasError = true;
-                ViewBag.ErrorMessage = e.Message;
-                return View(viewPath, new CategoryManageViewModel());
-            }
-        }
-
-        [Authorize]
-        [HttpPost("manage/create")]
+        [HttpPost("create")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(CategoryEditViewModel model)
         {
-            try
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var request = new CreateCategoryRequest
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+                RouteName = model.RouteName,
+                Note = model.Note,
+                DisplayName = model.DisplayName
+            };
 
-                var request = new CreateCategoryRequest
-                {
-                    RouteName = model.RouteName,
-                    Note = model.Note,
-                    DisplayName = model.DisplayName
-                };
+            await _categoryService.CreateAsync(request);
 
-                await _categoryService.CreateAsync(request);
-                DeleteOpmlFile();
-
-                return Json(model);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, "Error Create Category.");
-
-                ModelState.AddModelError("", e.Message);
-                return ServerError(e.Message);
-            }
+            return Ok(model);
         }
 
-        [Authorize]
-        [HttpGet("manage/edit/{id:guid}")]
+        [HttpGet("edit/{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Edit(Guid id)
         {
             var cat = await _categoryService.GetAsync(id);
@@ -128,70 +56,42 @@ namespace Moonglade.Web.Controllers
                 Note = cat.Note
             };
 
-            return Json(model);
+            return Ok(model);
         }
 
-        [Authorize]
-        [HttpPost("manage/edit")]
+        [HttpPost("edit")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Edit(CategoryEditViewModel model)
         {
-            try
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var request = new EditCategoryRequest(model.Id)
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
+                RouteName = model.RouteName,
+                Note = model.Note,
+                DisplayName = model.DisplayName
+            };
 
-                var request = new EditCategoryRequest(model.Id)
-                {
-                    RouteName = model.RouteName,
-                    Note = model.Note,
-                    DisplayName = model.DisplayName
-                };
+            await _categoryService.UpdateAsync(request);
 
-                await _categoryService.UpdateAsync(request);
-
-                DeleteOpmlFile();
-                return Json(model);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, "Error Create Category.");
-
-                ModelState.AddModelError("", e.Message);
-                return ServerError();
-            }
+            return Ok(model);
         }
 
-        [Authorize]
-        [HttpPost("manage/delete")]
+        [HttpDelete("delete/{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(Guid id)
         {
-            try
+            if (id == Guid.Empty)
             {
-                Logger.LogInformation($"Deleting category id: {id}");
-                await _categoryService.DeleteAsync(id);
-                DeleteOpmlFile();
+                ModelState.AddModelError(nameof(id), "value is empty");
+                return BadRequest(ModelState);
+            }
 
-                return Json(id);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, "Error Delete Category.");
-                return ServerError();
-            }
-        }
+            await _categoryService.DeleteAsync(id);
 
-        private void DeleteOpmlFile()
-        {
-            try
-            {
-                var path = Path.Join($"{DataDirectory}", $"{Constants.OpmlFileName}");
-                System.IO.File.Delete(path);
-                Logger.LogInformation("OPML file is deleted.");
-            }
-            catch (Exception e)
-            {
-                // Log the error and do not block the application
-                Logger.LogError(e, "Error Delete OPML File.");
-            }
+            return Ok();
         }
     }
 }

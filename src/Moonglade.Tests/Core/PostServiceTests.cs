@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 using Moonglade.Core;
 using NUnit.Framework;
 
 namespace Moonglade.Tests.Core
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class PostServiceTests
     {
         [Test]
-        public void TestLazyLoadToImgTagExistLoading()
+        public void LazyLoadToImgTag_ExistLoading()
         {
             const string html = @"<p>Work 996 and have some fu bao!</p><img loading=""lazy"" src=""icu.jpg"" /><video src=""java996.mp4""></video>";
             var result = ContentProcessor.AddLazyLoadToImgTag(html);
@@ -18,7 +17,7 @@ namespace Moonglade.Tests.Core
         }
 
         [Test]
-        public void TestLazyLoadToImgTagEmpty()
+        public void LazyLoadToImgTag_Empty()
         {
             var result = ContentProcessor.AddLazyLoadToImgTag(string.Empty);
             Assert.IsTrue(result == string.Empty);

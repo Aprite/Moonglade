@@ -1,11 +1,11 @@
-﻿using System.Threading.Tasks;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
-using Moonglade.Core;
 using Moonglade.Web.Authentication;
 using Moonglade.Web.Controllers;
 using Moq;
@@ -14,6 +14,7 @@ using NUnit.Framework;
 namespace Moonglade.Tests.Web
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class AdminControllerTests
     {
         private Mock<IOptions<AuthenticationSettings>> _authenticationSettingsMock;
@@ -29,7 +30,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public async Task TestDefaultAction()
+        public async Task DefaultAction()
         {
             _authenticationSettingsMock.Setup(c => c.Value)
                 .Returns(new AuthenticationSettings
@@ -48,7 +49,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public async Task TestSignOutAAD()
+        public async Task SignOutAAD()
         {
             _authenticationSettingsMock.Setup(m => m.Value).Returns(new AuthenticationSettings
             {
@@ -72,7 +73,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public void TestSignedOut()
+        public void SignedOut()
         {
             var ctl = new AdminController(_loggerMock.Object, _authenticationSettingsMock.Object, _auditMock.Object, null);
             var result = ctl.SignedOut();
@@ -80,12 +81,12 @@ namespace Moonglade.Tests.Web
             if (result is RedirectToActionResult rdResult)
             {
                 Assert.That(rdResult.ActionName, Is.EqualTo("Index"));
-                Assert.That(rdResult.ControllerName, Is.EqualTo("Post"));
+                Assert.That(rdResult.ControllerName, Is.EqualTo("Home"));
             }
         }
 
         [Test]
-        public void TestKeepAlive()
+        public void KeepAlive()
         {
             var ctl = new AdminController(_loggerMock.Object, _authenticationSettingsMock.Object, _auditMock.Object, null);
             var result = ctl.KeepAlive("996.ICU");
@@ -93,7 +94,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public void TestAccessDenied()
+        public void AccessDenied()
         {
             var ctl = new AdminController(_loggerMock.Object, _authenticationSettingsMock.Object, _auditMock.Object, null)
             {
@@ -104,8 +105,7 @@ namespace Moonglade.Tests.Web
 
             var result = ctl.AccessDenied();
 
-            Assert.IsInstanceOf(typeof(ViewResult), result);
-            Assert.That(ctl.ControllerContext.HttpContext.Response.StatusCode, Is.EqualTo(403));
+            Assert.IsInstanceOf(typeof(ForbidResult), result);
         }
     }
 }

@@ -144,12 +144,6 @@
   <data name="Memory Caches" xml:space="preserve">
     <value>内存缓存</value>
   </data>
-  <data name="Open Search File" xml:space="preserve">
-    <value>Open Search 文件</value>
-  </data>
-  <data name="OPML File" xml:space="preserve">
-    <value>OPML文件</value>
-  </data>
   <data name="Options" xml:space="preserve">
     <value>选项</value>
   </data>
@@ -167,9 +161,6 @@
   </data>
   <data name="Site Icon Files" xml:space="preserve">
     <value>网站图标文件</value>
-  </data>
-  <data name="Subscription Feed Files" xml:space="preserve">
-    <value>订阅文件</value>
   </data>
   <data name="System Reset" xml:space="preserve">
     <value>系统重置</value>

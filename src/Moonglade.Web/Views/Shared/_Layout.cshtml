@@ -63,8 +63,12 @@
     <link type="application/opensearchdescription+xml" rel="search" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/opensearch" />
     <partial name="_Favicons" />
     <link href="~/css/mooglade-css-bundle.min.css" rel="stylesheet" asp-append-version="true" />
-    <script src="~/js/dist/app-js-bundle.min.js" asp-append-version="true"></script>
-    <script src="~/js/app/jweixin-1.6.0.js"></script>
+    <environment exclude="Development">
+        <script src="~/js/dist/app-bundle.min.js" asp-append-version="true"></script>
+    </environment>
+    <environment include="Development">
+        <script src="~/js/dist/app-bundle.js" asp-append-version="true"></script>
+    </environment>
     @await RenderSectionAsync("head", false)
     <environment include="Production">
         @if (!(bool)Context.Items["DNT"])
@@ -79,18 +83,18 @@
     }
 </head>
 <body class="@ViewBag.BodyClass">
-    <header class="ediblog-header">
-        <nav id="moonglade-nav" class="navbar fixed-top navbar-expand-lg navbar-dark bg-accent1">
+    <header>
+        <nav id="blog-nav" class="navbar fixed-top navbar-expand-lg navbar-dark bg-accent1">
             <div class="container">
                 <div class="animbrand">
                     <a class="moonglade-logo font-sairas navbar-brand animate" href="/">
                         @BlogConfig.GeneralSettings.LogoText
                     </a>
                 </div>
-                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#moonglade-navbar-content" aria-controls="moonglade-navbar-content" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#blog-navbar-content" aria-controls="blog-navbar-content" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="collapse navbar-collapse" id="moonglade-navbar-content">
+                <div class="collapse navbar-collapse" id="blog-navbar-content">
                     <ul class="navbar-nav mr-auto">
                         <!-- System Nav Menu -->
                         @if (Settings.Value.SystemNavMenus["Categories"])
@@ -107,7 +111,7 @@
                         @if (Settings.Value.SystemNavMenus["Tags"])
                         {
                             <li class="nav-item">
-                                <a asp-controller="Tags" asp-action="Index" class="nav-link">
+                                <a asp-controller="Home" asp-action="Tags" class="nav-link">
                                     <span class="icon-price-tag"></span>
                                     <strong>@Localizer["Tags"]</strong>
                                 </a>
@@ -117,7 +121,7 @@
                         @if (Settings.Value.SystemNavMenus["Archive"])
                         {
                             <li class="nav-item">
-                                <a asp-controller="Archive" asp-action="Index" class="nav-link">
+                                <a asp-controller="Home" asp-action="Archive" class="nav-link">
                                     <span class="icon-folder"></span>
                                     <strong>@Localizer["Archive"]</strong>
                                 </a>
@@ -206,39 +210,6 @@
                     themeModeSwitcher.useLightMode();
                 }
             }
-        </script>
-    }
-    @if (BlogConfig.AdvancedSettings.EnableWechat)
-    {
-        <script>
-            var shareData = {
-                title: '@Html.Raw($"{ViewBag?.TitlePrefix}{(null == ViewBag?.TitlePrefix ? string.Empty : " - ")}{BlogConfig.GeneralSettings.SiteTitle}")', // 分享标题
-                link: "",
-                imgUrl: '',
-                desc: '@Html.Raw(BlogConfig.GeneralSettings.MetaDescription)',
-                success: function () {
-
-                },
-                cancel: function () {
-
-                }
-            }
-            wx.ready(function () {
-                shareData["link"] = document.location.href;
-                shareData["imgUrl"] = document.location.origin + "/favicon-96x96.png";
-                wx.onMenuShareAppMessage(shareData);
-                wx.onMenuShareTimeline(shareData);
-            });
-            $.get("/wechat/js-sdk-config?jsUrl=" + encodeURIComponent(document.location.href.split('#')[0]), function (data) {
-                wx.config({
-                    debug: false,
-                    appId: data.appId,
-                    timestamp: data.timestamp,
-                    nonceStr: data.nonceStr,
-                    signature: data.signature,
-                    jsApiList: ["updateAppMessageShareData", "updateTimelineShareData", "onMenuShareAppMessage","onMenuShareTimeline"]
-                });
-            });
         </script>
     }
 </body>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
@@ -38,7 +39,7 @@ namespace Moonglade.Syndication
 
         #endregion
 
-        private static IEnumerable<SyndicationItem> GetSyndicationItemCollection(IEnumerable<FeedEntry> itemCollection)
+        private static IEnumerable<SyndicationItem> GetItemCollection(IEnumerable<FeedEntry> itemCollection)
         {
             var synItemCollection = new List<SyndicationItem>();
             foreach (var item in itemCollection)
@@ -62,7 +63,7 @@ namespace Moonglade.Syndication
                 }
 
                 // add categories
-                if (null != item.Categories && item.Categories.Length > 0)
+                if (item.Categories is not null and { Length: > 0 })
                 {
                     foreach (var itemCategory in item.Categories)
                     {
@@ -74,17 +75,16 @@ namespace Moonglade.Syndication
             return synItemCollection;
         }
 
-        public async Task WriteRss20FileAsync(string absolutePath)
+        public async Task WriteRssStreamAsync(Stream stream)
         {
-            var feed = GetSyndicationItemCollection(FeedItemCollection);
+            var feed = GetItemCollection(FeedItemCollection);
             var settings = new XmlWriterSettings
             {
                 Async = true,
-                Encoding = Encoding.UTF8,
-                Indent = true
+                Encoding = Encoding.UTF8
             };
 
-            using var xmlWriter = XmlWriter.Create(absolutePath, settings);
+            using var xmlWriter = XmlWriter.Create(stream, settings);
             var writer = new RssFeedWriter(xmlWriter);
 
             await writer.WriteTitle(HeadTitle);
@@ -103,17 +103,16 @@ namespace Moonglade.Syndication
             xmlWriter.Close();
         }
 
-        public async Task WriteAtom10FileAsync(string absolutePath)
+        public async Task WriteAtomStreamAsync(Stream stream)
         {
-            var feed = GetSyndicationItemCollection(FeedItemCollection);
+            var feed = GetItemCollection(FeedItemCollection);
             var settings = new XmlWriterSettings
             {
                 Async = true,
-                Encoding = Encoding.UTF8,
-                Indent = true
+                Encoding = Encoding.UTF8
             };
 
-            using var xmlWriter = XmlWriter.Create(absolutePath, settings);
+            using var xmlWriter = XmlWriter.Create(stream, settings);
             var writer = new AtomFeedWriter(xmlWriter);
 
             await writer.WriteTitle(HeadTitle);

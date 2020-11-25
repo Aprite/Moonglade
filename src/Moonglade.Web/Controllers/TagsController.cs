@@ -1,94 +1,69 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using Moonglade.Core;
+using Moonglade.Web.Filters;
 
 namespace Moonglade.Web.Controllers
 {
-    [Route("tags")]
-    public class TagsController : BlogController
+    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
+    public class TagsController : ControllerBase
     {
         private readonly TagService _tagService;
-        private readonly PostService _postService;
 
-        public TagsController(
-            ILogger<TagsController> logger,
-            TagService tagService,
-            PostService postService)
-            : base(logger)
+        public TagsController(TagService tagService)
         {
             _tagService = tagService;
-            _postService = postService;
         }
 
-        [Route("")]
-        public async Task<IActionResult> Index()
-        {
-            try
-            {
-                var tags = await _tagService.GetTagCountListAsync();
-                return View(tags);
-            }
-            catch (Exception e)
-            {
-                SetFriendlyErrorMessage();
-                Logger.LogError(e, e.Message);
-                return View();
-            }
-        }
-
-        [Route("list/{normalizedName:regex(^(?!-)([[a-zA-Z\u4e00-\u9fa50-9-]]+)$)}")]
-        public async Task<IActionResult> List(string normalizedName)
-        {
-            try
-            {
-                var tagResponse = _tagService.Get(normalizedName);
-                if (tagResponse == null) return NotFound();
-
-                ViewBag.TitlePrefix = tagResponse.DisplayName;
-                var posts = await _postService.GetByTagAsync(tagResponse.Id);
-
-                return View(posts);
-            }
-            catch (Exception e)
-            {
-                Logger.LogError(e, e.Message);
-                SetFriendlyErrorMessage();
-                return View();
-            }
-        }
-
-        [Route("get-all-tag-names")]
-        public async Task<IActionResult> GetAllTagNames()
+        [HttpGet("names")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        public async Task<IActionResult> Names()
         {
             var tagNames = await _tagService.GetAllNamesAsync();
-            return Json(tagNames);
+            return Ok(tagNames);
         }
 
-        [Authorize]
-        [Route("manage")]
-        public async Task<IActionResult> Manage()
-        {
-            var tags = await _tagService.GetAllAsync();
-            return View("~/Views/Admin/ManageTags.cshtml", tags);
-        }
-
-        [Authorize]
         [HttpPost("update")]
-        public async Task<IActionResult> Update(int tagId, string newTagName)
+        [TypeFilter(typeof(DeletePagingCountCache))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Update(EditTagRequest request)
         {
-            await _tagService.UpdateAsync(tagId, newTagName);
-            return Json(new { tagId, newTagName });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            await _tagService.UpdateAsync(request.TagId, request.NewName);
+            return Ok();
         }
 
-        [Authorize]
-        [HttpPost("delete")]
+        [HttpDelete("{tagId}")]
+        [TypeFilter(typeof(DeletePagingCountCache))]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int tagId)
         {
+            if (tagId is <= 0 or > 9999)
+            {
+                ModelState.AddModelError(nameof(tagId), "Value out of range");
+                return BadRequest(ModelState);
+            }
+
             await _tagService.DeleteAsync(tagId);
-            return Json(tagId);
+            return Ok();
         }
+    }
+
+    public class EditTagRequest
+    {
+        [Range(1, 9999)]
+        public int TagId { get; set; }
+
+        [Required]
+        public string NewName { get; set; }
     }
 }

@@ -14,16 +14,10 @@ namespace Moonglade.Core
 
             if (string.IsNullOrWhiteSpace(rawHtmlContent)) return rawHtmlContent;
             var imgSrcRegex = new Regex("<img.+?(src)=[\"'](.+?)[\"'].+?>");
-            var newStr = imgSrcRegex.Replace(rawHtmlContent, match =>
-            {
-                if (!match.Value.Contains("loading"))
-                {
-                    return match.Value.Replace("src",
-                        @"loading=""lazy"" src");
-                }
-
-                return match.Value;
-            });
+            var newStr = imgSrcRegex.Replace(rawHtmlContent,
+                match => !match.Value.Contains("loading")
+                ? match.Value.Replace("src", @"loading=""lazy"" src")
+                : match.Value);
             return newStr;
         }
 
@@ -116,15 +110,9 @@ namespace Moonglade.Core
             return trimmed + ellipsis;
         }
 
-        public static bool IsLetter(this char c)
-        {
-            return 'A' <= c && c <= 'Z' || 'a' <= c && c <= 'z';
-        }
+        public static bool IsLetter(this char c) => c is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
 
-        public static bool IsSpace(this char c)
-        {
-            return c == '\r' || c == '\n' || c == '\t' || c == '\f' || c == ' ';
-        }
+        public static bool IsSpace(this char c) => c is '\r' or '\n' or '\t' or '\f' or ' ';
 
         public static string MarkdownToContent(string markdown, MarkdownConvertType type, bool disableHtml = true)
         {

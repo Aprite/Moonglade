@@ -20,11 +20,12 @@ namespace Moonglade.Core
         private readonly IDateTimeResolver _dateTimeResolver;
         private readonly IBlogAudit _audit;
         private readonly IBlogCache _cache;
+        private readonly ILogger<PostService> _logger;
+        private readonly AppSettings _settings;
 
         #region Repository Objects
 
         private readonly IRepository<PostEntity> _postRepo;
-        private readonly IRepository<PostExtensionEntity> _postExtensionRepo;
         private readonly IRepository<TagEntity> _tagRepo;
         private readonly IRepository<PostTagEntity> _postTagRepo;
         private readonly IRepository<CategoryEntity> _catRepo;
@@ -32,20 +33,21 @@ namespace Moonglade.Core
 
         #endregion
 
-        public PostService(ILogger<PostService> logger,
+        public PostService(
+            ILogger<PostService> logger,
             IOptions<AppSettings> settings,
             IRepository<PostEntity> postRepo,
-            IRepository<PostExtensionEntity> postExtensionRepo,
             IRepository<TagEntity> tagRepo,
             IRepository<PostTagEntity> postTagRepo,
             IRepository<CategoryEntity> catRepo,
             IRepository<PostCategoryEntity> postCatRepo,
             IDateTimeResolver dateTimeResolver,
             IBlogAudit audit,
-            IBlogCache cache) : base(logger, settings)
+            IBlogCache cache)
         {
+            _logger = logger;
+            _settings = settings.Value;
             _postRepo = postRepo;
-            _postExtensionRepo = postExtensionRepo;
             _tagRepo = tagRepo;
             _postTagRepo = postTagRepo;
             _catRepo = catRepo;
@@ -61,24 +63,7 @@ namespace Moonglade.Core
             _postCatRepo.Count(c => c.CategoryId == catId
                                           && c.Post.IsPublished
                                           && !c.Post.IsDeleted);
-
-
-        public async Task UpdateStatisticAsync(Guid postId, int likes = 0)
-        {
-            var pp = await _postExtensionRepo.GetAsync(postId);
-            if (pp == null) return;
-
-            if (likes > 0)
-            {
-                pp.Likes += likes;
-            }
-            else
-            {
-                pp.Hits += 1;
-            }
-
-            await _postExtensionRepo.UpdateAsync(pp);
-        }
+        public int CountByTag(int tagId) => _postTagRepo.Count(p => p.TagId == tagId && p.Post.IsPublished && !p.Post.IsDeleted);
 
         public Task<Post> GetAsync(Guid id)
         {
@@ -143,7 +128,7 @@ namespace Moonglade.Core
                 ContentLanguageCode = post.ContentLanguageCode
             });
 
-            if (null != postSlugModel)
+            if (postSlugModel is not null)
             {
                 postSlugModel.RawPostContent = ContentProcessor.AddLazyLoadToImgTag(postSlugModel.RawPostContent);
             }
@@ -193,7 +178,7 @@ namespace Moonglade.Core
 
             var psm = await _cache.GetOrCreateAsync(CacheDivision.Post, $"{pid}", async entry =>
             {
-                entry.SlidingExpiration = TimeSpan.FromMinutes(AppSettings.CacheSlidingExpirationMinutes["Post"]);
+                entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Post"]);
 
                 var postSlugModel = await _postRepo.SelectFirstOrDefaultAsync(spec, post => new PostSlug
                 {
@@ -208,8 +193,6 @@ namespace Moonglade.Core
                     }).ToArray(),
 
                     RawPostContent = post.PostContent,
-                    Hits = post.PostExtension.Hits,
-                    Likes = post.PostExtension.Likes,
 
                     Tags = post.PostTag.Select(pt => pt.Tag)
                         .Select(p => new Tag
@@ -225,7 +208,7 @@ namespace Moonglade.Core
                     CommentCount = post.Comment.Count(c => c.IsApproved)
                 });
 
-                if (null != postSlugModel)
+                if (postSlugModel is not null)
                 {
                     postSlugModel.RawPostContent = ContentProcessor.AddLazyLoadToImgTag(postSlugModel.RawPostContent);
                 }
@@ -297,21 +280,37 @@ namespace Moonglade.Core
             });
         }
 
-        public Task<IReadOnlyList<PostListEntry>> GetByTagAsync(int tagId)
+        public Task<IReadOnlyList<PostListEntry>> GetByTagAsync(int tagId, int pageSize, int pageIndex)
         {
             if (tagId <= 0)
             {
                 throw new ArgumentOutOfRangeException(nameof(tagId));
             }
 
-            var posts = _postTagRepo.SelectAsync(new PostTagSpec(tagId),
+            if (pageSize < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageSize),
+                    $"{nameof(pageSize)} can not be less than 1, current value: {pageSize}.");
+            }
+            if (pageIndex < 1)
+            {
+                throw new ArgumentOutOfRangeException(nameof(pageIndex),
+                    $"{nameof(pageIndex)} can not be less than 1, current value: {pageIndex}.");
+            }
+
+            var posts = _postTagRepo.SelectAsync(new PostTagSpec(tagId, pageSize, pageIndex),
                 p => new PostListEntry
                 {
                     Title = p.Post.Title,
                     Slug = p.Post.Slug,
                     ContentAbstract = p.Post.ContentAbstract,
                     PubDateUtc = p.Post.PubDateUtc.GetValueOrDefault(),
-                    LangCode = p.Post.ContentLanguageCode
+                    LangCode = p.Post.ContentLanguageCode,
+                    Tags = p.Post.PostTag.Select(pt => new Tag
+                    {
+                        NormalizedName = pt.Tag.NormalizedName,
+                        DisplayName = pt.Tag.DisplayName
+                    })
                 });
 
             return posts;
@@ -320,8 +319,8 @@ namespace Moonglade.Core
         public async Task<PostEntity> CreateAsync(CreatePostRequest request)
         {
             var abs = ContentProcessor.GetPostAbstract(
-                request.EditorContent, AppSettings.PostAbstractWords,
-                AppSettings.Editor == EditorChoice.Markdown);
+                request.EditorContent, _settings.PostAbstractWords,
+                _settings.Editor == EditorChoice.Markdown);
 
             var post = new PostEntity
             {
@@ -338,7 +337,7 @@ namespace Moonglade.Core
                 PubDateUtc = request.IsPublished ? DateTime.UtcNow : (DateTime?)null,
                 IsDeleted = false,
                 IsPublished = request.IsPublished,
-                PostExtension = new PostExtensionEntity
+                PostExtension = new()
                 {
                     Hits = 0,
                     Likes = 0
@@ -360,17 +359,17 @@ namespace Moonglade.Core
             {
                 var uid = Guid.NewGuid();
                 post.Slug += $"-{uid.ToString().ToLower().Substring(0, 8)}";
-                Logger.LogInformation($"Found conflict for post slug, generated new slug: {post.Slug}");
+                _logger.LogInformation($"Found conflict for post slug, generated new slug: {post.Slug}");
             }
 
             // add categories
-            if (null != request.CategoryIds && request.CategoryIds.Length > 0)
+            if (request.CategoryIds is not null and { Length: > 0 })
             {
                 foreach (var cid in request.CategoryIds)
                 {
                     if (_catRepo.Any(c => c.Id == cid))
                     {
-                        post.PostCategory.Add(new PostCategoryEntity
+                        post.PostCategory.Add(new()
                         {
                             CategoryId = cid,
                             PostId = post.Id
@@ -380,7 +379,7 @@ namespace Moonglade.Core
             }
 
             // add tags
-            if (null != request.Tags && request.Tags.Length > 0)
+            if (request.Tags is not null and { Length: > 0 })
             {
                 foreach (var item in request.Tags)
                 {
@@ -395,7 +394,7 @@ namespace Moonglade.Core
                         var newTag = new TagEntity
                         {
                             DisplayName = item,
-                            NormalizedName = TagService.NormalizeTagName(item)
+                            NormalizedName = TagService.NormalizeTagName(item, _settings.TagNormalization)
                         };
 
                         tag = await _tagRepo.AddAsync(newTag);
@@ -403,7 +402,7 @@ namespace Moonglade.Core
                             $"Tag '{tag.NormalizedName}' created.");
                     }
 
-                    post.PostTag.Add(new PostTagEntity
+                    post.PostTag.Add(new()
                     {
                         TagId = tag.Id,
                         PostId = post.Id
@@ -429,8 +428,8 @@ namespace Moonglade.Core
             post.PostContent = request.EditorContent;
             post.ContentAbstract = ContentProcessor.GetPostAbstract(
                                         request.EditorContent,
-                                        AppSettings.PostAbstractWords,
-                                        AppSettings.Editor == EditorChoice.Markdown);
+                                        _settings.PostAbstractWords,
+                                        _settings.Editor == EditorChoice.Markdown);
 
             // Address #221: Do not allow published posts back to draft status
             // postModel.IsPublished = request.IsPublished;
@@ -445,7 +444,7 @@ namespace Moonglade.Core
             }
 
             // #325: Allow changing publish date for published posts
-            if (request.PublishDate != null && post.PubDateUtc.HasValue)
+            if (request.PublishDate is not null && post.PubDateUtc.HasValue)
             {
                 var tod = post.PubDateUtc.Value.TimeOfDay;
                 var adjustedDate = _dateTimeResolver.ToUtc(request.PublishDate.Value);
@@ -462,10 +461,10 @@ namespace Moonglade.Core
             // 1. Add new tags to tag lib
             foreach (var item in request.Tags.Where(item => !_tagRepo.Any(p => p.DisplayName == item)))
             {
-                await _tagRepo.AddAsync(new TagEntity
+                await _tagRepo.AddAsync(new()
                 {
                     DisplayName = item,
-                    NormalizedName = TagService.NormalizeTagName(item)
+                    NormalizedName = TagService.NormalizeTagName(item, _settings.TagNormalization)
                 });
 
                 await _audit.AddAuditEntry(EventType.Content, AuditEventId.TagCreated,
@@ -484,7 +483,7 @@ namespace Moonglade.Core
                     }
 
                     var tag = await _tagRepo.GetAsync(t => t.DisplayName == tagName);
-                    if (tag != null) post.PostTag.Add(new PostTagEntity
+                    if (tag is not null) post.PostTag.Add(new()
                     {
                         PostId = post.Id,
                         TagId = tag.Id
@@ -494,13 +493,13 @@ namespace Moonglade.Core
 
             // 3. update categories
             post.PostCategory.Clear();
-            if (null != request.CategoryIds && request.CategoryIds.Length > 0)
+            if (request.CategoryIds is not null and { Length: > 0 })
             {
                 foreach (var cid in request.CategoryIds)
                 {
                     if (_catRepo.Any(c => c.Id == cid))
                     {
-                        post.PostCategory.Add(new PostCategoryEntity
+                        post.PostCategory.Add(new()
                         {
                             PostId = post.Id,
                             CategoryId = cid

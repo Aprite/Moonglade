@@ -1,15 +1,37 @@
 ﻿var postSlug = {
-    registerRatingButtons: function (pid) {
-        $('.btn-ratings').click(function () {
-            ajaxPostWithCSRFToken('/post/like', { postId: pid }, function (data) {
-                if (data.isSuccess) {
-                    var oldVal = parseInt($('.likehits-num').text(), 10);
+    getStatistics: function (pid) {
+        const uri = `/api/statistics/${pid}`;
+        fetch(uri)
+            .then(response => response.json())
+            .then(data => {
+                $('.post-hit-number-text').text(data.hits);
+                if ($('.likehits-num')) {
+                    $('.likehits-num').text(data.likes);
+                }
+            })
+            .catch(err => {
+                toastr.error(err);
+                console.error(err);
+            });
+    },
+    postStatistics: function (pid, isLike) {
+        const req = {
+            postId: pid,
+            isLike: isLike
+        };
+
+        callApi('/api/statistics', 'POST', req,
+            (success) => {
+                if (isLike) {
+                    let oldVal = parseInt($('.likehits-num').text(), 10);
                     $('.likehits-num').html(++oldVal);
                     $('.btn-ratings').attr('disabled', 'disabled');
-                } else {
-                    window.toastr.warning(data.message);
                 }
             });
+    },
+    registerRatingButtons: function (pid) {
+        $('.btn-ratings').click(function () {
+            postSlug.postStatistics(pid, true);
         });
     },
     resetCaptchaImage: function () {

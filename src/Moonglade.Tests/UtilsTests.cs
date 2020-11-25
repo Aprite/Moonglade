@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using Moonglade.Core;
 using NUnit.Framework;
@@ -6,10 +7,11 @@ using NUnit.Framework;
 namespace Moonglade.Tests
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class UtilsTests
     {
         [Test]
-        public void TestAppVersion()
+        public void AppVersion()
         {
             var ver = Utils.AppVersion;
             Assert.IsNotNull(ver);
@@ -20,7 +22,7 @@ namespace Moonglade.Tests
         [TestCase(" ", ExpectedResult = " ")]
         [TestCase("996", ExpectedResult = "996")]
         [TestCase("[c] 2020 edi.wang", ExpectedResult = "&copy; 2020 edi.wang")]
-        public string TestFormatCopyright2Html(string copyrightCode)
+        public string FormatCopyright2Html(string copyrightCode)
         {
             return Utils.FormatCopyright2Html(copyrightCode);
         }
@@ -33,13 +35,13 @@ namespace Moonglade.Tests
         [TestCase("172.22.0.1", ExpectedResult = true)]
         [TestCase("172.251.0.1", ExpectedResult = false)]
         [TestCase("4.2.2.1", ExpectedResult = false)]
-        public bool TestIsPrivateIP(string ip)
+        public bool IsPrivateIP(string ip)
         {
             return Utils.IsPrivateIP(ip);
         }
 
         [Test]
-        public void TestFormatCopyright2HtmlHappyPathWithYear()
+        public void FormatCopyright2Html_HappyPathWithYear()
         {
             string org = "[c] 2009 - [year] edi.wang";
             string exp = $"&copy; 2009 - {DateTime.UtcNow.Year} edi.wang";
@@ -49,7 +51,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public void TryParseBase64Success()
+        public void ParseBase64_Success()
         {
             var ok = Utils.TryParseBase64("xDgItVa0ujLKxGsoMV1+MmxBrpo997mXbeXngqIx13o=", out var base64);
             Assert.IsTrue(ok);
@@ -57,7 +59,7 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        public void TryParseBase64Fail()
+        public void ParseBase64_Fail()
         {
             var ok = Utils.TryParseBase64("Learn Java and work 996!", out var base64);
             Assert.IsFalse(ok);
@@ -74,14 +76,14 @@ namespace Moonglade.Tests
         [TestCase("https://edi.wang", "996/007/251/404", ExpectedResult = "https://edi.wang/996/007/251/404")]
         [TestCase("https://edi.wang/dotnet", "1055", ExpectedResult = "https://edi.wang/1055")]
         [TestCase("", "", ExpectedResult = "")]
-        public string TestResolveCanonicalUrl(string prefix, string path)
+        public string ResolveCanonicalUrl(string prefix, string path)
         {
             var result = Utils.ResolveCanonicalUrl(prefix, path);
             return result;
         }
 
         [Test]
-        public void TestResolveCanonicalUrlInvalid()
+        public void ResolveCanonicalUrl_Invalid()
         {
             Assert.Throws<UriFormatException>(() =>
             {
@@ -95,7 +97,7 @@ namespace Moonglade.Tests
         [TestCase("DC1, DC2")]
         [TestCase("DC1, DC2,DC3")]
         [TestCase("DC[1], DC-2, DC#3, DC@4, DC$5, DC(6), DC/7")]
-        public void TestGetEnvironmentTagsValid(string tags)
+        public void GetEnvironmentTags_Valid(string tags)
         {
             Environment.SetEnvironmentVariable("MOONGLADE_TAGS", tags, EnvironmentVariableTarget.Process);
             var envTags = Utils.GetEnvironmentTags();
@@ -121,7 +123,7 @@ namespace Moonglade.Tests
         [TestCase("DC'1")]
         [TestCase("DC?1")]
         [TestCase("DC{1}")]
-        public void TestGetEnvironmentTagsInvalid(string invalidTag)
+        public void GetEnvironmentTags_Invalid(string invalidTag)
         {
             Environment.SetEnvironmentVariable("MOONGLADE_TAGS", $"DC1, DC2, {invalidTag}", EnvironmentVariableTarget.Process);
             var envTags = Utils.GetEnvironmentTags();
@@ -129,6 +131,17 @@ namespace Moonglade.Tests
 
             Assert.IsTrue(envTags.Count() == 2);
             Assert.IsTrue(!envTags.Contains(invalidTag));
+        }
+
+        [Test]
+        public void GetEnvironmentTags_Empty()
+        {
+            Environment.SetEnvironmentVariable("MOONGLADE_TAGS", string.Empty, EnvironmentVariableTarget.Process);
+            var envTags = Utils.GetEnvironmentTags();
+            Assert.IsNotNull(envTags);
+
+            Assert.IsTrue(envTags.Count() == 1);
+            Assert.AreEqual(envTags.First(), string.Empty);
         }
     }
 }

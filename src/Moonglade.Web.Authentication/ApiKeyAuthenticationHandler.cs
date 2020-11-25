@@ -40,7 +40,7 @@ namespace Moonglade.Web.Authentication
                 return await Task.FromResult(AuthenticateResult.NoResult());
             }
 
-            if (null == AuthenticationSettings.ApiKeys || !AuthenticationSettings.ApiKeys.Any())
+            if (AuthenticationSettings.ApiKeys is null || !AuthenticationSettings.ApiKeys.Any())
             {
                 throw new ArgumentNullException(nameof(AuthenticationSettings.ApiKeys), "No API Keys configured.");
             }
@@ -53,7 +53,7 @@ namespace Moonglade.Web.Authentication
 
                 var claims = new List<Claim>
                 {
-                    new Claim(ClaimTypes.Name, apiKey.Owner)
+                    new (ClaimTypes.Name, apiKey.Owner)
                 };
                 claims.AddRange(apiKey.Roles.Select(role => new Claim(ClaimTypes.Role, role)));
 

@@ -2,26 +2,25 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
     public class MenuService : BlogService
     {
+        private readonly ILogger<MenuService> _logger;
         private readonly IRepository<MenuEntity> _menuRepo;
         private readonly IBlogAudit _audit;
 
         public MenuService(
             ILogger<MenuService> logger,
-            IOptions<AppSettings> settings,
             IRepository<MenuEntity> menuRepo,
-            IBlogAudit audit) : base(logger, settings)
+            IBlogAudit audit)
         {
+            _logger = logger;
             _menuRepo = menuRepo;
             _audit = audit;
         }
@@ -70,13 +69,13 @@ namespace Moonglade.Core
         public async Task<Guid> UpdateAsync(EditMenuRequest request)
         {
             var menu = await _menuRepo.GetAsync(request.Id);
-            if (null == menu)
+            if (menu is null)
             {
                 throw new InvalidOperationException($"MenuEntity with Id '{request.Id}' not found.");
             }
 
             var sUrl = SterilizeMenuLink(request.Url.Trim());
-            Logger.LogInformation($"Sterilized URL from '{request.Url}' to '{sUrl}'");
+            _logger.LogInformation($"Sterilized URL from '{request.Url}' to '{sUrl}'");
 
             menu.Title = request.Title.Trim();
             menu.Url = sUrl;
@@ -93,7 +92,7 @@ namespace Moonglade.Core
         public async Task DeleteAsync(Guid id)
         {
             var menu = await _menuRepo.GetAsync(id);
-            if (null == menu)
+            if (menu is null)
             {
                 throw new InvalidOperationException($"MenuEntity with Id '{id}' not found.");
             }
@@ -104,10 +103,7 @@ namespace Moonglade.Core
 
         private static Menu EntityToMenuModel(MenuEntity entity)
         {
-            if (null == entity)
-            {
-                return null;
-            }
+            if (entity is null) return null;
 
             return new Menu
             {
@@ -134,12 +130,7 @@ namespace Moonglade.Core
                     }
 
                     // url doesn't start with "//" or "/\"
-                    if (rawUrl[1] != '/' && rawUrl[1] != '\\')
-                    {
-                        return true;
-                    }
-
-                    return false;
+                    return rawUrl[1] is not '/' and not '\\';
                 }
 
                 return false;

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Primitives;
@@ -9,10 +10,11 @@ using NUnit.Framework;
 namespace Moonglade.Tests.Web.Middleware
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class PoweredByMiddlewareTests
     {
         [Test]
-        public async Task TestPoweredByHeader()
+        public async Task PoweredByHeader()
         {
             const string key = "X-Powered-By";
             const string value = "Moonglade";

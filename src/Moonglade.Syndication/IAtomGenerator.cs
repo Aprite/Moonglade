@@ -1,9 +1,10 @@
-﻿using System.Threading.Tasks;
+﻿using System.IO;
+using System.Threading.Tasks;
 
 namespace Moonglade.Syndication
 {
     public interface IAtomGenerator
     {
-        Task WriteAtom10FileAsync(string path);
+        Task WriteAtomStreamAsync(Stream stream);
     }
 }

@@ -1,0 +1,19 @@
+﻿@model X.PagedList.StaticPagedList<Moonglade.Model.PostListEntry>
+
+<h3>
+    @ViewBag.TitlePrefix
+</h3>
+<hr />
+
+@if (Model.Any())
+{
+    <partial name="_PostList" />
+}
+else
+{
+    <div class="alert alert-info">
+        @Localizer["No Posts."]
+    </div>
+}
+
+<partial name="_LightSwitch" />

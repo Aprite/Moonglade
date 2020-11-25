@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
 using Moonglade.Auditing;
 using Moonglade.Caching;
 using Moonglade.Data.Entities;
@@ -18,11 +17,11 @@ namespace Moonglade.Core
         private readonly IBlogAudit _audit;
         private readonly IBlogCache _cache;
 
-        public CategoryService(ILogger<CategoryService> logger,
+        public CategoryService(
             IRepository<CategoryEntity> catRepo,
             IRepository<PostCategoryEntity> postCatRepo,
-            IBlogAudit audit, 
-            IBlogCache cache) : base(logger)
+            IBlogAudit audit,
+            IBlogCache cache)
         {
             _catRepo = catRepo;
             _postCatRepo = postCatRepo;
@@ -34,6 +33,7 @@ namespace Moonglade.Core
         {
             return _cache.GetOrCreateAsync(CacheDivision.General, "allcats", async entry =>
             {
+                entry.SlidingExpiration = TimeSpan.FromHours(1);
                 var list = await _catRepo.SelectAsync(c => new Category
                 {
                     Id = c.Id,
@@ -96,10 +96,7 @@ namespace Moonglade.Core
             if (!exists) return;
 
             var pcs = await _postCatRepo.GetAsync(pc => pc.CategoryId == id);
-            if (null != pcs)
-            {
-                await _postCatRepo.DeleteAsync(pcs);
-            }
+            if (pcs is not null) await _postCatRepo.DeleteAsync(pcs);
 
             _catRepo.Delete(id);
             _cache.Remove(CacheDivision.General, "allcats");
@@ -110,7 +107,7 @@ namespace Moonglade.Core
         public async Task UpdateAsync(EditCategoryRequest editRequest)
         {
             var cat = await _catRepo.GetAsync(editRequest.Id);
-            if (null == cat) return;
+            if (cat is null) return;
 
             cat.RouteName = editRequest.RouteName.Trim();
             cat.DisplayName = editRequest.DisplayName.Trim();

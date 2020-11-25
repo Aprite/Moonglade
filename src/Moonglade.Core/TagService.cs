@@ -1,29 +1,31 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
 using Moonglade.Model;
+using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
     public class TagService : BlogService
     {
+        private readonly AppSettings _settings;
         private readonly IRepository<TagEntity> _tagRepo;
         private readonly IRepository<PostTagEntity> _postTagRepo;
         private readonly IBlogAudit _audit;
 
         public TagService(
-            ILogger<TagService> logger,
+            IOptions<AppSettings> settings,
             IRepository<TagEntity> tagRepo,
             IRepository<PostTagEntity> postTagRepo,
-            IBlogAudit audit) : base(logger)
+            IBlogAudit audit)
         {
+            _settings = settings.Value;
             _tagRepo = tagRepo;
             _postTagRepo = postTagRepo;
             _audit = audit;
@@ -46,12 +48,11 @@ namespace Moonglade.Core
 
         public async Task UpdateAsync(int tagId, string newName)
         {
-            Logger.LogInformation($"Updating tag {tagId} with new name {newName}");
             var tag = await _tagRepo.GetAsync(tagId);
             if (null == tag) return;
 
             tag.DisplayName = newName;
-            tag.NormalizedName = NormalizeTagName(newName);
+            tag.NormalizedName = NormalizeTagName(newName, _settings.TagNormalization);
             await _tagRepo.UpdateAsync(tag);
             await _audit.AddAuditEntry(EventType.Content, AuditEventId.TagUpdated, $"Tag id '{tagId}' is updated.");
         }
@@ -103,29 +104,19 @@ namespace Moonglade.Core
             });
         }
 
-        private static readonly Tuple<string, string>[] TagNormalizeSourceTable =
-        {
-            Tuple.Create(".", "dot"),
-            Tuple.Create("#", "sharp"),
-            Tuple.Create(" ", "-")
-        };
-
-        public static string NormalizeTagName(string orgTagName)
+        public static string NormalizeTagName(string orgTagName, TagNormalization[] normalizations)
         {
             var result = new StringBuilder(orgTagName);
-            foreach (var (item1, item2) in TagNormalizeSourceTable)
+            foreach (var item in normalizations)
             {
-                result.Replace(item1, item2);
+                result.Replace(item.Source, item.Target);
             }
             return result.ToString().ToLower();
         }
 
         public static bool ValidateTagName(string tagDisplayName)
         {
-            if (string.IsNullOrWhiteSpace(tagDisplayName))
-            {
-                return false;
-            }
+            if (string.IsNullOrWhiteSpace(tagDisplayName)) return false;
 
             // Regex performance best practice
             // See https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices

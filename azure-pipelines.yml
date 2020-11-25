@@ -1,8 +1,3 @@
-# ASP.NET Core
-# Build and test ASP.NET Core projects targeting .NET Core.
-# Add steps that run tests, create a NuGet package, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
-
 trigger:
 - master
 
@@ -11,17 +6,17 @@ jobs:
   pool:
     vmImage: 'windows-latest'
   steps:
-  # - task: UseDotNet@2
-  #   inputs:
-  #     packageType: 'sdk'
-  #     version: '3.1.x'
+  - task: UseDotNet@2
+    inputs:
+      packageType: 'sdk'
+      version: '5.0.x'
 
   - task: DotNetCoreCLI@2
     displayName: Build
     inputs:
       command: build
       projects: '**/*.sln'
-      arguments: '--configuration Release -p:Version=10.8.$(Build.BuildId)-official'
+      arguments: '--configuration Release -p:Version=10.9.$(Build.BuildId)-official'
 
   - task: DotNetCoreCLI@2
     displayName: Test
@@ -34,7 +29,7 @@ jobs:
     inputs:
       command: publish
       publishWebProjects: True
-      arguments: '--configuration Release -p:Version=10.8.$(Build.BuildId)-official --output $(Build.ArtifactStagingDirectory)'
+      arguments: '--configuration Release -p:Version=10.9.$(Build.BuildId)-official --output $(Build.ArtifactStagingDirectory)'
       zipAfterPublish: True
 
   - task: PublishBuildArtifacts@1

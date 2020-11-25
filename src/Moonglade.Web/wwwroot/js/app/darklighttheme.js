@@ -1,11 +1,11 @@
 ﻿var themeModeSwitcher = {
     useDarkMode: function () {
-        $('#moonglade-nav').removeClass('bg-accent1');
-        $('#moonglade-nav, #moonglade-footer').addClass('bg-dark');
+        $('#blog-nav').removeClass('bg-accent1');
+        $('#blog-nav, #moonglade-footer').addClass('bg-dark');
         $('.post-publish-info-mobile').removeClass('bg-light');
         $('.post-publish-info-mobile').addClass('bg-dark');
 
-        $('#moonglade-footer').removeClass('bg-accent2');
+        $('#blog-footer').removeClass('bg-accent2');
         $('').addClass('bg-dark');
 
         $('body').addClass('bg-moca-dark text-light darkmode');
@@ -28,12 +28,12 @@
         $('#lighticon').addClass('icon-moon-o');
     },
     useLightMode: function () {
-        $('#moonglade-nav').addClass('bg-accent1');
-        $('#moonglade-nav, #moonglade-footer').removeClass('bg-dark');
+        $('#blog-nav').addClass('bg-accent1');
+        $('#blog-nav, #moonglade-footer').removeClass('bg-dark');
         $('.post-publish-info-mobile').removeClass('bg-dark');
         $('.post-publish-info-mobile').addClass('bg-light');
 
-        $('#moonglade-footer').addClass('bg-accent2');
+        $('#blog-footer').addClass('bg-accent2');
 
         $('body').removeClass('bg-moca-dark text-light darkmode');
         $('body.body-post-slug').addClass('bg-gray-1');

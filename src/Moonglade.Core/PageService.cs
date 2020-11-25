@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
@@ -18,10 +15,8 @@ namespace Moonglade.Core
         private readonly IBlogAudit _audit;
 
         public PageService(
-            ILogger<PageService> logger,
-            IOptions<AppSettings> settings,
             IRepository<PageEntity> pageRepo,
-            IBlogAudit audit) : base(logger, settings)
+            IBlogAudit audit)
         {
             _pageRepo = pageRepo;
             _audit = audit;
@@ -79,7 +74,7 @@ namespace Moonglade.Core
         public async Task<Guid> UpdateAsync(EditPageRequest request)
         {
             var page = await _pageRepo.GetAsync(request.Id);
-            if (null == page)
+            if (page is null)
             {
                 throw new InvalidOperationException($"CustomPageEntity with Id '{request.Id}' not found.");
             }
@@ -102,7 +97,7 @@ namespace Moonglade.Core
         public async Task DeleteAsync(Guid pageId)
         {
             var page = await _pageRepo.GetAsync(pageId);
-            if (null == page)
+            if (page is null)
             {
                 throw new InvalidOperationException($"CustomPageEntity with Id '{pageId}' not found.");
             }
@@ -113,10 +108,7 @@ namespace Moonglade.Core
 
         public static string RemoveScriptTagFromHtml(string html)
         {
-            if (string.IsNullOrWhiteSpace(html))
-            {
-                return string.Empty;
-            }
+            if (string.IsNullOrWhiteSpace(html)) return string.Empty;
 
             var regex = new Regex("\\<script(.+?)\\</script\\>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             var result = regex.Replace(html, string.Empty);
@@ -125,10 +117,7 @@ namespace Moonglade.Core
 
         private static Page EntityToPage(PageEntity entity)
         {
-            if (null == entity)
-            {
-                return null;
-            }
+            if (entity is null) return null;
 
             return new Page
             {

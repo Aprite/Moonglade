@@ -1,11 +1,9 @@
-﻿using System;
-using System.IO;
+﻿using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using Moonglade.Caching;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
-using Moonglade.Model;
 
 namespace Moonglade.Web.Controllers
 {
@@ -13,68 +11,30 @@ namespace Moonglade.Web.Controllers
     {
         private readonly SearchService _searchService;
 
-        public SearchController(
-            ILogger<SearchController> logger,
-            SearchService searchService)
-            : base(logger)
+        public SearchController(SearchService searchService)
         {
             _searchService = searchService;
         }
 
         [Route("opensearch")]
-        public async Task<IActionResult> OpenSearch()
+        [ResponseCache(Duration = 3600)]
+        public async Task<IActionResult> OpenSearch([FromServices] IBlogConfig blogConfig)
         {
-            var openSearchDataFile = Path.Join(DataDirectory, Constants.OpenSearchFileName);
-            if (!System.IO.File.Exists(openSearchDataFile))
-            {
-                Logger.LogInformation($"OpenSearch file not found, writing new file on {openSearchDataFile}");
-
-                await _searchService.WriteOpenSearchFileAsync(RootUrl, DataDirectory);
-                if (!System.IO.File.Exists(openSearchDataFile))
-                {
-                    Logger.LogError("OpenSearch file still not found, what the heck?!");
-                    return NotFound();
-                }
-            }
-
-            if (System.IO.File.Exists(openSearchDataFile))
-            {
-                return PhysicalFile(openSearchDataFile, "text/xml");
-            }
-
-            return NotFound();
+            var bytes = await _searchService.GetOpenSearchStreamArray(ResolveRootUrl(blogConfig, true));
+            var xmlContent = Encoding.UTF8.GetString(bytes);
+            return Content(xmlContent, "text/xml");
         }
 
         [Route("sitemap.xml")]
-        public async Task<IActionResult> SiteMap([FromServices] IBlogConfig blogConfig)
+        public async Task<IActionResult> SiteMap([FromServices] IBlogConfig blogConfig, [FromServices] IBlogCache cache)
         {
-            var siteMapFile = Path.Join(DataDirectory, Constants.SiteMapFileName);
-            if (!System.IO.File.Exists(siteMapFile))
+            return await cache.GetOrCreateAsync(CacheDivision.General, "sitemap", async entry =>
             {
-                Logger.LogInformation($"SiteMap file not found, writing new file on {siteMapFile}");
-
-                var url = RootUrl;
-                var canonicalUrl = blogConfig.GeneralSettings.CanonicalPrefix;
-                if (!string.IsNullOrWhiteSpace(canonicalUrl))
-                {
-                    url = canonicalUrl;
-                }
-
-                await _searchService.WriteSiteMapFileAsync(url, DataDirectory);
-
-                if (!System.IO.File.Exists(siteMapFile))
-                {
-                    Logger.LogError("SiteMap file still not found, what the heck?!");
-                    return NotFound();
-                }
-            }
-
-            if (System.IO.File.Exists(siteMapFile))
-            {
-                return PhysicalFile(siteMapFile, "text/xml");
-            }
-
-            return NotFound();
+                var url = ResolveRootUrl(blogConfig);
+                var bytes = await _searchService.GetSiteMapStreamArrayAsync(url);
+                var xmlContent = Encoding.UTF8.GetString(bytes);
+                return Content(xmlContent, "text/xml");
+            });
         }
 
         [HttpPost("search")]
@@ -82,32 +42,21 @@ namespace Moonglade.Web.Controllers
         {
             return !string.IsNullOrWhiteSpace(term) ?
                 RedirectToAction(nameof(SearchGet), new { term }) :
-                RedirectToAction("Index", "Post");
+                RedirectToAction("Index", "Home");
         }
 
         [HttpGet("search/{term}")]
         public async Task<IActionResult> SearchGet(string term)
         {
-            try
+            if (string.IsNullOrWhiteSpace(term))
             {
-                if (string.IsNullOrWhiteSpace(term))
-                {
-                    return RedirectToAction("Index", "Post");
-                }
-
-                Logger.LogInformation("Searching post for keyword: " + term);
-
-                ViewBag.TitlePrefix = term;
-
-                var posts = await _searchService.SearchAsync(term);
-                return View("Index", posts);
+                return RedirectToAction("Index", "Home");
             }
-            catch (Exception e)
-            {
-                Logger.LogError(e, e.Message);
-                SetFriendlyErrorMessage();
-                return View("Index");
-            }
+
+            ViewBag.TitlePrefix = term;
+
+            var posts = await _searchService.SearchAsync(term);
+            return View(posts);
         }
     }
 }

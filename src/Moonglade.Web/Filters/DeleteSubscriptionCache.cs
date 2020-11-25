@@ -1,40 +1,33 @@
 ﻿using System;
-using System.IO;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
-using Moonglade.Model;
+using Moonglade.Caching;
 
 namespace Moonglade.Web.Filters
 {
     public class DeleteSubscriptionCache : ActionFilterAttribute
     {
         protected readonly ILogger<DeleteSubscriptionCache> Logger;
+        private readonly IBlogCache _cache;
 
-        public DeleteSubscriptionCache(ILogger<DeleteSubscriptionCache> logger)
+        public DeleteSubscriptionCache(ILogger<DeleteSubscriptionCache> logger, IBlogCache cache)
         {
             Logger = logger;
+            _cache = cache;
         }
 
         public override void OnActionExecuted(ActionExecutedContext context)
         {
             base.OnActionExecuted(context);
-            DeleteSubscriptionFiles();
-        }
-
-        private void DeleteSubscriptionFiles()
-        {
             try
             {
-                var path = Path.Join($"{AppDomain.CurrentDomain.GetData(Constants.DataDirectory)}", "feed");
-                var files = Directory.GetFiles(path);
-                foreach (var file in files)
-                {
-                    File.Delete(file);
-                }
+                _cache.Remove(CacheDivision.General, "rss");
+                _cache.Remove(CacheDivision.General, "atom");
+                _cache.Remove(CacheDivision.RssCategory);
             }
             catch (Exception e)
             {
-                Logger.LogError(e, "Error Delete Subscription Files");
+                Logger.LogError(e, "Error delete subscription cache");
             }
         }
     }

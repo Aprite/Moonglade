@@ -8,7 +8,6 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Xml;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Data.Entities;
@@ -21,17 +20,18 @@ namespace Moonglade.Core
 {
     public class SearchService : BlogService
     {
+        private readonly AppSettings _settings;
         private readonly IRepository<PostEntity> _postRepo;
         private readonly IRepository<PageEntity> _pageRepo;
         private readonly IBlogConfig _blogConfig;
 
         public SearchService(
-            ILogger<PostService> logger,
             IOptions<AppSettings> settings,
             IRepository<PostEntity> postRepo,
             IBlogConfig blogConfig,
-            IRepository<PageEntity> pageRepo) : base(logger, settings)
+            IRepository<PageEntity> pageRepo)
         {
+            _settings = settings.Value;
             _postRepo = postRepo;
             _blogConfig = blogConfig;
             _pageRepo = pageRepo;
@@ -62,14 +62,11 @@ namespace Moonglade.Core
             return resultList;
         }
 
-        public async Task WriteOpenSearchFileAsync(string siteRootUrl, string siteDataDirectory)
+        public async Task<byte[]> GetOpenSearchStreamArray(string siteRootUrl)
         {
-            var openSearchDataFile = Path.Join(siteDataDirectory, Constants.OpenSearchFileName);
-
-            await using var fs = new FileStream(openSearchDataFile, FileMode.Create,
-                FileAccess.Write, FileShare.None, 4096, true);
-            var writerSettings = new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true, Async = true };
-            using (var writer = XmlWriter.Create(fs, writerSettings))
+            await using var ms = new MemoryStream();
+            var writerSettings = new XmlWriterSettings { Encoding = Encoding.UTF8, Async = true };
+            await using (var writer = XmlWriter.Create(ms, writerSettings))
             {
                 await writer.WriteStartDocumentAsync();
                 writer.WriteStartElement("OpenSearchDescription", "http://a9.com/-/spec/opensearch/1.1/");
@@ -82,29 +79,28 @@ namespace Moonglade.Core
                 writer.WriteAttributeString("height", "16");
                 writer.WriteAttributeString("width", "16");
                 writer.WriteAttributeString("type", "image/vnd.microsoft.icon");
-                writer.WriteValue($"{siteRootUrl}/favicon.ico");
+                writer.WriteValue($"{siteRootUrl.TrimEnd('/')}/favicon.ico");
                 await writer.WriteEndElementAsync();
 
                 writer.WriteStartElement("Url");
                 writer.WriteAttributeString("type", "text/html");
-                writer.WriteAttributeString("template", $"{siteRootUrl}/search/{{searchTerms}}");
+                writer.WriteAttributeString("template", $"{siteRootUrl.TrimEnd('/')}/search/{{searchTerms}}");
                 await writer.WriteEndElementAsync();
 
                 await writer.WriteEndElementAsync();
             }
-            await fs.FlushAsync();
+            await ms.FlushAsync();
+            return ms.ToArray();
         }
 
-        public async Task WriteSiteMapFileAsync(string siteRootUrl, string siteDataDirectory)
+        public async Task<byte[]> GetSiteMapStreamArrayAsync(string siteRootUrl)
         {
-            var siteMapFile = Path.Join(siteDataDirectory, Constants.SiteMapFileName);
-            await using var fs = new FileStream(siteMapFile, FileMode.Create,
-               FileAccess.Write, FileShare.None, 4096, true);
-            var writerSettings = new XmlWriterSettings { Encoding = Encoding.UTF8, Indent = true, Async = true };
-            using (var writer = XmlWriter.Create(fs, writerSettings))
+            await using var ms = new MemoryStream();
+            var writerSettings = new XmlWriterSettings { Encoding = Encoding.UTF8, Async = true };
+            await using (var writer = XmlWriter.Create(ms, writerSettings))
             {
                 await writer.WriteStartDocumentAsync();
-                writer.WriteStartElement("urlset", AppSettings.SiteMap.UrlSetNamespace);
+                writer.WriteStartElement("urlset", _settings.SiteMap.UrlSetNamespace);
 
                 // Posts
                 var spec = new PostSitePageSpec();
@@ -121,7 +117,7 @@ namespace Moonglade.Core
                     writer.WriteStartElement("url");
                     writer.WriteElementString("loc", $"{siteRootUrl}/post/{pubDate.Year}/{pubDate.Month}/{pubDate.Day}/{item.Slug.ToLower()}");
                     writer.WriteElementString("lastmod", pubDate.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                    writer.WriteElementString("changefreq", AppSettings.SiteMap.ChangeFreq["Posts"]);
+                    writer.WriteElementString("changefreq", _settings.SiteMap.ChangeFreq["Posts"]);
                     await writer.WriteEndElementAsync();
                 }
 
@@ -138,7 +134,7 @@ namespace Moonglade.Core
                     writer.WriteStartElement("url");
                     writer.WriteElementString("loc", $"{siteRootUrl}/page/{item.Slug.ToLower()}");
                     writer.WriteElementString("lastmod", item.CreateOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                    writer.WriteElementString("changefreq", AppSettings.SiteMap.ChangeFreq["Pages"]);
+                    writer.WriteElementString("changefreq", _settings.SiteMap.ChangeFreq["Pages"]);
                     await writer.WriteEndElementAsync();
                 }
 
@@ -146,19 +142,20 @@ namespace Moonglade.Core
                 writer.WriteStartElement("url");
                 writer.WriteElementString("loc", $"{siteRootUrl}/tags");
                 writer.WriteElementString("lastmod", DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                writer.WriteElementString("changefreq", AppSettings.SiteMap.ChangeFreq["Default"]);
+                writer.WriteElementString("changefreq", _settings.SiteMap.ChangeFreq["Default"]);
                 await writer.WriteEndElementAsync();
 
                 // Archive
                 writer.WriteStartElement("url");
                 writer.WriteElementString("loc", $"{siteRootUrl}/archive");
                 writer.WriteElementString("lastmod", DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
-                writer.WriteElementString("changefreq", AppSettings.SiteMap.ChangeFreq["Default"]);
+                writer.WriteElementString("changefreq", _settings.SiteMap.ChangeFreq["Default"]);
                 await writer.WriteEndElementAsync();
 
                 await writer.WriteEndElementAsync();
             }
-            await fs.FlushAsync();
+            await ms.FlushAsync();
+            return ms.ToArray();
         }
 
         private IQueryable<PostEntity> SearchByKeyword(string keyword)

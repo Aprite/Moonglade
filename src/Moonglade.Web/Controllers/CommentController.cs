@@ -1,36 +1,37 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 using Edi.Captcha;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Logging;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Core.Notification;
 using Moonglade.Model;
 using Moonglade.Web.Models;
-using X.PagedList;
 
 namespace Moonglade.Web.Controllers
 {
-    [Route("comment")]
-    public class CommentController : BlogController
+    [Authorize]
+    [ApiController]
+    [Route("api/[controller]")]
+    public class CommentController : ControllerBase
     {
         #region Private Fields
 
         private readonly CommentService _commentService;
         private readonly IBlogNotificationClient _notificationClient;
         private readonly IBlogConfig _blogConfig;
+        private bool DNT => (bool)HttpContext.Items["DNT"];
 
         #endregion
 
         public CommentController(
-            ILogger<CommentController> logger,
             CommentService commentService,
             IBlogConfig blogConfig,
             IBlogNotificationClient notificationClient = null)
-            : base(logger)
         {
             _blogConfig = blogConfig;
 
@@ -38,92 +39,91 @@ namespace Moonglade.Web.Controllers
             _notificationClient = notificationClient;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> NewComment(
-            PostSlugViewModelWrapper model, [FromServices] ISessionBasedCaptcha captcha)
+        [HttpPost("{postId:guid}")]
+        [AllowAnonymous]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status201Created)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        [ProducesResponseType(StatusCodes.Status409Conflict)]
+        public async Task<IActionResult> NewComment(Guid postId, NewCommentModel model, [FromServices] ISessionBasedCaptcha captcha)
         {
-            try
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
+
+            if (!captcha.ValidateCaptchaCode(model.CaptchaCode, HttpContext.Session))
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
-                if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
+                ModelState.AddModelError(nameof(model.CaptchaCode), "Wrong Captcha Code");
+                return Conflict(ModelState);
+            }
 
-                if (!captcha.ValidateCaptchaCode(model.NewCommentViewModel.CaptchaCode, HttpContext.Session))
-                {
-                    ModelState.AddModelError(nameof(model.NewCommentViewModel.CaptchaCode), "Wrong Captcha Code");
-                    return Conflict(ModelState);
-                }
+            var response = await _commentService.CreateAsync(new CommentRequest(postId)
+            {
+                Username = model.Username,
+                Content = model.Content,
+                Email = model.Email,
+                IpAddress = DNT ? "N/A" : HttpContext.Connection.RemoteIpAddress.ToString()
+            });
 
-                var comment = model.NewCommentViewModel;
-                var response = await _commentService.CreateAsync(new CommentRequest(comment.PostId)
+            if (_blogConfig.NotificationSettings.SendEmailOnNewComment && _notificationClient is not null)
+            {
+                _ = Task.Run(async () =>
                 {
-                    Username = comment.Username,
-                    Content = comment.Content,
-                    Email = comment.Email,
-                    IpAddress = DNT ? "N/A" : HttpContext.Connection.RemoteIpAddress.ToString()
+                    await _notificationClient.NotifyCommentAsync(response,
+                        s => ContentProcessor.MarkdownToContent(s, ContentProcessor.MarkdownConvertType.Html));
                 });
-
-                if (_blogConfig.NotificationSettings.SendEmailOnNewComment && null != _notificationClient)
-                {
-                    _ = Task.Run(async () =>
-                    {
-                        await _notificationClient.NotifyCommentAsync(response,
-                            s => ContentProcessor.MarkdownToContent(s, ContentProcessor.MarkdownConvertType.Html));
-                    });
-                }
-
-                if (_blogConfig.ContentSettings.RequireCommentReview)
-                {
-                    return Created("moonglade://empty", response);
-                }
-
-                return Ok();
             }
-            catch (Exception e)
+
+            if (_blogConfig.ContentSettings.RequireCommentReview)
             {
-                Logger.LogError(e, "Error NewComment");
-                return ServerError(e.Message);
+                return Created("moonglade://empty", response);
             }
+
+            return Ok();
         }
 
-        #region Management
-
-        [Authorize]
-        [Route("manage")]
-        public async Task<IActionResult> Manage(int page = 1)
-        {
-            const int pageSize = 10;
-            var comments = await _commentService.GetCommentsAsync(pageSize, page);
-            var list =
-                new StaticPagedList<CommentDetailedItem>(comments, page, pageSize, _commentService.Count());
-            return View("~/Views/Admin/ManageComments.cshtml", list);
-        }
-
-        [Authorize]
-        [HttpPost("set-approval-status")]
+        [HttpPost("set-approval-status/{commentId}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> SetApprovalStatus(Guid commentId)
         {
-            await _commentService.ToggleApprovalAsync(new[] { commentId });
-            return Json(commentId);
-        }
-
-        [Authorize]
-        [HttpPost("delete")]
-        public async Task<IActionResult> Delete(Guid[] commentIds)
-        {
-            await _commentService.DeleteAsync(commentIds);
-            return Json(commentIds);
-        }
-
-        [Authorize]
-        [HttpPost("reply")]
-        public async Task<IActionResult> Reply(Guid commentId, string replyContent, [FromServices] LinkGenerator linkGenerator)
-        {
-            if (!_blogConfig.ContentSettings.EnableComments)
+            if (commentId == Guid.Empty)
             {
-                return Forbid();
+                ModelState.AddModelError(nameof(commentId), "value is empty");
+                return BadRequest(ModelState);
             }
 
-            var reply = await _commentService.AddReply(commentId, replyContent);
+            await _commentService.ToggleApprovalAsync(new[] { commentId });
+            return Ok(commentId);
+        }
+
+        [HttpDelete("delete")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> Delete([FromBody] Guid[] commentIds)
+        {
+            if (commentIds.Length == 0)
+            {
+                ModelState.AddModelError(nameof(commentIds), "value is empty");
+                return BadRequest(ModelState);
+            }
+
+            await _commentService.DeleteAsync(commentIds);
+            return Ok(commentIds);
+        }
+
+        [HttpPost("reply")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status403Forbidden)]
+        public async Task<IActionResult> Reply(ReplyRequest request, [FromServices] LinkGenerator linkGenerator)
+        {
+            if (request.CommentId == Guid.Empty) ModelState.AddModelError(nameof(request.CommentId), "value is empty");
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
+
+            var reply = await _commentService.AddReply(request.CommentId, request.ReplyContent);
             if (_blogConfig.NotificationSettings.SendEmailOnCommentReply && !string.IsNullOrWhiteSpace(reply.Email))
             {
                 var postLink = GetPostUrl(linkGenerator, reply.PubDateUtc, reply.Slug);
@@ -133,9 +133,28 @@ namespace Moonglade.Web.Controllers
                 });
             }
 
-            return Json(reply);
+            return Ok(reply);
         }
 
-        #endregion
+        private string GetPostUrl(LinkGenerator linkGenerator, DateTime pubDate, string slug)
+        {
+            var link = linkGenerator.GetUriByAction(HttpContext, "Slug", "Post",
+                new
+                {
+                    year = pubDate.Year,
+                    month = pubDate.Month,
+                    day = pubDate.Day,
+                    slug
+                });
+            return link;
+        }
+    }
+
+    public class ReplyRequest
+    {
+        public Guid CommentId { get; set; }
+
+        [Required]
+        public string ReplyContent { get; set; }
     }
 }

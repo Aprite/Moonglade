@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
@@ -7,16 +8,17 @@ using Microsoft.Extensions.Options;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.ImageStorage;
+using Moonglade.Model;
 using Moonglade.Model.Settings;
 using Moonglade.Web.Controllers;
-using Moonglade.Web.Models;
-using Moonglade.Web.SiteIconGenerator;
 using Moq;
 using NUnit.Framework;
+using SiteIconGenerator;
 
 namespace Moonglade.Tests.Web
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class AssetsControllerTests
     {
         private Mock<ILogger<AssetsController>> _loggerMock;
@@ -48,7 +50,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public async Task TestGetImageAsyncCDN()
+        public async Task GetImage_CDN()
         {
             const string filename = "test.png";
             var ctl = new AssetsController(
@@ -73,8 +75,8 @@ namespace Moonglade.Tests.Web
         [TestCase("<996>.png")]
         [TestCase(":icu.gif")]
         [TestCase("|.jpg")]
-        [Platform(Include = "Win")]
-        public async Task TestGetImageAsyncInvalidFileNames(string filename)
+        //[Platform(Include = "Win")]
+        public async Task GetImage_InvalidFileNames(string filename)
         {
             var ctl = new AssetsController(
                 _loggerMock.Object,
@@ -91,7 +93,7 @@ namespace Moonglade.Tests.Web
         }
 
         [Test]
-        public async Task TestManifest()
+        public async Task Manifest()
         {
             _blogConfigMock.Setup(bc => bc.GeneralSettings).Returns(new Configuration.GeneralSettings
             {

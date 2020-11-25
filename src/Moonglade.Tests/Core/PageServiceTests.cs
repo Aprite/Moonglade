@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 using Moonglade.Core;
 using NUnit.Framework;
 
 namespace Moonglade.Tests.Core
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class PageServiceTests
     {
         [Test]
-        public void TestRemoveScriptTagFromHtml()
+        public void RemoveScriptTagFromHtml()
         {
             var html = @"<p>Microsoft</p><p>Rocks!</p><p>Azure <br /><script>console.info('hey');</script><img src=""a.jpg"" /> The best <span>cloud</span>!</p>";
             var output = PageService.RemoveScriptTagFromHtml(html);

@@ -1,10 +1,9 @@
 ﻿using System;
+using System.Data;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moonglade.Model;
 using Moonglade.Setup;
 
 namespace Moonglade.Web.Middleware
@@ -21,29 +20,28 @@ namespace Moonglade.Web.Middleware
         }
 
         public async Task Invoke(HttpContext httpContext,
-            IConfiguration configuration,
+            IDbConnection dbConnection,
             IHostApplicationLifetime appLifetime,
             ILogger<FirstRunMiddleware> logger)
         {
             var initFlag = AppDomain.CurrentDomain.GetData(Token);
-            if (null != initFlag)
+            if (initFlag is not null)
             {
                 // Don't need to check bool true or false, exists means everything
                 await _next(httpContext);
                 return;
             }
 
-            var conn = configuration.GetConnectionString(Constants.DbConnectionName);
-            var setupHelper = new SetupRunner(conn);
+            var setupHelper = new SetupRunner(dbConnection);
 
             if (!setupHelper.TestDatabaseConnection(exception =>
             {
-                logger.LogCritical(exception, $"Error {nameof(SetupRunner.TestDatabaseConnection)}, connection string: {conn}");
+                logger?.LogCritical(exception, $"Error {nameof(SetupRunner.TestDatabaseConnection)}, connection string: {dbConnection}");
             }))
             {
                 httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
                 await httpContext.Response.WriteAsync("Database connection failed. Please see error log, fix it and RESTART this application.");
-                appLifetime.StopApplication();
+                appLifetime?.StopApplication();
             }
             else
             {

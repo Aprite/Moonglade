@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Diagnostics.CodeAnalysis;
 using Moonglade.Core;
 using NUnit.Framework;
 
 namespace Moonglade.Tests.Core
 {
     [TestFixture]
+    [ExcludeFromCodeCoverage]
     public class MenuServiceTests
     {
         // Valid Urls
@@ -41,7 +40,7 @@ namespace Moonglade.Tests.Core
         [TestCase("javascript:;", ExpectedResult = "#")]
         [TestCase("javascript:while(true){alert('fuck')};", ExpectedResult = "#")]
         [TestCase("blob:https://996.icu/fubao", ExpectedResult = "#")]
-        public string TestSterilizeMenuLink(string rawUrl)
+        public string SterilizeMenuLink(string rawUrl)
         {
             return MenuService.SterilizeMenuLink(rawUrl);
         }
