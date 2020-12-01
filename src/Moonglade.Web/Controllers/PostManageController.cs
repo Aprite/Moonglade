@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -7,7 +6,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Logging;
-using Moonglade.Caching;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Data.Spec;
@@ -42,8 +40,6 @@ namespace Moonglade.Web.Controllers
             _dateTimeResolver = dateTimeResolver;
             _logger = logger;
         }
-
-        #region Management
 
         public async Task<IActionResult> Index()
         {
@@ -277,7 +273,5 @@ namespace Moonglade.Web.Controllers
 
             return View(vm);
         }
-
-        #endregion
     }
 }

@@ -136,10 +136,10 @@ namespace Moonglade.Web
             }
             else
             {
+                app.UseStatusCodePages();
+                app.UseExceptionHandler("/error");
                 app.UseHttpsRedirection();
                 app.UseHsts();
-                app.UseExceptionHandler("/error");
-                app.UseStatusCodePagesWithReExecute("/error", "?statusCode={0}");
             }
 
             app.UseRequestLocalization(new RequestLocalizationOptions

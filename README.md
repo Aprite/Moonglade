@@ -4,8 +4,6 @@
 
 The [.NET](https://dotnet.microsoft.com/) blog system of [edi.wang](https://edi.wang) that runs on [**Microsoft Azure**](https://azure.microsoft.com/en-us/). Enabling most common blogging features including Posts, Comments, Categories, Archive, Tags, Pages and Friendlink.
 
-![image](https://blog.ediwangcdn.com/web-assets/ediwang-azure-arch-v4.png)
-
 ## 📦 Deployment
 
 ### ☁ Full Deploy on Azure (Recommend)
@@ -20,7 +18,7 @@ This diagram shows a recommended full feature Azure deployment for Moonglade. It
 
 ### 🐋 Quick Deploy on Azure with/out Docker 
 
-Follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Deploy-on-Azure-with-out-Docker)
+Follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Deploy-on-Azure)
 
 ### 🐧 Quick Deploy on Linux
 

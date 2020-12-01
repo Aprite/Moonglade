@@ -1,6 +1,5 @@
 # ---------------------------------------------------------------------------------------------------------
 # Quick Start deployment script for running Moonglade on Microsoft Azure
-# ---------------------------------------------------------------------------------------------------------
 # Author: Edi Wang
 # ---------------------------------------------------------------------------------------------------------
 # You need to install Azure CLI and login to Azure before running this script.
@@ -8,38 +7,72 @@
 # Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'
 # Reference: https://docs.microsoft.com/en-us/cli/azure/?view=azure-cli-latest
 
-# Replace with your own values
-$subscriptionName = "Microsoft MVP"
-$rsgName = "Moonglade-Test-RSG"
-$regionName = "East Asia"
-$webAppName = "moonglade-test-web"
-$aspName = "moonglade-test-plan"
-$storageAccountName = "moongladeteststorage"
-$storageContainerName = "moongladetestimages"
-$sqlServerName = "moongladetestsqlsvr"
+param(
+    $subscriptionName = "Microsoft MVP", 
+    $regionName = "East Asia", 
+    [bool] $useLinuxPlanWithDocker = 1, 
+    [bool] $createCDN = 0
+)
+
+# Start script
+$rndNumber = Get-Random -Minimum 100 -Maximum 999
+$rsgName = "moongladersg$rndNumber"
+$webAppName = "moongladeweb$rndNumber"
+$aspName = "moongladeplan$rndNumber"
+$storageAccountName = "moongladestorage$rndNumber"
+$storageContainerName = "moongladeimages$rndNumber"
 $sqlServerUsername = "moonglade"
-$sqlServerPassword = "DotNetM00n8!@d3"
-$sqlDatabaseName = "moonglade-test-db"
-$cdnProfileName = "moonglade-test-cdn"
-[bool] $useLinuxPlanWithDocker = 1
-# TODO: CDN Endpoint, DNS Zone, Application Insight, AAD
+$sqlServerName = "moongladesql$rndNumber"
+$sqlDatabaseName = "moongladedb$rndNumber"
+$cdnProfileName = "moongladecdn$rndNumber"
+$cdnEndpointName = "moongladecep$rndNumber"
+
+function Get-RandomCharacters($length, $characters) {
+    $random = 1..$length | ForEach-Object { Get-Random -Maximum $characters.length }
+    $private:ofs=""
+    return [String]$characters[$random]
+}
+ 
+function Scramble-String([string]$inputString){     
+    $characterArray = $inputString.ToCharArray()   
+    $scrambledStringArray = $characterArray | Get-Random -Count $characterArray.Length     
+    $outputString = -join $scrambledStringArray
+    return $outputString 
+}
+
+$password = Get-RandomCharacters -length 5 -characters 'abcdefghiklmnoprstuvwxyz'
+$password += Get-RandomCharacters -length 1 -characters 'ABCDEFGHKLMNOPRSTUVWXYZ'
+$password += Get-RandomCharacters -length 1 -characters '1234567890'
+$password += Get-RandomCharacters -length 1 -characters '!$%&@#'
+$password = Scramble-String $password
+
+$sqlServerPassword = $password
+Write-Host "SQL Server Password: $sqlServerPassword" -ForegroundColor Yellow
 
 function Check-Command($cmdname) {
     return [bool](Get-Command -Name $cmdname -ErrorAction SilentlyContinue)
 }
 
-if(Check-Command -cmdname 'az') {
-    Write-Host "Azure CLI is found on your machine. If something blow up, please check update for Azure CLI." -ForegroundColor Yellow
-    az --version
+if (Check-Command -cmdname 'az') {
+    Write-Host "Azure CLI is found..."
 }
 else {
     Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi; Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet'
-    az login
+    Write-Host "Please run 'az-login' and re-execute this script"
+    return
 }
 
 # Confirmation
-Write-Host "Your Moonglade will be deployed to [$rsgName] in [$regionName] under Azure subscription [$subscriptionName]. Please confirm before continue."
-Read-Host -Prompt "Press [ENTER] to continue"
+Write-Host ""
+Write-Host "Your Moonglade will be deployed to [$rsgName] in [$regionName] under Azure subscription [$subscriptionName]. Please confirm before continue." -ForegroundColor Green
+if ($useLinuxPlanWithDocker) {
+    Write-Host "+ Linux App Service Plan with Docker" -ForegroundColor Cyan
+}
+if ($createCDN) {
+    Write-Host "+ CDN (10 minutes to propagate)" -ForegroundColor Cyan
+}
+
+Read-Host -Prompt "Press [ENTER] to continue, [CTRL + C] to cancel"
 
 # Select Subscription
 az account set --subscription $subscriptionName
@@ -60,7 +93,7 @@ $planCheck = az appservice plan list --query "[?name=='$aspName']" | ConvertFrom
 $planExists = $planCheck.Length -gt 0
 if (!$planExists) {
     Write-Host "Creating App Service Plan"
-    if ($useLinuxPlanWithDocker){
+    if ($useLinuxPlanWithDocker) {
         az appservice plan create -n $aspName -g $rsgName --is-linux --sku S1 --location $regionName
     }
     else {
@@ -110,6 +143,22 @@ if (!$storageContainerExists.exists) {
     az storage container create --name $storageContainerName --connection-string $storageConn.connectionString --public-access container
 }
 
+if ($createCDN) {
+    # CDN
+    Write-Host ""
+    Write-Host "Preparing CDN" -ForegroundColor Green
+    $cdnProfileCheck = az cdn profile list -g $rsgName --query "[?name=='$cdnProfileName']" | ConvertFrom-Json
+    $cdnProfileExists = $cdnProfileCheck.Length -gt 0
+    if (!$cdnProfileExists) {
+        Write-Host "Creating CDN Profile"
+        az cdn profile create --name $cdnProfileName --resource-group $rsgName --location $regionName --sku Standard_Microsoft
+
+        Write-Host "Creating CDN Endpoint"
+        $storageOrigion = "$storageAccountName.blob.core.windows.net"
+        az cdn endpoint create -g $rsgName -n $cdnEndpointName --profile-name $cdnProfileName --origin $storageOrigion --origin-host-header $storageOrigion --enable-compression
+    }
+}
+
 # Azure SQL
 Write-Host ""
 Write-Host "Preparing Azure SQL" -ForegroundColor Green
@@ -128,22 +177,7 @@ $sqlDbCheck = az sql db list --resource-group $rsgName --server $sqlServerName -
 $sqlDbExists = $sqlDbCheck.Length -gt 0
 if (!$sqlDbExists) {
     Write-Host "Creating SQL Database"
-    az sql db create --resource-group $rsgName --server $sqlServerName --name $sqlDatabaseName --service-objective S0
-}
-
-# CDN
-Write-Host ""
-Write-Host "Preparing CDN" -ForegroundColor Green
-$cdnProfileCheck = az cdn profile list -g $rsgName --query "[?name=='$cdnProfileName']" | ConvertFrom-Json
-$cdnProfileExists = $cdnProfileCheck.Length -gt 0
-if (!$cdnProfileExists) {
-    Write-Host "Creating CDN Profile"
-    az cdn profile create --name $cdnProfileName --resource-group $rsgName --location $regionName --sku Standard_Microsoft
-
-    # Write-Host "Creating CDN Endpoint"
-    # $storageUrl = az storage blob url --connection-string $storageConn --container-name $storageContainerName --name "dummy"
-    # $storageOrigion = $storageUrl.Replace("https://", "").Replace("/$storageContainerName/dummy", "");
-    # az cdn endpoint create -g $rsgName -n endpoint --profile-name $cdnProfileName --origin-host-header $storageOrigion --enable-compression
+    az sql db create --resource-group $rsgName --server $sqlServerName --name $sqlDatabaseName --service-objective S0 --backup-storage-redundancy Local
 }
 
 # Configuration Update
@@ -156,17 +190,30 @@ $sqlConnStr = $sqlConnStrTemplate.Replace("<username>", $sqlServerUsername).Repl
 az webapp config connection-string set -g $rsgName -n $webAppName -t SQLAzure --settings MoongladeDatabase=$sqlConnStr
 
 Write-Host "Adding Blob Storage Connection String"
+$scon = $storageConn.connectionString
 if ($useLinuxPlanWithDocker) {
-    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__AzureStorageSettings__ConnectionString=$storageConn
+    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__Provider=azurestorage
+    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__AzureStorageSettings__ConnectionString=$scon
     az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__AzureStorageSettings__ContainerName=$storageContainerName
 }
 else {
-    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:AzureStorageSettings:ConnectionString=$storageConn
+    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:Provider=azurestorage
+    az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:AzureStorageSettings:ConnectionString=$scon
     az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:AzureStorageSettings:ContainerName=$storageContainerName
 }
 
-
-Write-Host "Due to Edi doen't know how to associate CDN Endpoint to Blob Storage in Azure CLI, pleae go to Azure Portal and create a CDN Endpoint yourself..." -ForegroundColor Green
+if ($createCDN) {
+    if ($useLinuxPlanWithDocker){
+        az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__CDNSettings__EnableCDNRedirect=true
+        az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage__CDNSettings__CDNEndpoint="https://$cdnEndpointName.azureedge.net/$storageContainerName"
+    }
+    else{
+        az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:CDNSettings:EnableCDNRedirect=true
+        az webapp config appsettings set -g $rsgName -n $webAppName --settings ImageStorage:CDNSettings:CDNEndpoint="https://$cdnEndpointName.azureedge.net/$storageContainerName"
+    }
+    
+    Write-Host "It can take up to 10 minutes for endpoint '$cdnEndpointName.azureedge.net' settings to propagate." -ForegroundColor Yellow
+}
 
 if ($useLinuxPlanWithDocker) {
     Read-Host -Prompt "Setup is done, you should be able to run Moonglade on '$webAppUrl' now, press [ENTER] to exit."
