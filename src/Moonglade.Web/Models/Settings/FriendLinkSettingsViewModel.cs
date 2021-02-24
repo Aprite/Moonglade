@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using Moonglade.FriendLink;
 
 namespace Moonglade.Web.Models.Settings
 {
@@ -9,11 +10,11 @@ namespace Moonglade.Web.Models.Settings
 
         public FriendLinkEditViewModel FriendLinkEditViewModel { get; set; }
 
-        public IReadOnlyList<Model.FriendLink> FriendLinks { get; set; }
+        public IReadOnlyList<Link> FriendLinks { get; set; }
 
         public FriendLinkSettingsViewModelWrap()
         {
-            FriendLinkEditViewModel = new FriendLinkEditViewModel();
+            FriendLinkEditViewModel = new();
         }
     }
 

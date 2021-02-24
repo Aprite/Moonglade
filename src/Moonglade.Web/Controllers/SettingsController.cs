@@ -4,24 +4,27 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using DateTimeOps;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Microsoft.FeatureManagement.Mvc;
 using Moonglade.Auditing;
+using Moonglade.Auth;
 using Moonglade.Caching;
+using Moonglade.Configuration;
 using Moonglade.Configuration.Abstraction;
-using Moonglade.Core;
-using Moonglade.Core.Notification;
+using Moonglade.Configuration.Settings;
 using Moonglade.DataPorting;
-using Moonglade.DateTimeOps;
-using Moonglade.Model.Settings;
+using Moonglade.FriendLink;
+using Moonglade.Notification.Client;
 using Moonglade.Setup;
+using Moonglade.Utils;
 using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 using Moonglade.Web.Models.Settings;
@@ -32,19 +35,21 @@ namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [Route("admin/settings")]
-    public class SettingsController : BlogController
+    public class SettingsController : Controller
     {
         #region Private Fields
 
-        private readonly FriendLinkService _friendLinkService;
+        private readonly IFriendLinkService _friendLinkService;
         private readonly IBlogConfig _blogConfig;
         private readonly IBlogAudit _blogAudit;
         private readonly ILogger<SettingsController> _logger;
 
+        private static string SiteIconDirectory => Path.Join(AppDomain.CurrentDomain.GetData("DataDirectory")?.ToString(), "siteicons");
+
         #endregion
 
         public SettingsController(
-            FriendLinkService friendLinkService,
+            IFriendLinkService friendLinkService,
             IBlogConfig blogConfig,
             IBlogAudit blogAudit,
             ILogger<SettingsController> logger)
@@ -68,6 +73,7 @@ namespace Moonglade.Web.Controllers
                 SiteTitle = _blogConfig.GeneralSettings.SiteTitle,
                 Copyright = _blogConfig.GeneralSettings.Copyright,
                 SideBarCustomizedHtmlPitch = _blogConfig.GeneralSettings.SideBarCustomizedHtmlPitch,
+                SideBarOption = _blogConfig.GeneralSettings.SideBarOption.ToString(),
                 FooterCustomizedHtmlPitch = _blogConfig.GeneralSettings.FooterCustomizedHtmlPitch,
                 OwnerName = _blogConfig.GeneralSettings.OwnerName,
                 OwnerDescription = _blogConfig.GeneralSettings.Description,
@@ -92,6 +98,7 @@ namespace Moonglade.Web.Controllers
             _blogConfig.GeneralSettings.Copyright = model.Copyright;
             _blogConfig.GeneralSettings.LogoText = model.LogoText;
             _blogConfig.GeneralSettings.SideBarCustomizedHtmlPitch = model.SideBarCustomizedHtmlPitch;
+            _blogConfig.GeneralSettings.SideBarOption = Enum.Parse<SideBarOption>(model.SideBarOption);
             _blogConfig.GeneralSettings.FooterCustomizedHtmlPitch = model.FooterCustomizedHtmlPitch;
             _blogConfig.GeneralSettings.TimeZoneUtcOffset = dateTimeResolver.GetTimeSpanByZoneId(model.SelectedTimeZoneId).ToString();
             _blogConfig.GeneralSettings.TimeZoneId = model.SelectedTimeZoneId;
@@ -101,12 +108,10 @@ namespace Moonglade.Web.Controllers
             _blogConfig.GeneralSettings.ShortDescription = model.OwnerShortDescription;
             _blogConfig.GeneralSettings.AutoDarkLightTheme = model.AutoDarkLightTheme;
 
-            await _blogConfig.SaveConfigurationAsync(_blogConfig.GeneralSettings);
-            _blogConfig.RequireRefresh();
+            await _blogConfig.SaveAsync(_blogConfig.GeneralSettings);
 
             AppDomain.CurrentDomain.SetData("CurrentThemeColor", null);
 
-            _logger.LogInformation($"User '{User.Identity.Name}' updated GeneralSettings");
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "General Settings updated.");
 
             return Ok();
@@ -121,6 +126,7 @@ namespace Moonglade.Web.Controllers
                 EnableComments = _blogConfig.ContentSettings.EnableComments,
                 RequireCommentReview = _blogConfig.ContentSettings.RequireCommentReview,
                 EnableWordFilter = _blogConfig.ContentSettings.EnableWordFilter,
+                WordFilterMode = _blogConfig.ContentSettings.WordFilterMode.ToString(),
                 UseFriendlyNotFoundImage = _blogConfig.ContentSettings.UseFriendlyNotFoundImage,
                 PostListPageSize = _blogConfig.ContentSettings.PostListPageSize,
                 HotTagAmount = _blogConfig.ContentSettings.HotTagAmount,
@@ -143,6 +149,7 @@ namespace Moonglade.Web.Controllers
             _blogConfig.ContentSettings.EnableComments = model.EnableComments;
             _blogConfig.ContentSettings.RequireCommentReview = model.RequireCommentReview;
             _blogConfig.ContentSettings.EnableWordFilter = model.EnableWordFilter;
+            _blogConfig.ContentSettings.WordFilterMode = Enum.Parse<WordFilterMode>(model.WordFilterMode);
             _blogConfig.ContentSettings.UseFriendlyNotFoundImage = model.UseFriendlyNotFoundImage;
             _blogConfig.ContentSettings.PostListPageSize = model.PostListPageSize;
             _blogConfig.ContentSettings.HotTagAmount = model.HotTagAmount;
@@ -153,10 +160,7 @@ namespace Moonglade.Web.Controllers
             _blogConfig.ContentSettings.PostFooterHtmlPitch = model.PostFooterHtmlPitch;
             _blogConfig.ContentSettings.DefaultLangCode = model.DefaultLangCode;
 
-            await _blogConfig.SaveConfigurationAsync(_blogConfig.ContentSettings);
-            _blogConfig.RequireRefresh();
-
-            _logger.LogInformation($"User '{User.Identity.Name}' updated ContentSettings");
+            await _blogConfig.SaveAsync(_blogConfig.ContentSettings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedContent, "Content Settings updated.");
 
             return Ok();
@@ -191,10 +195,7 @@ namespace Moonglade.Web.Controllers
             settings.SendEmailOnCommentReply = model.SendEmailOnCommentReply;
             settings.SendEmailOnNewComment = model.SendEmailOnNewComment;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
-            _logger.LogInformation($"User '{User.Identity.Name}' updated EmailSettings");
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedNotification, "Notification Settings updated.");
 
             return Ok();
@@ -242,10 +243,7 @@ namespace Moonglade.Web.Controllers
             settings.RssTitle = model.RssTitle;
             settings.UseFullContent = model.UseFullContent;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
-            _logger.LogInformation($"User '{User.Identity.Name}' updated FeedSettings");
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedSubscription, "Subscription Settings updated.");
 
             return Ok();
@@ -281,10 +279,7 @@ namespace Moonglade.Web.Controllers
             settings.FontSize = model.FontSize;
             settings.WatermarkText = model.WatermarkText;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
-            _logger.LogInformation($"User '{User.Identity.Name}' updated WatermarkSettings");
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedWatermark, "Watermark Settings updated.");
 
             return Ok();
@@ -300,7 +295,7 @@ namespace Moonglade.Web.Controllers
             var links = await _friendLinkService.GetAllAsync();
             var vm = new FriendLinkSettingsViewModelWrap
             {
-                FriendLinkSettingsViewModel = new FriendLinkSettingsViewModel
+                FriendLinkSettingsViewModel = new()
                 {
                     ShowFriendLinksSection = _blogConfig.FriendLinksSettings.ShowFriendLinksSection
                 },
@@ -311,15 +306,14 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("friendlink")]
-        public async Task<IActionResult> FriendLink(FriendLinkSettingsViewModel model)
+        public async Task<IActionResult> FriendLink(FriendLinkSettingsViewModelWrap model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            //if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var fs = _blogConfig.FriendLinksSettings;
-            fs.ShowFriendLinksSection = model.ShowFriendLinksSection;
+            fs.ShowFriendLinksSection = model.FriendLinkSettingsViewModel.ShowFriendLinksSection;
 
-            await _blogConfig.SaveConfigurationAsync(fs);
-            _blogConfig.RequireRefresh();
+            await _blogConfig.SaveAsync(fs);
             return Ok();
         }
 
@@ -352,7 +346,7 @@ namespace Moonglade.Web.Controllers
             catch (Exception e)
             {
                 ModelState.AddModelError(string.Empty, e.Message);
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -383,13 +377,13 @@ namespace Moonglade.Web.Controllers
         #region User Avatar
 
         [HttpPost("set-blogger-avatar")]
-        [TypeFilter(typeof(DeleteBlogCache), Arguments = new object[] { CacheDivision.General, "avatar" })]
+        [TypeFilter(typeof(ClearBlogCache), Arguments = new object[] { CacheDivision.General, "avatar" })]
         public async Task<IActionResult> SetBloggerAvatar(string base64Img)
         {
             try
             {
                 base64Img = base64Img.Trim();
-                if (!Utils.TryParseBase64(base64Img, out var base64Chars))
+                if (!Helper.TryParseBase64(base64Img, out var base64Chars))
                 {
                     _logger.LogWarning("Bad base64 is used when setting avatar.");
                     return Conflict("Bad base64 data");
@@ -406,14 +400,11 @@ namespace Moonglade.Web.Controllers
                 catch (Exception e)
                 {
                     _logger.LogError("Invalid base64img Image", e);
-                    return ServerError(e.Message);
+                    return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
                 }
 
                 _blogConfig.GeneralSettings.AvatarBase64 = base64Img;
-                await _blogConfig.SaveConfigurationAsync(_blogConfig.GeneralSettings);
-                _blogConfig.RequireRefresh();
-
-                _logger.LogInformation($"User '{User.Identity.Name}' updated avatar.");
+                await _blogConfig.SaveAsync(_blogConfig.GeneralSettings);
                 await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "Avatar updated.");
 
                 return Json(true);
@@ -421,7 +412,7 @@ namespace Moonglade.Web.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, "Error uploading avatar image.");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -435,7 +426,7 @@ namespace Moonglade.Web.Controllers
             try
             {
                 base64Img = base64Img.Trim();
-                if (!Utils.TryParseBase64(base64Img, out var base64Chars))
+                if (!Helper.TryParseBase64(base64Img, out var base64Chars))
                 {
                     _logger.LogWarning("Bad base64 is used when setting site icon.");
                     return Conflict("Bad base64 data");
@@ -449,19 +440,17 @@ namespace Moonglade.Web.Controllers
                 catch (Exception e)
                 {
                     _logger.LogError(e.Message, e);
-                    return ServerError(e.Message);
+                    return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
                 }
 
                 _blogConfig.GeneralSettings.SiteIconBase64 = base64Img;
-                await _blogConfig.SaveConfigurationAsync(_blogConfig.GeneralSettings);
-                _blogConfig.RequireRefresh();
+                await _blogConfig.SaveAsync(_blogConfig.GeneralSettings);
 
                 if (Directory.Exists(SiteIconDirectory))
                 {
                     Directory.Delete(SiteIconDirectory, true);
                 }
 
-                _logger.LogInformation($"User '{User.Identity.Name}' updated site icon.");
                 await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedGeneral, "Site icon updated.");
 
                 return Json(true);
@@ -469,7 +458,7 @@ namespace Moonglade.Web.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, "Error uploading avatar image.");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -507,9 +496,7 @@ namespace Moonglade.Web.Controllers
             settings.EnableOpenGraph = model.EnableOpenGraph;
             settings.EnableWechat = model.EnableWechat;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "Advanced Settings updated.");
             return Ok();
         }
@@ -517,7 +504,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("shutdown")]
         public IActionResult Shutdown([FromServices] IHostApplicationLifetime applicationLifetime)
         {
-            _logger.LogWarning($"Shutdown is requested by '{User.Identity.Name}'.");
+            _logger.LogWarning($"Shutdown is requested by '{User.Identity?.Name}'.");
             applicationLifetime.StopApplication();
             return Accepted();
         }
@@ -525,7 +512,7 @@ namespace Moonglade.Web.Controllers
         [HttpPost("reset")]
         public async Task<IActionResult> Reset([FromServices] IDbConnection dbConnection, [FromServices] IHostApplicationLifetime applicationLifetime)
         {
-            _logger.LogWarning($"System reset is requested by '{User.Identity.Name}', IP: {HttpContext.Connection.RemoteIpAddress}.");
+            _logger.LogWarning($"System reset is requested by '{User.Identity?.Name}', IP: {HttpContext.Connection.RemoteIpAddress}.");
 
             var setupHelper = new SetupRunner(dbConnection);
             setupHelper.ClearData();
@@ -566,9 +553,7 @@ namespace Moonglade.Web.Controllers
             settings.ShowAdminLoginButton = model.ShowAdminLoginButton;
             settings.EnablePostRawEndpoint = model.EnablePostRawEndpoint;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "Security Settings updated.");
             return Ok();
         }
@@ -616,9 +601,7 @@ namespace Moonglade.Web.Controllers
             settings.EnableCustomCss = model.EnableCustomCss;
             settings.CssCode = model.CssCode;
 
-            await _blogConfig.SaveConfigurationAsync(settings);
-            _blogConfig.RequireRefresh();
-
+            await _blogConfig.SaveAsync(settings);
             await _blogAudit.AddAuditEntry(EventType.Settings, AuditEventId.SettingsSavedAdvanced, "Custom Style Sheet Settings updated.");
             return Ok();
         }
@@ -637,8 +620,8 @@ namespace Moonglade.Web.Controllers
 
             var skip = (page - 1) * 20;
 
-            var (Entries, Count) = await _blogAudit.GetAuditEntries(skip, 20);
-            var list = new StaticPagedList<AuditEntry>(Entries, page, 20, Count);
+            var (entries, count) = await _blogAudit.GetAuditEntries(skip, 20);
+            var list = new StaticPagedList<AuditEntry>(entries, page, 20, count);
 
             return View(list);
         }
@@ -662,20 +645,21 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpGet("export/{type}")]
-        public async Task<IActionResult> Export4Download([FromServices] IExportManager expman, ExportDataType type)
+        public async Task<IActionResult> ExportDownload([FromServices] IExportManager expman, ExportDataType type)
         {
             var exportResult = await expman.ExportData(type);
             switch (exportResult.ExportFormat)
             {
                 case ExportFormat.SingleJsonFile:
-                    var bytes = Encoding.UTF8.GetBytes(exportResult.JsonContent);
-
-                    return new FileContentResult(bytes, "application/octet-stream")
+                    return new FileContentResult(exportResult.Content, exportResult.ContentType)
                     {
                         FileDownloadName = $"moonglade-{type.ToString().ToLowerInvariant()}-{DateTime.UtcNow:yyyy-MM-dd-HH-mm-ss}.json"
                     };
+                case ExportFormat.SingleCSVFile:
+                    Response.Headers.Add("Content-Disposition", $"attachment;filename={Path.GetFileName(exportResult.FilePath)}");
+                    return PhysicalFile(exportResult.FilePath, exportResult.ContentType, Path.GetFileName(exportResult.FilePath));
                 case ExportFormat.ZippedJsonFiles:
-                    return PhysicalFile(exportResult.ZipFilePath, "application/zip", Path.GetFileName(exportResult.ZipFilePath));
+                    return PhysicalFile(exportResult.FilePath, exportResult.ContentType, Path.GetFileName(exportResult.FilePath));
                 default:
                     return BadRequest(ModelState);
             }
@@ -710,14 +694,14 @@ namespace Moonglade.Web.Controllers
             }
             catch (Exception e)
             {
-                return ServerError(e.Message);
+                return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
             }
         }
 
         #region Account
 
         [HttpGet("account")]
-        public async Task<IActionResult> AccountSettings([FromServices] LocalAccountService accountService)
+        public async Task<IActionResult> AccountSettings([FromServices] ILocalAccountService accountService)
         {
             var accounts = await accountService.GetAllAsync();
             var vm = new AccountManageViewModel { Accounts = accounts };
@@ -726,7 +710,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("account/create")]
-        public async Task<IActionResult> CreateAccount([FromBody] AccountEditViewModel model, [FromServices] LocalAccountService accountService)
+        public async Task<IActionResult> CreateAccount([FromBody] AccountEditViewModel model, [FromServices] ILocalAccountService accountService)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (accountService.Exist(model.Username))
@@ -740,7 +724,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpDelete("account/{id:guid}")]
-        public async Task<IActionResult> DeleteAccount(Guid id, [FromServices] LocalAccountService accountService)
+        public async Task<IActionResult> DeleteAccount(Guid id, [FromServices] ILocalAccountService accountService)
         {
             if (id == Guid.Empty)
             {
@@ -751,7 +735,7 @@ namespace Moonglade.Web.Controllers
             var uidClaim = User.Claims.FirstOrDefault(c => c.Type == "uid");
             if (null == uidClaim || string.IsNullOrWhiteSpace(uidClaim.Value))
             {
-                return ServerError("Can not get current uid.");
+                return StatusCode(StatusCodes.Status500InternalServerError, "Can not get current uid.");
             }
 
             if (id.ToString() == uidClaim.Value)
@@ -771,7 +755,7 @@ namespace Moonglade.Web.Controllers
 
         [HttpPost("account/{id:guid}/reset-password")]
         public async Task<IActionResult> ResetAccountPassword(
-            Guid id, [FromBody] ResetPasswordRequest request, [FromServices] LocalAccountService accountService)
+            Guid id, [FromBody] ResetPasswordRequest request, [FromServices] ILocalAccountService accountService)
         {
             if (id == Guid.Empty) ModelState.AddModelError(nameof(id), "value is empty");
             if (!ModelState.IsValid) return BadRequest(ModelState);

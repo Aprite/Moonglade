@@ -4,57 +4,32 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moonglade.Caching;
-using Moonglade.Core;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
+using Moonglade.Pages;
 using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 using NUglify;
 
 namespace Moonglade.Web.Controllers
 {
+    [Authorize]
     [Route("page")]
-    public class PageController : BlogController
+    public class PageController : Controller
     {
         private readonly IBlogCache _cache;
-        private readonly PageService _pageService;
-        private readonly AppSettings _settings;
+        private readonly IPageService _pageService;
         private readonly ILogger<PageController> _logger;
 
         public PageController(
-            IOptions<AppSettings> settings,
             IBlogCache cache,
-            PageService pageService,
+            IPageService pageService,
             ILogger<PageController> logger)
         {
-            _settings = settings.Value;
             _cache = cache;
             _pageService = pageService;
             _logger = logger;
         }
 
-        [HttpGet("{slug:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
-        public async Task<IActionResult> Index(string slug)
-        {
-            if (string.IsNullOrWhiteSpace(slug)) return BadRequest();
-
-            var page = await _cache.GetOrCreateAsync(CacheDivision.Page, slug.ToLower(), async entry =>
-            {
-                entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Page"]);
-
-                var p = await _pageService.GetAsync(slug);
-                return p;
-            });
-
-            if (page is null || !page.IsPublished) return NotFound();
-
-            var vm = ToPageViewModel(page);
-            return View(vm);
-        }
-
-        [Authorize]
         [Route("preview/{pageId:guid}")]
         public async Task<IActionResult> Preview(Guid pageId)
         {
@@ -63,11 +38,9 @@ namespace Moonglade.Web.Controllers
 
             ViewBag.IsDraftPreview = true;
 
-            var vm = ToPageViewModel(page);
-            return View("Index", vm);
+            return View("~/Views/Home/Page.cshtml", page);
         }
 
-        [Authorize]
         [HttpGet("manage/create")]
         public IActionResult Create()
         {
@@ -75,7 +48,6 @@ namespace Moonglade.Web.Controllers
             return View("CreateOrEdit", model);
         }
 
-        [Authorize]
         [HttpGet("manage/edit/{id:guid}")]
         public async Task<IActionResult> Edit(Guid id)
         {
@@ -97,9 +69,8 @@ namespace Moonglade.Web.Controllers
             return View("CreateOrEdit", model);
         }
 
-        [Authorize]
         [HttpPost("manage/createoredit")]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
         public async Task<IActionResult> CreateOrEdit(PageEditViewModel model)
         {
             try
@@ -119,7 +90,7 @@ namespace Moonglade.Web.Controllers
                     }
                 }
 
-                var req = new EditPageRequest(model.Id)
+                var req = new UpdatePageRequest
                 {
                     HtmlContent = model.RawHtmlContent,
                     CssContent = model.CssContent,
@@ -132,7 +103,7 @@ namespace Moonglade.Web.Controllers
 
                 var uid = model.Id == Guid.Empty ?
                     await _pageService.CreateAsync(req) :
-                    await _pageService.UpdateAsync(req);
+                    await _pageService.UpdateAsync(model.Id, req);
 
                 _cache.Remove(CacheDivision.Page, req.Slug.ToLower());
 
@@ -146,7 +117,6 @@ namespace Moonglade.Web.Controllers
             }
         }
 
-        [Authorize]
         [HttpDelete("{pageId:guid}/{slug}")]
         public async Task<IActionResult> Delete(Guid pageId, string slug)
         {
@@ -154,28 +124,6 @@ namespace Moonglade.Web.Controllers
 
             _cache.Remove(CacheDivision.Page, slug.ToLower());
             return Ok();
-        }
-
-        private static PageViewModel ToPageViewModel(Page page)
-        {
-            var vm = new PageViewModel
-            {
-                Title = page.Title,
-                RawHtmlContent = page.RawHtmlContent,
-                HideSidebar = page.HideSidebar,
-                MetaDescription = page.MetaDescription
-            };
-
-            if (!string.IsNullOrWhiteSpace(page.CssContent))
-            {
-                var uglifyResult = Uglify.Css(page.CssContent);
-                if (!uglifyResult.HasErrors)
-                {
-                    vm.CSS = uglifyResult.Code;
-                }
-            }
-
-            return vm;
         }
     }
 }

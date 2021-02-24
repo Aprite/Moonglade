@@ -14,6 +14,7 @@ namespace Moonglade.Caching
         Page,
         PostCountCategory,
         PostCountTag,
+        PostCountFeatured,
         RssCategory
     }
 
@@ -40,12 +41,16 @@ namespace Moonglade.Caching
 
         public TItem GetOrCreate<TItem>(CacheDivision division, string key, Func<ICacheEntry, TItem> factory)
         {
+            if (string.IsNullOrWhiteSpace(key)) return default;
+
             AddToDivision(division.ToString(), key);
-            return _memoryCache.GetOrCreate(key, factory);
+            return _memoryCache.GetOrCreate($"{division}-{key}", factory);
         }
 
         public Task<TItem> GetOrCreateAsync<TItem>(CacheDivision division, string key, Func<ICacheEntry, Task<TItem>> factory)
         {
+            if (string.IsNullOrWhiteSpace(key)) return Task.FromResult(default(TItem));
+
             AddToDivision(division.ToString(), key);
             return _memoryCache.GetOrCreateAsync($"{division}-{key}", factory);
         }
@@ -58,7 +63,7 @@ namespace Moonglade.Caching
                 from val in kvp.Value
                 select $"{prefix}-{val}";
 
-            foreach (string key in keys)
+            foreach (var key in keys)
             {
                 _memoryCache.Remove(key);
             }
@@ -69,11 +74,12 @@ namespace Moonglade.Caching
             if (!CacheDivision.ContainsKey(division.ToString())) return;
 
             var cacheKeys = CacheDivision[division.ToString()];
-            if (cacheKeys is null or { Count: <= 0 }) return;
-
-            foreach (string key in cacheKeys)
+            if (cacheKeys.Any())
             {
-                _memoryCache.Remove(key);
+                foreach (var key in cacheKeys)
+                {
+                    _memoryCache.Remove($"{division}-{key}");
+                }
             }
         }
 
@@ -85,8 +91,6 @@ namespace Moonglade.Caching
 
         private void AddToDivision(string divisionKey, string cacheKey)
         {
-            if (string.IsNullOrWhiteSpace(divisionKey) || string.IsNullOrWhiteSpace(cacheKey)) return;
-
             if (!CacheDivision.ContainsKey(divisionKey))
             {
                 CacheDivision.TryAdd(divisionKey, new[] { cacheKey }.ToList());

@@ -3,8 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
 using MySql.Data.MySqlClient;
 using System;
 using System.Collections.Generic;
@@ -19,6 +17,8 @@ namespace Moonglade.Auditing
         private readonly IConfiguration _configuration;
         private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IFeatureManager _featureManager;
+
+        private readonly string _dbName = "MoongladeDatabase";
 
         public BlogAudit(
             ILogger<BlogAudit> logger,
@@ -38,7 +38,7 @@ namespace Moonglade.Auditing
             {
                 if (!await IsAuditLogEnabled()) return;
 
-                (string username, string ipv4) = GetUsernameAndIp();
+                var (username, ipv4) = GetUsernameAndIp();
 
                 // Truncate data so that SQL won't blow up
                 if (message.Length > 256)
@@ -46,7 +46,7 @@ namespace Moonglade.Auditing
                     message = message.Substring(0, 256);
                 }
 
-                string machineName = Environment.MachineName;
+                var machineName = Environment.MachineName;
                 if (machineName.Length > 32)
                 {
                     machineName = machineName.Substring(0, 32);
@@ -54,7 +54,7 @@ namespace Moonglade.Auditing
 
                 var auditEntry = new AuditEntry(eventType, auditEventId, username, ipv4, machineName, message);
 
-                var connStr = _configuration.GetConnectionString(Constants.DbConnectionName);
+                var connStr = _configuration.GetConnectionString(_dbName);
                 await using var conn = new MySqlConnection(connStr);
 
                 var sql = @"INSERT INTO AuditLog(EventId,EventType,EventTimeUtc,WebUsername,IpAddressV4,MachineName,Message)
@@ -71,10 +71,10 @@ namespace Moonglade.Auditing
         public async Task<(IReadOnlyList<AuditEntry> Entries, int Count)> GetAuditEntries(
             int skip, int take, EventType? eventType = null, AuditEventId? eventId = null)
         {
-            var connStr = _configuration.GetConnectionString(Constants.DbConnectionName);
+            var connStr = _configuration.GetConnectionString(_dbName);
             await using var conn = new MySqlConnection(connStr);
 
-            var sql = @"SELECT al.EventId, 
+            const string sql = @"SELECT al.EventId, 
                                    al.EventType, 
                                    al.EventTimeUtc, 
                                    al.Message,
@@ -113,14 +113,14 @@ namespace Moonglade.Auditing
         {
             if (!await IsAuditLogEnabled()) return;
 
-            var connStr = _configuration.GetConnectionString(Constants.DbConnectionName);
+            var connStr = _configuration.GetConnectionString(_dbName);
             await using var conn = new MySqlConnection(connStr);
 
-            var sql = "DELETE FROM AuditLog";
+            const string sql = "DELETE FROM AuditLog";
             await conn.ExecuteAsync(sql);
 
             // Make sure who ever doing this can't get away with it
-            (string username, string ipv4) = GetUsernameAndIp();
+            var (username, ipv4) = GetUsernameAndIp();
             await AddAuditEntry(EventType.General, AuditEventId.ClearedAuditLog, $"Audit log was cleared by '{username}' from '{ipv4}'");
         }
 
@@ -140,7 +140,7 @@ namespace Moonglade.Auditing
 
         private async Task<bool> IsAuditLogEnabled()
         {
-            var flag = await _featureManager.IsEnabledAsync(nameof(FeatureFlags.EnableAudit));
+            var flag = await _featureManager.IsEnabledAsync("EnableAudit");
             return flag;
         }
     }

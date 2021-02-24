@@ -1,5 +1,5 @@
-﻿@using Moonglade.Core
-@model IReadOnlyList<Moonglade.Model.Menu>
+﻿@using Moonglade.Utils
+@model IReadOnlyList<Moonglade.Menus.Menu>
 
 @if (Model.Count > 0)
 {
@@ -7,7 +7,7 @@
     {
         <li id="menu-li-@menuModel.Id" class="nav-item">
             <a id="menu-a-@menuModel.Id"
-               href="@MenuService.SterilizeMenuLink(menuModel.Url)"
+               href="@Helper.SterilizeLink(menuModel.Url)"
                class="nav-link"
                target="@(menuModel.IsOpenInNewTab ? "_blank" : null)">
                 <span class="@menuModel.Icon"></span>

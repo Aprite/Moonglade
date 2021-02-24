@@ -2,7 +2,7 @@
     Layout = "_LayoutAdmin";
 }
 
-@model IReadOnlyList<Moonglade.Model.PageSegment>
+@model IReadOnlyList<Moonglade.Pages.PageSegment>
 
 @section scripts{
     <script>
@@ -30,7 +30,7 @@
     @Html.AntiForgeryToken()
 
     <div class="card-columns card-columns-pages">
-        @foreach (var customPage in Model.OrderByDescending(p => p.CreateOnUtc))
+        @foreach (var customPage in Model.OrderByDescending(p => p.CreateTimeUtc))
         {
             <div class="card mb-4" id="card-@customPage.Id">
                 <div class="card-body">
@@ -39,11 +39,11 @@
                     </h6>
                     <p class="mt-2 h-30px">@customPage.RouteName</p>
                     <small class="text-muted">
-                        @customPage.CreateOnUtc
+                        @customPage.CreateTimeUtc
                     </small>
                 </div>
                 <div class="card-footer">
-                    <a class="btn btn-primary btn-sm btn-edit" asp-controller="Page" asp-action="Edit" asp-route-id="@customPage.Id">
+                    <a class="btn btn-accent btn-sm btn-edit" asp-controller="Page" asp-action="Edit" asp-route-id="@customPage.Id">
                         <span class="icon-pencil"></span>
                     </a>
                     <a class="btn btn-danger btn-sm btn-delete" data-pageid="@customPage.Id" data-slug="@customPage.RouteName" href="javascript:;">

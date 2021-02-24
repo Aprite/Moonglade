@@ -10,12 +10,13 @@ namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
+    [AppendAppVersion]
     [Route("api/[controller]")]
     public class TagsController : ControllerBase
     {
-        private readonly TagService _tagService;
+        private readonly ITagService _tagService;
 
-        public TagsController(TagService tagService)
+        public TagsController(ITagService tagService)
         {
             _tagService = tagService;
         }
@@ -29,7 +30,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("update")]
-        [TypeFilter(typeof(DeletePagingCountCache))]
+        [TypeFilter(typeof(ClearPagingCountCache))]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Update(EditTagRequest request)
@@ -41,7 +42,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpDelete("{tagId}")]
-        [TypeFilter(typeof(DeletePagingCountCache))]
+        [TypeFilter(typeof(ClearPagingCountCache))]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(int tagId)

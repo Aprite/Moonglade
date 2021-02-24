@@ -4,21 +4,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moonglade.Core;
-using Moonglade.Model;
+using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
+    [AppendAppVersion]
     [Route("api/[controller]")]
     public class CategoryController : ControllerBase
     {
-        private readonly CategoryService _categoryService;
+        private readonly ICategoryService _catService;
 
-        public CategoryController(CategoryService categoryService)
+        public CategoryController(ICategoryService catService)
         {
-            _categoryService = categoryService;
+            _catService = catService;
         }
 
         [HttpPost("create")]
@@ -28,15 +29,14 @@ namespace Moonglade.Web.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var request = new CreateCategoryRequest
+            var request = new UpdateCatRequest
             {
                 RouteName = model.RouteName,
                 Note = model.Note,
                 DisplayName = model.DisplayName
             };
 
-            await _categoryService.CreateAsync(request);
-
+            await _catService.CreateAsync(request);
             return Ok(model);
         }
 
@@ -45,7 +45,7 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Edit(Guid id)
         {
-            var cat = await _categoryService.GetAsync(id);
+            var cat = await _catService.GetAsync(id);
             if (null == cat) return NotFound();
 
             var model = new CategoryEditViewModel
@@ -66,15 +66,14 @@ namespace Moonglade.Web.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var request = new EditCategoryRequest(model.Id)
+            var request = new UpdateCatRequest
             {
                 RouteName = model.RouteName,
                 Note = model.Note,
                 DisplayName = model.DisplayName
             };
 
-            await _categoryService.UpdateAsync(request);
-
+            await _catService.UpdateAsync(model.Id, request);
             return Ok(model);
         }
 
@@ -89,8 +88,7 @@ namespace Moonglade.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _categoryService.DeleteAsync(id);
-
+            await _catService.DeleteAsync(id);
             return Ok();
         }
     }

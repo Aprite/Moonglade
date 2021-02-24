@@ -1,4 +1,5 @@
-﻿@using Moonglade.Core
+﻿@using Moonglade.Configuration
+@using Moonglade.Utils
 @inject Microsoft.ApplicationInsights.AspNetCore.JavaScriptSnippet JavaScriptSnippet
 @inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
@@ -8,9 +9,6 @@
 <head>
     <title>
         @(ViewBag?.TitlePrefix)@(null == ViewBag?.TitlePrefix ? string.Empty : " - ")@BlogConfig.GeneralSettings.SiteTitle
-        <environment exclude="Production">
-            (@WebHostEnvironment.EnvironmentName)
-        </environment>
     </title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
@@ -55,19 +53,49 @@
 
     @if (!string.IsNullOrWhiteSpace(BlogConfig.GeneralSettings.CanonicalPrefix))
     {
-        <link rel="canonical" href="@(Utils.ResolveCanonicalUrl(BlogConfig.GeneralSettings.CanonicalPrefix, Context.Request.Path))" />
+        <link rel="canonical" href="@(Helper.ResolveCanonicalUrl(BlogConfig.GeneralSettings.CanonicalPrefix, Context.Request.Path))" />
     }
 
     <link rel="start" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/" />
-    <link rel="alternate" type="application/rss+xml" title="@BlogConfig.FeedSettings.RssTitle" href="~/rss" />
-    <link type="application/opensearchdescription+xml" rel="search" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/opensearch" />
+    <rss title="@BlogConfig.FeedSettings.RssTitle" href="@Url.Action("Rss", "Subscription")" />
+    <feature name="OpenSearch">
+        <opensearch href="/opensearch" title="@BlogConfig.GeneralSettings.SiteTitle" />
+    </feature>
+    <feature name="RSD">
+        <rsd href="/rsd" />
+    </feature>
+    <feature name="Foaf">
+        <foaf href="/foaf.xml" />
+    </feature>
     <partial name="_Favicons" />
-    <link href="~/css/mooglade-css-bundle.min.css" rel="stylesheet" asp-append-version="true" />
+    <environment exclude="Development">
+        <link href="~/css/bundle.min.css" rel="stylesheet" asp-append-version="true" />
+    </environment>
+    <environment include="Development">
+        <link href="~/css/3rd/bootstrap.min.css" rel="stylesheet" />
+        <link href="~/css/3rd/toastr.min.css" rel="stylesheet" />
+        <link href="~/css/src/fonts.css" rel="stylesheet" />
+        <link href="~/css/src/base.css" rel="stylesheet" />
+        <link href="~/css/src/rwd.css" rel="stylesheet" />
+        <link href="~/css/src/navigation.css" rel="stylesheet" />
+        <link href="~/css/src/timeline.css" rel="stylesheet" />
+        <link href="~/css/src/post-slug.css" rel="stylesheet" />
+        <link href="~/css/src/darkmode.css" rel="stylesheet" />
+        <link href="~/css/src/highlighter-custom.css" rel="stylesheet" />
+    </environment>
     <environment exclude="Development">
         <script src="~/js/dist/app-bundle.min.js" asp-append-version="true"></script>
     </environment>
     <environment include="Development">
-        <script src="~/js/dist/app-bundle.js" asp-append-version="true"></script>
+        <script src="~/js/3rd/jquery.min.js"></script>
+        <script src="~/js/3rd/bootstrap.bundle.min.js"></script>
+        <script src="~/js/3rd/jquery.qrcode.min.js"></script>
+        <script src="~/js/3rd/toastr.min.js"></script>
+        <script src="~/js/app/base.js"></script>
+        <script src="~/js/app/postslug.js"></script>
+        <script src="~/js/app/httpService.js"></script>
+        <script src="~/js/app/comments.js"></script>
+        <script src="~/js/app/darklighttheme.js"></script>
     </environment>
     @await RenderSectionAsync("head", false)
     <environment include="Production">
@@ -79,7 +107,7 @@
     <link href="~/css/theme/@BlogConfig.GeneralSettings.ThemeFileName" rel="stylesheet" asp-append-version="true" />
     @if (BlogConfig.CustomStyleSheetSettings.EnableCustomCss)
     {
-        <link href="~/custom.css" rel="stylesheet" asp-append-version="true" />
+        <link href="@Url.Action("CustomCss", "Assets")" rel="stylesheet" asp-append-version="true" />
     }
 </head>
 <body class="@ViewBag.BodyClass">
@@ -97,8 +125,7 @@
                 <div class="collapse navbar-collapse" id="blog-navbar-content">
                     <ul class="navbar-nav mr-auto">
                         <!-- System Nav Menu -->
-                        @if (Settings.Value.SystemNavMenus["Categories"])
-                        {
+                        <feature name="Menu_Categories">
                             <li id="navbar-dropdown-post" class="nav-item dropdown">
                                 <a href="#" class="nav-link dropdown-toggle" role="button" data-toggle="dropdown">
                                     <span class="icon-book"></span>
@@ -106,31 +133,29 @@
                                 </a>
                                 @await Component.InvokeAsync("CategoryList", new { isMenu = true })
                             </li>
-                        }
+                        </feature>
 
-                        @if (Settings.Value.SystemNavMenus["Tags"])
-                        {
+                        <feature name="Menu_Tags">
                             <li class="nav-item">
                                 <a asp-controller="Home" asp-action="Tags" class="nav-link">
                                     <span class="icon-price-tag"></span>
                                     <strong>@Localizer["Tags"]</strong>
                                 </a>
                             </li>
-                        }
+                        </feature>
 
-                        @if (Settings.Value.SystemNavMenus["Archive"])
-                        {
+                        <feature name="Menu_Archive">
                             <li class="nav-item">
                                 <a asp-controller="Home" asp-action="Archive" class="nav-link">
                                     <span class="icon-folder"></span>
                                     <strong>@Localizer["Archive"]</strong>
                                 </a>
                             </li>
-                        }
+                        </feature>
 
                         @await Component.InvokeAsync("Menu")
                     </ul>
-                    <form class="form-inline search-form my-2 my-lg-0" asp-controller="Search" asp-action="Index">
+                    <form class="form-inline search-form my-2 my-lg-0" asp-controller="Search" asp-action="Post">
                         <input id="term"
                                class="form-control bg-transparent mr-sm-2"
                                type="search"
@@ -186,10 +211,19 @@
         {
             <div class="container mt-4 mb-5">
                 <div class="row">
-                    <section class="col-lg-9 col-md-12">
+                    @if (BlogConfig.GeneralSettings.SideBarOption == SideBarOption.Left)
+                    {
+                        <partial name="_Aside" />
+                    }
+
+                    <section class="col-md-12 @(BlogConfig.GeneralSettings.SideBarOption == SideBarOption.Disabled ? null: "col-lg-9")">
                         @RenderBody()
                     </section>
-                    <partial name="_Aside" />
+
+                    @if (BlogConfig.GeneralSettings.SideBarOption == SideBarOption.Right)
+                    {
+                        <partial name="_Aside" />
+                    }
                 </div>
             </div>
         }

@@ -1,7 +1,6 @@
 ﻿@{
     Layout = "_LayoutAdmin";
 }
-
 @model PostEditViewModel
 
 @section scripts{
@@ -19,13 +18,10 @@
                 <script src="~/js/3rd/codemirror-4.inline-attachment.js"></script>
                 <link id="css-simplemde" href="~/css/3rd/simplemde.min.css" rel="stylesheet" />
                 break;
-            case EditorChoice.None:
-            default:
-                break;
         }
     }
 
-<script>
+    <script>
         $(function () {
             postEditor.initEvents();
             var editorMode = '@Settings.Value.Editor';
@@ -36,9 +32,33 @@
                 postEditor.loadMdEditor(".post-content-textarea");
             }
 
+            $('#Tags').on('beforeItemAdd', function (event) {
+
+                // Test English with allowed characters
+                if (!/^[a-zA-Z 0-9\.\-\+\#\s]*$/i.test(event.item)) {
+
+                    // Test for Chinese
+                    if (!/(\p{Script=Hani})+/gu.test(event.item)) {
+                        toastr.warning(`Invalid tag name: ${event.item}`);
+                        event.cancel = true;
+                    }
+                }
+            });
+
             postEditor.keepAlive();
         });
-</script>
+
+        $(window).bind('keydown', function(event) {
+            if (event.ctrlKey || event.metaKey) {
+                switch (String.fromCharCode(event.which).toLowerCase()) {
+                case 's':
+                    event.preventDefault();
+                    $("#btn-save").trigger('click');
+                    break;
+                }
+            }
+        });
+    </script>
 }
 
 <form class="post-edit-form" asp-action="CreateOrEdit"
@@ -68,9 +88,9 @@
                         </div>
                     </div>
                     <div class="col-2">
-                        <input type="text" asp-for="ContentLanguageCode" class="form-control form-control-sm" placeholder="@Localizer["Language Code"]" />
+                        <input type="text" asp-for="LanguageCode" class="form-control form-control-sm" placeholder="@Localizer["Language Code"]" />
                         <div>
-                            <span asp-validation-for="ContentLanguageCode" class="text-danger"></span>
+                            <span asp-validation-for="LanguageCode" class="text-danger"></span>
                         </div>
                     </div>
                 </div>
@@ -95,6 +115,12 @@
                         <div class="custom-control custom-switch">
                             <input type="checkbox" asp-for="EnableComment" class="custom-control-input">
                             <label asp-for="EnableComment" class="custom-control-label"></label>
+                        </div>
+                    </li>
+                    <li class="list-group-item">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" asp-for="Featured" class="custom-control-input">
+                            <label asp-for="Featured" class="custom-control-label"></label>
                         </div>
                     </li>
                     <li class="list-group-item">
@@ -153,12 +179,12 @@
         </button>
         @if (!Model.IsPublished)
         {
-            <button type="submit" class="btn btn-primary ediblogeditor-publish" id="btn-publish">
+            <button type="submit" class="btn btn-accent ediblogeditor-publish" id="btn-publish">
                 @Localizer["Publish"]
             </button>
             <button class="btn btn-outline-success ediblogeditor-preview" id="btn-preview">@Localizer["Preview"]</button>
         }
-        <a asp-controller="Post" asp-action="Manage" class="btn btn-light">@Localizer["Cancel"]</a>
+        <a asp-controller="Admin" asp-action="Post" class="btn btn-light">@Localizer["Cancel"]</a>
     </div>
 
     <div class="modal fade" id="changePublishDateModal" tabindex="-1" role="dialog" aria-labelledby="changePublishDateModalLabel" aria-hidden="true">

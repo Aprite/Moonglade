@@ -14,8 +14,8 @@ namespace Moonglade.Data.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "3.1.9")
-                .HasAnnotation("Relational:MaxIdentifierLength", 64);
+                .HasAnnotation("Relational:MaxIdentifierLength", 64)
+                .HasAnnotation("ProductVersion", "5.0.2");
 
             modelBuilder.Entity("Moonglade.Data.Entities.CategoryEntity", b =>
                 {
@@ -23,16 +23,16 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("char(36)");
 
                     b.Property<string>("DisplayName")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Note")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
                     b.Property<string>("RouteName")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -48,16 +48,16 @@ namespace Moonglade.Data.Migrations
                         .IsRequired()
                         .HasColumnType("longtext CHARACTER SET utf8mb4");
 
-                    b.Property<DateTime>("CreateOnUtc")
+                    b.Property<DateTime>("CreateTimeUtc")
                         .HasColumnType("datetime");
 
                     b.Property<string>("Email")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
                     b.Property<string>("IPAddress")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<bool>("IsApproved")
                         .HasColumnType("tinyint(1)");
@@ -66,8 +66,8 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("char(36)");
 
                     b.Property<string>("Username")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -84,11 +84,11 @@ namespace Moonglade.Data.Migrations
                     b.Property<Guid?>("CommentId")
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime>("CreateTimeUtc")
+                        .HasColumnType("datetime");
+
                     b.Property<string>("ReplyContent")
                         .HasColumnType("longtext CHARACTER SET utf8mb4");
-
-                    b.Property<DateTime>("ReplyTimeUtc")
-                        .HasColumnType("datetime");
 
                     b.HasKey("Id");
 
@@ -103,12 +103,12 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("char(36)");
 
                     b.Property<string>("LinkUrl")
-                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Title")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -120,23 +120,23 @@ namespace Moonglade.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("char(36)");
 
-                    b.Property<DateTime>("CreateOnUtc")
+                    b.Property<DateTime>("CreateTimeUtc")
                         .HasColumnType("datetime");
 
                     b.Property<string>("LastLoginIp")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<DateTime?>("LastLoginTimeUtc")
                         .HasColumnType("datetime");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Username")
-                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4")
-                        .HasMaxLength(32);
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -152,19 +152,19 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("Icon")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<bool>("IsOpenInNewTab")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("Title")
-                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4")
-                        .HasMaxLength(64);
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Url")
-                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -176,7 +176,7 @@ namespace Moonglade.Data.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("char(36)");
 
-                    b.Property<DateTime>("CreateOnUtc")
+                    b.Property<DateTime>("CreateTimeUtc")
                         .HasColumnType("datetime(6)");
 
                     b.Property<string>("CssContent")
@@ -192,18 +192,18 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("MetaDescription")
-                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4")
-                        .HasMaxLength(256);
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Slug")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Title")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
-                    b.Property<DateTime?>("UpdatedOnUtc")
+                    b.Property<DateTime?>("UpdateTimeUtc")
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
@@ -235,20 +235,23 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("tinyint(1)");
 
                     b.Property<string>("ContentAbstract")
-                        .HasColumnType("varchar(1024) CHARACTER SET utf8mb4")
-                        .HasMaxLength(1024);
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024) CHARACTER SET utf8mb4");
 
                     b.Property<string>("ContentLanguageCode")
-                        .HasColumnType("varchar(8) CHARACTER SET utf8mb4")
-                        .HasMaxLength(8);
+                        .HasMaxLength(8)
+                        .HasColumnType("varchar(8) CHARACTER SET utf8mb4");
 
-                    b.Property<DateTime>("CreateOnUtc")
+                    b.Property<DateTime>("CreateTimeUtc")
                         .HasColumnType("datetime");
 
                     b.Property<bool>("ExposedToSiteMap")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsDeleted")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsFeatured")
                         .HasColumnType("tinyint(1)");
 
                     b.Property<bool>("IsFeedIncluded")
@@ -267,12 +270,12 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("datetime");
 
                     b.Property<string>("Slug")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
                     b.Property<string>("Title")
-                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4")
-                        .HasMaxLength(128);
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -317,12 +320,12 @@ namespace Moonglade.Data.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("DisplayName")
-                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4")
-                        .HasMaxLength(32);
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4");
 
                     b.Property<string>("NormalizedName")
-                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4")
-                        .HasMaxLength(32);
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32) CHARACTER SET utf8mb4");
 
                     b.HasKey("Id");
 
@@ -332,18 +335,22 @@ namespace Moonglade.Data.Migrations
             modelBuilder.Entity("Moonglade.Data.Entities.CommentEntity", b =>
                 {
                     b.HasOne("Moonglade.Data.Entities.PostEntity", "Post")
-                        .WithMany("Comment")
+                        .WithMany("Comments")
                         .HasForeignKey("PostId")
                         .HasConstraintName("FK_Comment_Post")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("Moonglade.Data.Entities.CommentReplyEntity", b =>
                 {
                     b.HasOne("Moonglade.Data.Entities.CommentEntity", "Comment")
-                        .WithMany("CommentReply")
+                        .WithMany("Replies")
                         .HasForeignKey("CommentId");
+
+                    b.Navigation("Comment");
                 });
 
             modelBuilder.Entity("Moonglade.Data.Entities.PostCategoryEntity", b =>
@@ -361,6 +368,10 @@ namespace Moonglade.Data.Migrations
                         .HasConstraintName("FK_PostCategory_Post")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Category");
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("Moonglade.Data.Entities.PostExtensionEntity", b =>
@@ -371,23 +382,46 @@ namespace Moonglade.Data.Migrations
                         .HasConstraintName("FK_PostExtension_Post")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("Moonglade.Data.Entities.PostTagEntity", b =>
                 {
                     b.HasOne("Moonglade.Data.Entities.PostEntity", "Post")
-                        .WithMany("PostTag")
+                        .WithMany()
                         .HasForeignKey("PostId")
-                        .HasConstraintName("FK_PostTag_Post")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Moonglade.Data.Entities.TagEntity", "Tag")
-                        .WithMany("PostTag")
+                        .WithMany()
                         .HasForeignKey("TagId")
-                        .HasConstraintName("FK_PostTag_Tag")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Post");
+
+                    b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("Moonglade.Data.Entities.CategoryEntity", b =>
+                {
+                    b.Navigation("PostCategory");
+                });
+
+            modelBuilder.Entity("Moonglade.Data.Entities.CommentEntity", b =>
+                {
+                    b.Navigation("Replies");
+                });
+
+            modelBuilder.Entity("Moonglade.Data.Entities.PostEntity", b =>
+                {
+                    b.Navigation("Comments");
+
+                    b.Navigation("PostCategory");
+
+                    b.Navigation("PostExtension");
                 });
 #pragma warning restore 612, 618
         }

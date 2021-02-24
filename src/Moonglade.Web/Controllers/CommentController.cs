@@ -6,30 +6,31 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
+using Moonglade.Comments;
 using Moonglade.Configuration.Abstraction;
-using Moonglade.Core;
-using Moonglade.Core.Notification;
-using Moonglade.Model;
+using Moonglade.Notification.Client;
+using Moonglade.Utils;
+using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
+    [AppendAppVersion]
     [Route("api/[controller]")]
     public class CommentController : ControllerBase
     {
         #region Private Fields
 
-        private readonly CommentService _commentService;
+        private readonly ICommentService _commentService;
         private readonly IBlogNotificationClient _notificationClient;
         private readonly IBlogConfig _blogConfig;
-        private bool DNT => (bool)HttpContext.Items["DNT"];
 
         #endregion
 
         public CommentController(
-            CommentService commentService,
+            ICommentService commentService,
             IBlogConfig blogConfig,
             IBlogNotificationClient notificationClient = null)
         {
@@ -49,6 +50,13 @@ namespace Moonglade.Web.Controllers
         public async Task<IActionResult> NewComment(Guid postId, NewCommentModel model, [FromServices] ISessionBasedCaptcha captcha)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            if (!string.IsNullOrWhiteSpace(model.Email) && !Helper.IsValidEmailAddress(model.Email))
+            {
+                ModelState.AddModelError(nameof(model.Email), "Invalid Email address.");
+                return BadRequest(ModelState);
+            }
+
             if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
 
             if (!captcha.ValidateCaptchaCode(model.CaptchaCode, HttpContext.Session))
@@ -57,20 +65,34 @@ namespace Moonglade.Web.Controllers
                 return Conflict(ModelState);
             }
 
-            var response = await _commentService.CreateAsync(new CommentRequest(postId)
+            var response = await _commentService.CreateAsync(new(postId)
             {
                 Username = model.Username,
                 Content = model.Content,
                 Email = model.Email,
-                IpAddress = DNT ? "N/A" : HttpContext.Connection.RemoteIpAddress.ToString()
+                IpAddress = (bool)HttpContext.Items["DNT"] ? "N/A" : HttpContext.Connection.RemoteIpAddress?.ToString()
             });
+
+            if (response is null)
+            {
+                ModelState.AddModelError(nameof(model.Content), "Your comment contains bad bad word.");
+                return Conflict(ModelState);
+            }
 
             if (_blogConfig.NotificationSettings.SendEmailOnNewComment && _notificationClient is not null)
             {
                 _ = Task.Run(async () =>
                 {
-                    await _notificationClient.NotifyCommentAsync(response,
-                        s => ContentProcessor.MarkdownToContent(s, ContentProcessor.MarkdownConvertType.Html));
+                    var payload = new CommentPayload(
+                        response.Username,
+                        response.Email,
+                        response.IpAddress,
+                        response.PostTitle,
+                        ContentProcessor.MarkdownToContent(response.CommentContent, ContentProcessor.MarkdownConvertType.Html),
+                        response.CreateTimeUtc
+                    );
+
+                    await _notificationClient.NotifyCommentAsync(payload);
                 });
             }
 
@@ -129,7 +151,14 @@ namespace Moonglade.Web.Controllers
                 var postLink = GetPostUrl(linkGenerator, reply.PubDateUtc, reply.Slug);
                 _ = Task.Run(async () =>
                 {
-                    await _notificationClient.NotifyCommentReplyAsync(reply, postLink);
+                    var payload = new CommentReplyPayload(
+                        reply.Email,
+                        reply.CommentContent,
+                        reply.Title,
+                        reply.ReplyContentHtml,
+                        postLink);
+
+                    await _notificationClient.NotifyCommentReplyAsync(payload);
                 });
             }
 

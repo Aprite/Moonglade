@@ -120,14 +120,11 @@
   <data name=".NET Version" xml:space="preserve">
     <value>.NET 版本</value>
   </data>
-  <data name="64 Bit Process" xml:space="preserve">
-    <value>64位进程</value>
-  </data>
   <data name="About" xml:space="preserve">
     <value>关于</value>
   </data>
-  <data name="App Base Directory" xml:space="preserve">
-    <value>应用根目录</value>
+  <data name="Environment" xml:space="preserve">
+    <value>环境</value>
   </data>
   <data name="Data Directory" xml:space="preserve">
     <value>数据目录</value>
@@ -138,16 +135,13 @@
   <data name="Editor" xml:space="preserve">
     <value>编辑器</value>
   </data>
-  <data name="Item" xml:space="preserve">
-    <value>项</value>
-  </data>
   <data name="Machine Name" xml:space="preserve">
     <value>主机名</value>
   </data>
   <data name="Moonglade Configuration" xml:space="preserve">
     <value>Moonglade 配置</value>
   </data>
-  <data name="Running Docker Container" xml:space="preserve">
+  <data name="Docker Container" xml:space="preserve">
     <value>运行在 Docker 容器中</value>
   </data>
   <data name="Server Information" xml:space="preserve">
@@ -159,10 +153,16 @@
   <data name="User Name" xml:space="preserve">
     <value>用户名</value>
   </data>
-  <data name="Value" xml:space="preserve">
-    <value>值</value>
-  </data>
   <data name="Worker Process" xml:space="preserve">
     <value>工作进程</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>版本</value>
+  </data>
+  <data name="Memory" xml:space="preserve">
+    <value>内存</value>
+  </data>
+  <data name="Start Time" xml:space="preserve">
+    <value>启动时间</value>
   </data>
 </root>

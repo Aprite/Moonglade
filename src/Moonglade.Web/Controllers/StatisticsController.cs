@@ -3,15 +3,21 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moonglade.Core;
-using Moonglade.Model;
 using Moonglade.Web.Filters;
 
 namespace Moonglade.Web.Controllers
 {
     [ApiController]
+    [AppendAppVersion]
     [Route("api/[controller]")]
     public class StatisticsController : ControllerBase
     {
+        private enum CookieNames
+        {
+            Hit,
+            Liked
+        }
+
         private readonly IBlogStatistics _statistics;
         private bool DNT => (bool)HttpContext.Items["DNT"];
 
@@ -31,8 +37,8 @@ namespace Moonglade.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var (Hits, Likes) = await _statistics.GetStatisticAsync(postId);
-            return Ok(new { Hits, Likes });
+            var (hits, likes) = await _statistics.GetStatisticAsync(postId);
+            return Ok(new { Hits = hits, Likes = likes });
         }
 
         [HttpPost]

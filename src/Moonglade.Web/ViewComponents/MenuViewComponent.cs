@@ -1,15 +1,15 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Moonglade.Core;
+using Moonglade.Menus;
 
 namespace Moonglade.Web.ViewComponents
 {
     public class MenuViewComponent : ViewComponent
     {
-        private readonly MenuService _menuService;
+        private readonly IMenuService _menuService;
 
-        public MenuViewComponent(MenuService menuService)
+        public MenuViewComponent(IMenuService menuService)
         {
             _menuService = menuService;
         }

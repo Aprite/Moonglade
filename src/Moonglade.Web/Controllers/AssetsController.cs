@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -9,21 +10,25 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.FeatureManagement.Mvc;
 using Moonglade.Caching;
 using Moonglade.Configuration.Abstraction;
-using Moonglade.Core;
+using Moonglade.Configuration.Settings;
+using Moonglade.Foaf;
+using Moonglade.FriendLink;
 using Moonglade.ImageStorage;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
+using Moonglade.Utils;
+using Moonglade.Web.Models;
+using Moonglade.Web.SiteIconGenerator;
 using NUglify;
-using SiteIconGenerator;
 
 namespace Moonglade.Web.Controllers
 {
-    public class AssetsController : BlogController
+    public class AssetsController : Controller
     {
         private readonly IBlogConfig _blogConfig;
         private readonly IBlogImageStorage _imageStorage;
@@ -32,6 +37,8 @@ namespace Moonglade.Web.Controllers
         private readonly ImageStorageSettings _imageStorageSettings;
         private readonly AppSettings _settings;
         private readonly ILogger<AssetsController> _logger;
+
+        private static string SiteIconDirectory => Path.Join(AppDomain.CurrentDomain.GetData("DataDirectory")?.ToString(), "siteicons");
 
         public AssetsController(
             ILogger<AssetsController> logger,
@@ -53,8 +60,8 @@ namespace Moonglade.Web.Controllers
 
         #region Blog Post Images
 
-        [Route(@"uploads/{filename:regex((?!-)([[a-z0-9-]]+)\.(png|jpg|jpeg|gif|bmp|mp4))}")]
-        public async Task<IActionResult> GetAsync(string filename, [FromServices] IMemoryCache cache)
+        [Route(@"image/{filename:regex((?!-)([[a-z0-9-]]+)\.(png|jpg|jpeg|gif|bmp|mp4))}")]
+        public async Task<IActionResult> Image(string filename, [FromServices] IMemoryCache cache)
         {
             try
             {
@@ -81,25 +88,20 @@ namespace Moonglade.Web.Controllers
                     return imgBytesResponse;
                 });
 
-                if (null == imageEntry)
-                {
-                    return _blogConfig.ContentSettings.UseFriendlyNotFoundImage
-                        ? (IActionResult)File("~/images/image-not-found.png", "image/png")
-                        : NotFound();
-                }
+                if (null == imageEntry) return NotFound();
 
                 return File(imageEntry.ImageBytes, imageEntry.ImageContentType);
             }
             catch (Exception e)
             {
                 _logger.LogError(e, $"Error requesting image {filename}");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
         [Authorize]
-        [HttpPost("upload-image"), IgnoreAntiforgeryToken]
-        public async Task<IActionResult> UploadImageAsync(IFormFile file, [FromServices] IFileNameGenerator fileNameGenerator)
+        [HttpPost("image"), IgnoreAntiforgeryToken]
+        public async Task<IActionResult> Image(IFormFile file, [FromServices] IFileNameGenerator fileNameGenerator)
         {
             static bool IsValidColorValue(int colorValue)
             {
@@ -187,14 +189,14 @@ namespace Moonglade.Web.Controllers
 
                 return Json(new
                 {
-                    location = $"/uploads/{finalFileName}",
+                    location = $"/image/{finalFileName}",
                     filename = finalFileName
                 });
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error uploading image.");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
@@ -240,14 +242,14 @@ namespace Moonglade.Web.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, "Error uploading image.");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
 
         #endregion
 
-        [Route("get-captcha-image")]
-        public IActionResult GetCaptchaImage([FromServices] ISessionBasedCaptcha captcha)
+        [Route("captcha-image")]
+        public IActionResult CaptchaImage([FromServices] ISessionBasedCaptcha captcha)
         {
             var w = _settings.CaptchaSettings.ImageWidth;
             var h = _settings.CaptchaSettings.ImageHeight;
@@ -361,7 +363,7 @@ namespace Moonglade.Web.Controllers
 
                         using (var ms = new MemoryStream(siteIconBytes))
                         {
-                            var image = Image.FromStream(ms);
+                            var image = System.Drawing.Image.FromStream(ms);
                             if (image.Height != image.Width)
                             {
                                 throw new InvalidOperationException("Invalid Site Icon Data");
@@ -405,9 +407,11 @@ namespace Moonglade.Web.Controllers
         // Credits: https://github.com/Anduin2017/Blog
         [ResponseCache(Duration = 3600)]
         [Route("/manifest.json")]
-        public async Task<IActionResult> Manifest([FromServices] IWebHostEnvironment hostEnvironment)
+        public async Task<IActionResult> Manifest(
+            [FromServices] IWebHostEnvironment hostEnvironment,
+            [FromServices] IOptions<List<ManifestIcon>> manifestIcons)
         {
-            var themeColor = await Utils.GetThemeColorAsync(hostEnvironment.WebRootPath, _blogConfig.GeneralSettings.ThemeFileName);
+            var themeColor = await Helper.GetThemeColorAsync(hostEnvironment.WebRootPath, _blogConfig.GeneralSettings.ThemeFileName);
 
             var model = new ManifestModel
             {
@@ -415,13 +419,49 @@ namespace Moonglade.Web.Controllers
                 Name = _blogConfig.GeneralSettings.SiteTitle,
                 Description = _blogConfig.GeneralSettings.SiteTitle,
                 StartUrl = "/",
-                Icons = _settings.ManifestIcons,
+                Icons = manifestIcons?.Value,
                 BackgroundColor = themeColor,
                 ThemeColor = themeColor,
                 Display = "standalone",
                 Orientation = "portrait"
             };
             return Json(model);
+        }
+
+        [FeatureGate(FeatureFlags.Foaf)]
+        [ResponseCache(Duration = 3600)]
+        [Route("foaf.xml")]
+        public async Task<IActionResult> Foaf(
+            [FromServices] IFoafWriter foafWriter,
+            [FromServices] IFriendLinkService friendLinkService,
+            [FromServices] LinkGenerator linkGenerator)
+        {
+            static Uri GetUri(HttpRequest request)
+            {
+                return new(string.Concat(
+                    request.Scheme,
+                    "://",
+                    request.Host.HasValue
+                        ? (request.Host.Value.IndexOf(",", StringComparison.Ordinal) > 0
+                            ? "MULTIPLE-HOST"
+                            : request.Host.Value)
+                        : "UNKNOWN-HOST",
+                    request.Path.HasValue ? request.Path.Value : string.Empty,
+                    request.QueryString.HasValue ? request.QueryString.Value : string.Empty));
+            }
+
+            var friends = await friendLinkService.GetAllAsync();
+            var foafDoc = new FoafDoc
+            {
+                Name = _blogConfig.GeneralSettings.OwnerName,
+                BlogUrl = Helper.ResolveRootUrl(HttpContext, _blogConfig.GeneralSettings.CanonicalPrefix, true),
+                Email = _blogConfig.NotificationSettings.AdminEmail,
+                PhotoUrl = linkGenerator.GetUriByAction(HttpContext, "Avatar", "Assets")
+            };
+            var requestUrl = GetUri(Request).ToString();
+            var xml = await foafWriter.GetFoafData(foafDoc, requestUrl, friends);
+
+            return Content(xml, FoafWriter.ContentType);
         }
 
         [HttpGet("custom.css")]

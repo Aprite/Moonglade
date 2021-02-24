@@ -22,6 +22,15 @@ namespace Moonglade.Data.Spec
             }
         }
 
+        public PostSpec(string slug, DateTime pubDateUtc) :
+            base(p =>
+                p.Slug == slug &&
+                p.PubDateUtc != null &&
+                p.PubDateUtc.Value.Date == EF.Functions.DateFromParts(pubDateUtc.Year, pubDateUtc.Month, pubDateUtc.Day))
+        {
+
+        }
+
         public PostSpec(int year, int month = 0) :
             base(p => p.PubDateUtc.Value.Year == year &&
                       (month == 0 || p.PubDateUtc.Value.Month == month))
@@ -40,8 +49,8 @@ namespace Moonglade.Data.Spec
         {
             AddInclude(post => post
                 .Include(p => p.PostExtension)
-                .Include(p => p.Comment)
-                .Include(p => p.PostTag).ThenInclude(pt => pt.Tag)
+                .Include(p => p.Comments)
+                .Include(pt => pt.Tags)
                 .Include(p => p.PostCategory).ThenInclude(pc => pc.Category));
         }
 
@@ -50,27 +59,26 @@ namespace Moonglade.Data.Spec
             if (includeRelatedData)
             {
                 AddInclude(post => post
-                    .Include(p => p.PostTag)
-                    .ThenInclude(pt => pt.Tag)
+                    .Include(p => p.Tags)
                     .Include(p => p.PostCategory)
                     .ThenInclude(pc => pc.Category));
             }
         }
 
-        public PostSpec(PostPublishStatus status)
+        public PostSpec(PostStatus status)
         {
             switch (status)
             {
-                case PostPublishStatus.Draft:
+                case PostStatus.Draft:
                     AddCriteria(p => !p.IsPublished && !p.IsDeleted);
                     break;
-                case PostPublishStatus.Published:
+                case PostStatus.Published:
                     AddCriteria(p => p.IsPublished && !p.IsDeleted);
                     break;
-                case PostPublishStatus.Deleted:
+                case PostStatus.Deleted:
                     AddCriteria(p => p.IsDeleted);
                     break;
-                case PostPublishStatus.NotSet:
+                case PostStatus.NotSet:
                     AddCriteria(p => true);
                     break;
                 default:

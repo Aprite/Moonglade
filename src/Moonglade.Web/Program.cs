@@ -1,12 +1,14 @@
 ﻿using System;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Moonglade.Core;
-using Moonglade.Model;
+using Moonglade.Setup;
+using Moonglade.Utils;
 
 namespace Moonglade.Web
 {
@@ -14,11 +16,11 @@ namespace Moonglade.Web
     {
         public static void Main(string[] args)
         {
-            var info = $"Moonglade Version {Utils.AppVersion}\n" +
-                       $"Directory: {Environment.CurrentDirectory} \n" +
-                       $"OS: {Utils.TryGetFullOSVersion()} \n" +
-                       $"Machine Name: {Environment.MachineName} \n" +
-                       $"User Name: {Environment.UserName}";
+            var info = $"App:\tMoonglade {Helper.AppVersion}\n" +
+                       $"Path:\t{Environment.CurrentDirectory} \n" +
+                       $"System:\t{Helper.TryGetFullOSVersion()} \n" +
+                       $"Host:\t{Environment.MachineName} \n" +
+                       $"User:\t{Environment.UserName}";
             Trace.WriteLine(info);
             Console.WriteLine(info);
 
@@ -33,8 +35,11 @@ namespace Moonglade.Web
                 try
                 {
                     var dataDir = CreateDataDirectories();
-                    AppDomain.CurrentDomain.SetData(Constants.DataDirectory, dataDir);
+                    AppDomain.CurrentDomain.SetData("DataDirectory", dataDir);
                     logger.LogInformation($"Using data directory '{dataDir}'");
+
+                    var dbConnection = services.GetRequiredService<IDbConnection>();
+                    TryInitFirstRun(dbConnection, logger);
                 }
                 catch (Exception ex)
                 {
@@ -52,6 +57,27 @@ namespace Moonglade.Web
                     webBuilder.CaptureStartupErrors(true)
                               .ConfigureKestrel(c => c.AddServerHeader = false)
                               .UseStartup<Startup>()
+                              .ConfigureAppConfiguration((hostingContext, config) =>
+                              {
+                                  config.AddJsonFile("themes.json", false, true)
+                                        .AddJsonFile("manifesticons.json", false, true)
+                                        .AddJsonFile("tagnormalization.json", false, true);
+
+                                  var settings = config.Build();
+                                  if (bool.Parse(settings["AppSettings:PreferAzureAppConfiguration"]))
+                                  {
+                                      config.AddAzureAppConfiguration(options =>
+                                      {
+                                          options.Connect(settings["ConnectionStrings:AzureAppConfig"])
+                                                 .ConfigureRefresh(refresh =>
+                                                 {
+                                                     refresh.Register("Moonglade:Settings:Sentinel", refreshAll: true)
+                                                         .SetCacheExpiration(TimeSpan.FromSeconds(10));
+                                                 })
+                                                 .UseFeatureFlags(o => o.Label = "Moonglade");
+                                      });
+                                  }
+                              })
                               .ConfigureLogging(logging =>
                               {
                                   logging.AddAzureWebAppDiagnostics();
@@ -72,6 +98,31 @@ namespace Moonglade.Web
             Directory.CreateDirectory(appDataPath);
 
             return appDataPath;
+        }
+
+        private static void TryInitFirstRun(IDbConnection dbConnection, ILogger logger)
+        {
+            var setupHelper = new SetupRunner(dbConnection);
+            if (setupHelper.TestDatabaseConnection(ex =>
+            {
+                Trace.WriteLine(ex);
+                Console.WriteLine(ex);
+            }))
+            {
+                if (setupHelper.IsFirstRun())
+                {
+                    try
+                    {
+                        logger.LogInformation("Initializing first run configuration...");
+                        setupHelper.InitFirstRun();
+                        logger.LogInformation("Database setup successfully.");
+                    }
+                    catch (Exception e)
+                    {
+                        logger.LogCritical(e, e.Message);
+                    }
+                }
+            }
         }
     }
 }

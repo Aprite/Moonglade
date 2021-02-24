@@ -3,20 +3,21 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Moonglade.Core;
-using Moonglade.Model;
+using Moonglade.Menus;
+using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
+    [AppendAppVersion]
     [Route("api/[controller]")]
     public class MenuController : ControllerBase
     {
-        private readonly MenuService _menuService;
+        private readonly IMenuService _menuService;
 
-        public MenuController(MenuService menuService)
+        public MenuController(IMenuService menuService)
         {
             _menuService = menuService;
         }
@@ -27,7 +28,7 @@ namespace Moonglade.Web.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var request = new CreateMenuRequest
+            var request = new UpdateMenuRequest
             {
                 DisplayOrder = model.DisplayOrder,
                 Icon = model.Icon,
@@ -76,7 +77,7 @@ namespace Moonglade.Web.Controllers
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var request = new EditMenuRequest(model.Id)
+            var request = new UpdateMenuRequest
             {
                 Title = model.Title,
                 DisplayOrder = model.DisplayOrder,
@@ -85,7 +86,7 @@ namespace Moonglade.Web.Controllers
                 IsOpenInNewTab = model.IsOpenInNewTab
             };
 
-            await _menuService.UpdateAsync(request);
+            await _menuService.UpdateAsync(model.Id, request);
             return Ok();
         }
     }

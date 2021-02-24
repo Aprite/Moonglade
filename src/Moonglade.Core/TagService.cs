@@ -1,34 +1,45 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
+using Moonglade.Configuration.Settings;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
-    public class TagService : BlogService
+    public interface ITagService
     {
-        private readonly AppSettings _settings;
+        Task<IReadOnlyList<Tag>> GetAllAsync();
+        Task<IReadOnlyList<string>> GetAllNamesAsync();
+        Task UpdateAsync(int tagId, string newName);
+        Task DeleteAsync(int tagId);
+        Task<IReadOnlyList<DegreeTag>> GetHotTagsAsync(int top);
+        Tag Get(string normalizedName);
+        Task<IReadOnlyList<DegreeTag>> GetTagCountListAsync();
+    }
+
+    public class TagService : ITagService
+    {
         private readonly IRepository<TagEntity> _tagRepo;
         private readonly IRepository<PostTagEntity> _postTagRepo;
         private readonly IBlogAudit _audit;
+        private readonly IOptions<List<TagNormalization>> _tagNormalization;
 
         public TagService(
-            IOptions<AppSettings> settings,
             IRepository<TagEntity> tagRepo,
             IRepository<PostTagEntity> postTagRepo,
-            IBlogAudit audit)
+            IBlogAudit audit,
+            IOptions<List<TagNormalization>> tagNormalization)
         {
-            _settings = settings.Value;
             _tagRepo = tagRepo;
             _postTagRepo = postTagRepo;
             _audit = audit;
+            _tagNormalization = tagNormalization;
         }
 
         public Task<IReadOnlyList<Tag>> GetAllAsync()
@@ -52,7 +63,7 @@ namespace Moonglade.Core
             if (null == tag) return;
 
             tag.DisplayName = newName;
-            tag.NormalizedName = NormalizeTagName(newName, _settings.TagNormalization);
+            tag.NormalizedName = NormalizeTagName(newName, _tagNormalization.Value);
             await _tagRepo.UpdateAsync(tag);
             await _audit.AddAuditEntry(EventType.Content, AuditEventId.TagUpdated, $"Tag id '{tagId}' is updated.");
         }
@@ -75,7 +86,7 @@ namespace Moonglade.Core
             var spec = new TagSpec(top);
             var tags = await _tagRepo.SelectAsync(spec, t => new DegreeTag
             {
-                Degree = t.PostTag.Count,
+                Degree = t.Posts.Count,
                 DisplayName = t.DisplayName,
                 NormalizedName = t.NormalizedName
             });
@@ -100,18 +111,28 @@ namespace Moonglade.Core
             {
                 DisplayName = t.DisplayName,
                 NormalizedName = t.NormalizedName,
-                Degree = t.PostTag.Count
+                Degree = t.Posts.Count
             });
         }
 
-        public static string NormalizeTagName(string orgTagName, TagNormalization[] normalizations)
+        public static string NormalizeTagName(string orgTagName, IList<TagNormalization> normalizations)
         {
-            var result = new StringBuilder(orgTagName);
-            foreach (var item in normalizations)
+            var isEnglishName = Regex.IsMatch(orgTagName, @"^[a-zA-Z 0-9\.\-\+\#\s]*$");
+            if (isEnglishName)
             {
-                result.Replace(item.Source, item.Target);
+                var result = new StringBuilder(orgTagName);
+                foreach (var item in normalizations)
+                {
+                    result.Replace(item.Source, item.Target);
+                }
+                return result.ToString().ToLower();
             }
-            return result.ToString().ToLower();
+
+            var bytes = Encoding.Unicode.GetBytes(orgTagName);
+            var hexArray = bytes.Select(b => $"{b:x2}");
+            var hexName = string.Join('-', hexArray);
+
+            return hexName;
         }
 
         public static bool ValidateTagName(string tagDisplayName)
@@ -122,7 +143,14 @@ namespace Moonglade.Core
             // See https://docs.microsoft.com/en-us/dotnet/standard/base-types/best-practices
 
             const string pattern = @"^[a-zA-Z \u4e00-\u9fa5 0-9\.\-\+\#\s]*$";
-            return Regex.IsMatch(tagDisplayName, pattern);
+            var isEng = Regex.IsMatch(tagDisplayName, pattern);
+            if (isEng) return true;
+
+            // https://docs.microsoft.com/en-us/dotnet/standard/base-types/character-classes-in-regular-expressions#supported-named-blocks
+            const string chsPattern = @"\p{IsCJKUnifiedIdeographs}";
+            var isChs = Regex.IsMatch(tagDisplayName, chsPattern);
+
+            return isChs;
         }
     }
 }

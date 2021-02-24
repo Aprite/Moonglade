@@ -1,8 +1,11 @@
 ﻿@{
     Layout = "_LayoutAdmin";
 }
-@using Moonglade.DateTimeOps
+@using Moonglade.Configuration
+@using DateTimeOps
 @inject IDateTimeResolver DateTimeResolver
+@inject IOptions<List<BlogTheme>> Themes
+
 @model GeneralSettingsViewModel
 @{
     var tzList = DateTimeResolver.ListTimeZones().Select(t => new SelectListItem
@@ -11,7 +14,7 @@
         Value = t.Id
     });
 
-    var tmList = Settings.Value.Themes.Select(t => new SelectListItem
+    var tmList = Themes.Value.Select(t => new SelectListItem
     {
         Text = t.Name,
         Value = t.CssFile
@@ -169,6 +172,22 @@
                         <label asp-for="SideBarCustomizedHtmlPitch" class="control-label"></label>
                         <textarea asp-for="SideBarCustomizedHtmlPitch" class="form-control textarea-code" spellcheck="false" cols="10" rows="10"></textarea>
                         <span asp-validation-for="SideBarCustomizedHtmlPitch" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="SideBarOption" class="mr-4"></label>
+
+                        <div class="custom-control custom-radio custom-control-inline">
+                            @Html.RadioButtonFor(model => model.SideBarOption, SideBarOption.Right.ToString(), new { id = SideBarOption.Right.ToString(), @class = "custom-control-input" })
+                            <label class="custom-control-label" for="@SideBarOption.Right.ToString()">@Localizer["Right"]</label>
+                        </div>
+                        <div class="custom-control custom-radio custom-control-inline">
+                            @Html.RadioButtonFor(model => model.SideBarOption, SideBarOption.Left.ToString(), new { id = SideBarOption.Left.ToString(), @class = "custom-control-input" })
+                            <label class="custom-control-label" for="@SideBarOption.Left.ToString()">@Localizer["Left"]</label>
+                        </div>
+                        <div class="custom-control custom-radio custom-control-inline">
+                            @Html.RadioButtonFor(model => model.SideBarOption, SideBarOption.Disabled.ToString(), new { id = SideBarOption.Disabled.ToString(), @class = "custom-control-input" })
+                            <label class="custom-control-label" for="@SideBarOption.Disabled.ToString()">@Localizer["Disabled"]</label>
+                        </div>
                     </div>
                 </div>
             </div>

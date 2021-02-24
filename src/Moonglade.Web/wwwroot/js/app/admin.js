@@ -155,10 +155,13 @@ var postEditor = {
                 branding: false,
                 block_formats: 'Paragraph=p; Header 2=h2; Header 3=h3; Header 4=h4; Preformatted=pre',
                 fontsize_formats: '8pt 10pt 12pt 14pt 18pt 24pt 36pt',
-                plugins: 'advlist autolink hr autosave link image lists charmap print preview hr anchor pagebreak spellchecker searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking save table directionality template paste codesample imagetools',
-                toolbar: 'undo redo | formatselect | fontsizeselect | bold italic strikethrough forecolor backcolor | removeformat | link image codesample media | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | code | fullscreen',
+                plugins: 'advlist autolink hr autosave link image lists charmap print preview hr anchor pagebreak spellchecker searchreplace wordcount visualblocks visualchars code fullscreen insertdatetime media nonbreaking save table directionality template paste codesample imagetools emoticons',
+                toolbar: 'formatselect | fontsizeselect | bold italic underline strikethrough | forecolor backcolor | removeformat | emoticons link hr image table codesample media | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | code | fullscreen',
+                save_onsavecallback: function() {
+                    $('#btn-save').trigger('click');
+                },
                 paste_data_images: true,
-                images_upload_url: '/upload-image',
+                images_upload_url: '/image',
                 images_upload_credentials: true,
                 file_picker_types: 'media',
                 //be used to add custom file picker to those dialogs that have it.
@@ -212,7 +215,7 @@ var postEditor = {
                     }
                 },
                 body_class: 'post-content',
-                content_css: '/css/tinymce-editor-bs-bundle.min.css',
+                content_css: '/css/tinymce-bs-bundle.min.css',
                 codesample_languages: [
                     { text: 'Bash', value: 'bash' },
                     { text: 'C#', value: 'csharp' },
@@ -232,8 +235,8 @@ var postEditor = {
                 ],
                 setup: function (editor) {
                     editor.on('NodeChange', function (e) {
-                        if (e.element.tagName === "IMG") {
-                            e.element.setAttribute("loading", "lazy");
+                        if (e.element.tagName === 'IMG') {
+                            e.element.setAttribute('loading', 'lazy');
                         }
                     });
                 }
@@ -249,8 +252,8 @@ var postEditor = {
             });
 
             inlineAttachment.editors.codemirror4.attach(simplemde.codemirror, {
-                uploadUrl: '/upload-image',
-                urlText: '![file](/uploads/{filename})',
+                uploadUrl: '/image',
+                urlText: '![file](/image/{filename})',
                 onFileUploadResponse: function (xhr) {
                     var result = JSON.parse(xhr.responseText),
                         filename = result[this.settings.jsonFieldName];
@@ -298,14 +301,6 @@ var postEditor = {
                 source: tagnames.ttAdapter()
             },
             trimValue: true
-        });
-
-        $('#Tags').on('beforeItemAdd', function (event) {
-            if (!/^[a-zA-Z \u4e00-\u9fa5 0-9\.\-\+\#\s]*$/i.test(event.item)) {
-                console.warn(`Invalid tag name: ${event.item}`);
-                toastr.warning(`Invalid tag name: ${event.item}`);
-                event.cancel = true;
-            }
         });
 
         $('#btn-preview').click(function (e) {
@@ -480,17 +475,17 @@ function deleteMenu(menuid) {
 }
 
 function initCreateFriendLink() {
-    $("#FriendLinkEditViewModel_Id").val(emptyGuid);
-    $("#edit-form")[0].reset();
+    $('#FriendLinkEditViewModel_Id').val(emptyGuid);
+    $('#edit-form')[0].reset();
     $('#editFriendlinkModal').modal();
 }
 
 function editFriendLink(id) {
     $.get(`/admin/settings/friendlink/edit/${id}`, function (data) {
-        $("#FriendLinkEditViewModel_Id").val(data.id);
-        $("#FriendLinkEditViewModel_Title").val(data.title);
-        $("#FriendLinkEditViewModel_LinkUrl").val(data.linkUrl);
-        $("#editFriendlinkModal").modal();
+        $('#FriendLinkEditViewModel_Id').val(data.id);
+        $('#FriendLinkEditViewModel_Title').val(data.title);
+        $('#FriendLinkEditViewModel_LinkUrl').val(data.linkUrl);
+        $('#editFriendlinkModal').modal();
     });
 }
 
@@ -518,8 +513,8 @@ function deleteSelectedComments() {
 }
 
 function initCreateCategory() {
-    $("#CategoryEditViewModel_Id").val(emptyGuid);
-    $("#edit-form")[0].reset();
+    $('#CategoryEditViewModel_Id').val(emptyGuid);
+    $('#edit-form')[0].reset();
     $('#editCatModal').modal();
 }
 
@@ -527,11 +522,11 @@ function editCat(id) {
     callApi(`/api/category/edit/${id}`, 'GET', {},
         async (resp) => {
             var data = await resp.json();
-            $("#CategoryEditViewModel_Id").val(data.id);
-            $("#CategoryEditViewModel_RouteName").val(data.routeName);
-            $("#CategoryEditViewModel_DisplayName").val(data.displayName);
-            $("#CategoryEditViewModel_Note").val(data.note);
-            $("#editCatModal").modal();
+            $('#CategoryEditViewModel_Id').val(data.id);
+            $('#CategoryEditViewModel_RouteName').val(data.routeName);
+            $('#CategoryEditViewModel_DisplayName').val(data.displayName);
+            $('#CategoryEditViewModel_Note').val(data.note);
+            $('#editCatModal').modal();
         });
 }
 
@@ -546,8 +541,8 @@ function deleteCat(catid) {
 }
 
 function initCreateMenu() {
-    $("#MenuEditViewModel_Id").val(emptyGuid);
-    $("#edit-form")[0].reset();
+    $('#MenuEditViewModel_Id').val(emptyGuid);
+    $('#edit-form')[0].reset();
     $('#editMenuModal').modal();
 }
 
@@ -555,15 +550,15 @@ function editMenu(id) {
     callApi(`/api/menu/edit/${id}`, 'GET', {},
         async (resp) => {
             var data = await resp.json();
-            $("#MenuEditViewModel_Id").val(data.id);
-            $("#MenuEditViewModel_Title").val(data.title);
-            $("#MenuEditViewModel_Url").val(data.url);
-            $("#MenuEditViewModel_Icon").val(data.icon);
-            $("#MenuEditViewModel_DisplayOrder").val(data.displayOrder);
+            $('#MenuEditViewModel_Id').val(data.id);
+            $('#MenuEditViewModel_Title').val(data.title);
+            $('#MenuEditViewModel_Url').val(data.url);
+            $('#MenuEditViewModel_Icon').val(data.icon);
+            $('#MenuEditViewModel_DisplayOrder').val(data.displayOrder);
             if (data.isOpenInNewTab) {
-                $("#MenuEditViewModel_IsOpenInNewTab").prop('checked', 'checked');
+                $('#MenuEditViewModel_IsOpenInNewTab').prop('checked', 'checked');
             }
-            $("#editMenuModal").modal();
+            $('#editMenuModal').modal();
         });
 }
 
@@ -575,7 +570,7 @@ function deletePage(pageid, slug) {
         {},
         (resp) => {
             $(`#card-${pageid}`).hide();
-            toastr.success("Page deleted");
+            toastr.success('Page deleted');
         });
 }
 

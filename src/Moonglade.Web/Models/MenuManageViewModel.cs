@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
-using Moonglade.Model;
+using Moonglade.Menus;
 
 namespace Moonglade.Web.Models
 {
@@ -14,7 +14,7 @@ namespace Moonglade.Web.Models
 
         public MenuManageViewModel()
         {
-            MenuEditViewModel = new MenuEditViewModel();
+            MenuEditViewModel = new();
             MenuItems = new List<Menu>();
         }
     }

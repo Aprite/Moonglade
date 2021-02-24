@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Moonglade.Model;
+using Moonglade.Core;
 
 namespace Moonglade.Web.Models
 {
@@ -11,7 +11,7 @@ namespace Moonglade.Web.Models
 
         public CategoryManageViewModel()
         {
-            CategoryEditViewModel = new CategoryEditViewModel();
+            CategoryEditViewModel = new();
             Categories = new List<Category>();
         }
     }

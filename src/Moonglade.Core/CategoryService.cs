@@ -6,11 +6,20 @@ using Moonglade.Caching;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
-using Moonglade.Model;
 
 namespace Moonglade.Core
 {
-    public class CategoryService : BlogService
+    public interface ICategoryService
+    {
+        Task<IReadOnlyList<Category>> GetAllAsync();
+        Task<Category> GetAsync(string categoryName);
+        Task<Category> GetAsync(Guid id);
+        Task CreateAsync(UpdateCatRequest request);
+        Task DeleteAsync(Guid id);
+        Task UpdateAsync(Guid id, UpdateCatRequest request);
+    }
+
+    public class CategoryService : ICategoryService
     {
         private readonly IRepository<CategoryEntity> _catRepo;
         private readonly IRepository<PostCategoryEntity> _postCatRepo;
@@ -71,17 +80,17 @@ namespace Moonglade.Core
                     });
         }
 
-        public async Task CreateAsync(CreateCategoryRequest createRequest)
+        public async Task CreateAsync(UpdateCatRequest request)
         {
-            var exists = _catRepo.Any(c => c.RouteName == createRequest.RouteName);
+            var exists = _catRepo.Any(c => c.RouteName == request.RouteName);
             if (exists) return;
 
             var category = new CategoryEntity
             {
                 Id = Guid.NewGuid(),
-                RouteName = createRequest.RouteName.Trim(),
-                Note = createRequest.Note.Trim(),
-                DisplayName = createRequest.DisplayName.Trim()
+                RouteName = request.RouteName.Trim(),
+                Note = request.Note.Trim(),
+                DisplayName = request.DisplayName.Trim()
             };
 
             await _catRepo.AddAsync(category);
@@ -104,19 +113,19 @@ namespace Moonglade.Core
             await _audit.AddAuditEntry(EventType.Content, AuditEventId.CategoryDeleted, $"Category '{id}' deleted.");
         }
 
-        public async Task UpdateAsync(EditCategoryRequest editRequest)
+        public async Task UpdateAsync(Guid id, UpdateCatRequest request)
         {
-            var cat = await _catRepo.GetAsync(editRequest.Id);
+            var cat = await _catRepo.GetAsync(id);
             if (cat is null) return;
 
-            cat.RouteName = editRequest.RouteName.Trim();
-            cat.DisplayName = editRequest.DisplayName.Trim();
-            cat.Note = editRequest.Note.Trim();
+            cat.RouteName = request.RouteName.Trim();
+            cat.DisplayName = request.DisplayName.Trim();
+            cat.Note = request.Note.Trim();
 
             await _catRepo.UpdateAsync(cat);
             _cache.Remove(CacheDivision.General, "allcats");
 
-            await _audit.AddAuditEntry(EventType.Content, AuditEventId.CategoryUpdated, $"Category '{editRequest.Id}' updated.");
+            await _audit.AddAuditEntry(EventType.Content, AuditEventId.CategoryUpdated, $"Category '{id}' updated.");
         }
     }
 }

@@ -8,13 +8,15 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moonglade.Auditing;
 using Moonglade.Configuration.Abstraction;
-using Moonglade.Core.Notification;
+using Moonglade.Notification.Client;
 using Moonglade.Pingback;
 using Moonglade.Pingback.Mvc;
+using Moonglade.Web.Filters;
 
 namespace Moonglade.Web.Controllers
 {
     [ApiController]
+    [AppendAppVersion]
     [Route("pingback")]
     public class PingbackController : ControllerBase
     {
@@ -37,7 +39,7 @@ namespace Moonglade.Web.Controllers
 
         [HttpPost]
         [IgnoreAntiforgeryToken]
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Process()
         {
             if (!_blogConfig.AdvancedSettings.EnablePingBackReceive)
             {
@@ -49,7 +51,18 @@ namespace Moonglade.Web.Controllers
             var requestBody = await new StreamReader(HttpContext.Request.Body, Encoding.Default).ReadToEndAsync();
 
             var response = await _pingbackService.ReceivePingAsync(requestBody, ip,
-                history => _notificationClient.NotifyPingbackAsync(history));
+                history =>
+                {
+                    var payload = new PingPayload(
+                        history.TargetPostTitle,
+                        history.PingTimeUtc,
+                        history.Domain,
+                        history.SourceIp,
+                        history.SourceUrl,
+                        history.SourceTitle);
+
+                    _notificationClient.NotifyPingbackAsync(payload);
+                });
 
             _logger.LogInformation($"Pingback Processor Response: {response}");
             return new PingbackResult(response);

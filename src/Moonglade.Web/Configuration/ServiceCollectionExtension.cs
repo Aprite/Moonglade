@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
-using System.Reflection;
+using DateTimeOps;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -12,19 +12,23 @@ using Moonglade.Auditing;
 using Moonglade.Caching;
 using Moonglade.Configuration;
 using Moonglade.Configuration.Abstraction;
+using Moonglade.Configuration.Settings;
 using Moonglade.Core;
-using Moonglade.Core.Notification;
 using Moonglade.Data;
 using Moonglade.Data.Infrastructure;
 using Moonglade.DataPorting;
-using Moonglade.DateTimeOps;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
+using Moonglade.Foaf;
+using Moonglade.FriendLink;
+using Moonglade.Menus;
+using Moonglade.Notification.Client;
+using Moonglade.Pages;
 using Moonglade.Syndication;
 using Moonglade.Web.Filters;
+using Moonglade.Web.SiteIconGenerator;
 using MySql.Data.MySqlClient;
 using Polly;
-using SiteIconGenerator;
+using WilderMinds.MetaWeblog;
+using MetaWeblogService = Moonglade.Web.MetaWeblog.MetaWeblogService;
 
 namespace Moonglade.Web.Configuration
 {
@@ -37,20 +41,19 @@ namespace Moonglade.Web.Configuration
             services.Configure<AppSettings>(appSettings);
             services.AddSingleton<IBlogConfig, BlogConfig>();
             services.AddScoped<IDateTimeResolver>(c =>
-                new DateTimeResolver(c.GetService<IBlogConfig>().GeneralSettings.TimeZoneUtcOffset));
+                new DateTimeResolver(c.GetService<IBlogConfig>()?.GeneralSettings.TimeZoneUtcOffset));
         }
 
-        public static void AddDataStorage(this IServiceCollection services, IConfiguration configuration)
+        public static void AddDataStorage(this IServiceCollection services, string connectionString)
         {
-            var connStr = configuration.GetConnectionString(Constants.DbConnectionName);
 
-            var mySqlConnection = new MySqlConnection(connStr);
+            var mySqlConnection = new MySqlConnection(connectionString);
 
             services.AddTransient<IDbConnection>(c => mySqlConnection);
             services.AddScoped(typeof(IRepository<>), typeof(DbContextRepository<>));
             services.AddDbContext<BlogDbContext>(options =>
                 options.UseLazyLoadingProxies()
-                    .UseMySql(connStr, ServerVersion.AutoDetect(connStr), sqlOptions =>
+                    .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), sqlOptions =>
                     {
                         sqlOptions.EnableRetryOnFailure(
                             3,
@@ -66,21 +69,12 @@ namespace Moonglade.Web.Configuration
                     //}));
         }
 
-        public static void AddBlogCache(this IServiceCollection services)
-        {
-            services.AddMemoryCache();
-            services.AddSingleton<IBlogCache, BlogMemoryCache>();
-            services.AddScoped<DeleteSubscriptionCache>();
-            services.AddScoped<DeleteSiteMapCache>();
-        }
-
-        public static void AddBlogNotification(this IServiceCollection services, ILogger logger)
+        public static void AddNotification(this IServiceCollection services, ILogger logger)
         {
             services.AddHttpClient<IBlogNotificationClient, NotificationClient>()
-                .AddTransientHttpErrorPolicy(builder =>
-                    builder.WaitAndRetryAsync(3, retryCount =>
-                            TimeSpan.FromSeconds(Math.Pow(2, retryCount)),
-                        (result, span, retryCount, context) =>
+                    .AddTransientHttpErrorPolicy(builder =>
+                        builder.WaitAndRetryAsync(3,
+                            retryCount => TimeSpan.FromSeconds(Math.Pow(2, retryCount)), (result, span, retryCount, _) =>
                         {
                             logger?.LogWarning($"Request failed with {result.Result.StatusCode}. Waiting {span} before next retry. Retry attempt {retryCount}/3.");
                         }));
@@ -88,21 +82,45 @@ namespace Moonglade.Web.Configuration
 
         public static void AddBlogServices(this IServiceCollection services)
         {
-            var asm = Assembly.GetAssembly(typeof(BlogService));
-            if (asm is not null)
+            var asms = AppDomain.CurrentDomain.GetAssemblies();
+            var moongladeCore = asms.FirstOrDefault(p => p.FullName is not null && p.FullName.StartsWith("Moonglade.Core"));
+
+            if (moongladeCore is not null)
             {
-                var types = asm.GetTypes().Where(t => t.IsClass && t.IsPublic && t.Name.EndsWith("Service"));
+                var types = moongladeCore.GetTypes().Where(t => t.IsClass && t.IsPublic && t.Name.EndsWith("Service"));
                 foreach (var t in types)
                 {
-                    services.AddScoped(t, t);
+                    // Find interface if there is one
+                    var i = moongladeCore.GetTypes().FirstOrDefault(x => x.IsInterface && x.IsPublic && x.Name == $"I{t.Name}");
+                    services.AddScoped(i ?? t, t);
                 }
             }
 
+            // Supporting Live Writer (MetaWeblogAPI)
+            services.AddMetaWeblog<MetaWeblogService>();
+
+            services.AddScoped<IMenuService, MenuService>();
+            services.AddScoped<IPageService, PageService>();
+            services.AddScoped<IFriendLinkService, FriendLinkService>();
             services.AddScoped<IBlogAudit, BlogAudit>();
             services.AddScoped<ISiteIconGenerator, FileSystemIconGenerator>();
+            services.AddScoped<IFoafWriter, FoafWriter>();
+            services.AddScoped<IRSDService, RSDService>();
             services.AddScoped<IExportManager, ExportManager>();
             services.AddScoped<IBlogStatistics, BlogStatistics>();
+            services.AddScoped<ISyndicationService, SyndicationService>();
             services.AddScoped<IMemoryStreamOpmlWriter, MemoryStreamOpmlWriter>();
+
+            services.AddBlogCache();
+            services.AddPingback();
+        }
+
+        private static void AddBlogCache(this IServiceCollection services)
+        {
+            services.AddMemoryCache();
+            services.AddSingleton<IBlogCache, BlogMemoryCache>();
+            services.AddScoped<ClearSubscriptionCache>();
+            services.AddScoped<ClearSiteMapCache>();
         }
     }
 }

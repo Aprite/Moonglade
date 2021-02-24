@@ -2,17 +2,17 @@
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Moonglade.Core;
+using Moonglade.Comments;
 
 namespace Moonglade.Web.ViewComponents
 {
     public class CommentListViewComponent : ViewComponent
     {
         private readonly ILogger<CommentListViewComponent> _logger;
-        private readonly CommentService _commentService;
+        private readonly ICommentService _commentService;
 
         public CommentListViewComponent(
-            ILogger<CommentListViewComponent> logger, CommentService commentService)
+            ILogger<CommentListViewComponent> logger, ICommentService commentService)
         {
             _logger = logger;
             _commentService = commentService;

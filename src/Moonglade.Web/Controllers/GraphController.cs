@@ -7,11 +7,11 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement.Mvc;
+using Moonglade.Auth;
+using Moonglade.Configuration.Settings;
 using Moonglade.Core;
 using Moonglade.Data.Spec;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
-using Moonglade.Web.Authentication;
+using Moonglade.Pages;
 using Moonglade.Web.Filters;
 
 namespace Moonglade.Web.Controllers
@@ -20,21 +20,21 @@ namespace Moonglade.Web.Controllers
     [Authorize(AuthenticationSchemes = ApiKeyAuthenticationOptions.DefaultScheme)]
     [Route("api/graph")]
     [ApiController]
-    [AppendMoongladeVersion]
+    [AppendAppVersion]
     public class GraphController : ControllerBase
     {
         private readonly ILogger<GraphController> _logger;
-        private readonly TagService _tagService;
-        private readonly CategoryService _categoryService;
-        private readonly PostService _postService;
-        private readonly PageService _pageService;
+        private readonly ITagService _tagService;
+        private readonly ICategoryService _categoryService;
+        private readonly IPostService _postService;
+        private readonly IPageService _pageService;
 
         public GraphController(
             ILogger<GraphController> logger,
-            TagService tagService,
-            CategoryService categoryService,
-            PostService postService,
-            PageService pageService)
+            ITagService tagService,
+            ICategoryService categoryService,
+            IPostService postService,
+            IPageService pageService)
         {
             _logger = logger;
 
@@ -70,7 +70,7 @@ namespace Moonglade.Web.Controllers
             try
             {
                 // for security, only allow published posts to be listed to third party API calls
-                var list = await _postService.ListSegmentAsync(PostPublishStatus.Published);
+                var list = await _postService.ListSegment(PostStatus.Published);
                 return Ok(list);
             }
             catch (Exception e)
@@ -85,7 +85,7 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> SegmentPages()
         {
-            var pageSegments = await _pageService.ListSegmentAsync();
+            var pageSegments = await _pageService.ListSegment();
             if (pageSegments is not null)
             {
                 // for security, only allow published pages to be listed to third party API calls

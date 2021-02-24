@@ -2,11 +2,11 @@
     Layout = "_LayoutAdmin";
 }
 
-@model X.PagedList.StaticPagedList<Moonglade.Model.CommentDetailedItem>
-@using Moonglade.Core
-@using Moonglade.DateTimeOps
+@model X.PagedList.StaticPagedList<Moonglade.Comments.CommentDetailedItem>
+@using Moonglade.Utils
 @using X.PagedList.Mvc.Core
 @using X.PagedList.Mvc.Core.Common
+@using DateTimeOps
 @inject IDateTimeResolver DateTimeResolver
 
 @Html.AntiForgeryToken()
@@ -99,7 +99,7 @@ else
                     <a href="javascript:;" class="btn btn-sm @(item.IsApproved ? "btn-success" : "btn-outline-success") btn-approve" data-commentid="@item.Id">
                         <span class="icon-star-full"></span>
                     </a>
-                    <button class="btn btn-sm btn-primary btn-reply" data-commentid="@item.Id">
+                    <button class="btn btn-sm btn-accent btn-reply" data-commentid="@item.Id">
                         <span class="icon-undo2"></span>
                     </button>
                     <button class="btn btn-sm btn-danger btn-delete" data-commentid="@item.Id">
@@ -124,7 +124,7 @@ else
                 </div>
 
                 <small class="text-muted">
-                    <span>@DateTimeResolver.ToTimeZone(item.CreateOnUtc).ToString("yyyy-MM-dd HH:mm")</span> <span class="text-muted d-none d-sm-inline">(@item.IpAddress)</span>
+                    <span>@DateTimeResolver.ToTimeZone(item.CreateTimeUtc).ToString("yyyy-MM-dd HH:mm")</span> <span class="text-muted d-none d-sm-inline">(@item.IpAddress)</span>
                 </small>
 
                 <div class="reply-ui mt-3" style="display: none;">

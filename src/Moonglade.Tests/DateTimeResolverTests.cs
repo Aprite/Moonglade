@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
-using Moonglade.DateTimeOps;
+using DateTimeOps;
 using NUnit.Framework;
 
 namespace Moonglade.Tests
@@ -57,7 +57,19 @@ namespace Moonglade.Tests
         }
 
         [Test]
-        // [Platform(Include = "Win")]
+        public void GetUtcTimeFromUserTZoneStd()
+        {
+            var tSpan = "8:00:00";
+            var resolver = new DateTimeResolver(tSpan);
+
+            var dt = resolver.ToUtc(DateTime.Parse("2000/1/1 8:00:00"));
+            var utc = new DateTime(2000, 1, 1, 0, 0, 0);
+
+            Assert.IsTrue(dt == utc);
+        }
+
+        [Test]
+        [Platform(Include = "Win")]
         public void GetTimeSpanByZoneId()
         {
             var tSpan = "10:55:00";

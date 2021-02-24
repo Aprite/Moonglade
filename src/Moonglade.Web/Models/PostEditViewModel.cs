@@ -39,6 +39,10 @@ namespace Moonglade.Web.Models
         [Display(Name = "Publish Now")]
         public bool IsPublished { get; set; }
 
+        [Required]
+        [Display(Name = "Featured")]
+        public bool Featured { get; set; }
+
         [Display(Name = "Site Map")]
         public bool ExposedToSiteMap { get; set; }
 
@@ -52,7 +56,7 @@ namespace Moonglade.Web.Models
         [Required(ErrorMessage = "Please enter language code.")]
         [Display(Name = "Content Language")]
         [RegularExpression("^[a-z]{2}-[a-zA-Z]{2}$", ErrorMessage = "Incorrect language code format. e.g. en-us")]
-        public string ContentLanguageCode { get; set; }
+        public string LanguageCode { get; set; }
 
         [Display(Name = "Publish Date")]
         [DataType(DataType.Date)]

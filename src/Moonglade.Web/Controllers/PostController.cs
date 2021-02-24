@@ -4,19 +4,18 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
-using Moonglade.Model;
 using Moonglade.Pingback.Mvc;
 
 namespace Moonglade.Web.Controllers
 {
     [Route("post")]
-    public class PostController : BlogController
+    public class PostController : Controller
     {
-        private readonly PostService _postService;
+        private readonly IPostService _postService;
         private readonly IBlogConfig _blogConfig;
 
         public PostController(
-            PostService postService,
+            IPostService postService,
             IBlogConfig blogConfig)
         {
             _postService = postService;
@@ -50,11 +49,11 @@ namespace Moonglade.Web.Controllers
             switch (type.ToLower())
             {
                 case "meta":
-                    var meta = await _postService.GetSegmentAsync(slugInfo);
+                    var meta = await _postService.GetMeta(slugInfo);
                     return Json(meta);
 
                 case "content":
-                    var content = await _postService.GetRawContentAsync(slugInfo);
+                    var content = await _postService.GetContent(slugInfo);
                     return Content(content, "text/plain");
             }
 
@@ -65,7 +64,7 @@ namespace Moonglade.Web.Controllers
         [Route("preview/{postId:guid}")]
         public async Task<IActionResult> Preview(Guid postId)
         {
-            var post = await _postService.GetDraftPreviewAsync(postId);
+            var post = await _postService.GetDraft(postId);
             if (post is null) return NotFound();
 
             ViewBag.TitlePrefix = $"{post.Title}";

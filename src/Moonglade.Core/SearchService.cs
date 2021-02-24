@@ -10,15 +10,21 @@ using System.Xml;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Moonglade.Configuration.Abstraction;
+using Moonglade.Configuration.Settings;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
-using Moonglade.Model;
-using Moonglade.Model.Settings;
 
 namespace Moonglade.Core
 {
-    public class SearchService : BlogService
+    public interface ISearchService
+    {
+        Task<IReadOnlyList<PostDigest>> SearchAsync(string keyword);
+        Task<byte[]> GetOpenSearchStreamArray(string siteRootUrl);
+        Task<byte[]> GetSiteMapStreamArrayAsync(string siteRootUrl);
+    }
+
+    public class SearchService : ISearchService
     {
         private readonly AppSettings _settings;
         private readonly IRepository<PostEntity> _postRepo;
@@ -37,7 +43,7 @@ namespace Moonglade.Core
             _pageRepo = pageRepo;
         }
 
-        public async Task<IReadOnlyList<PostListEntry>> SearchAsync(string keyword)
+        public async Task<IReadOnlyList<PostDigest>> SearchAsync(string keyword)
         {
             if (string.IsNullOrWhiteSpace(keyword))
             {
@@ -46,16 +52,16 @@ namespace Moonglade.Core
 
             var postList = SearchByKeyword(keyword);
 
-            var resultList = await postList.Select(p => new PostListEntry
+            var resultList = await postList.Select(p => new PostDigest
             {
                 Title = p.Title,
                 Slug = p.Slug,
                 ContentAbstract = p.ContentAbstract,
                 PubDateUtc = p.PubDateUtc.GetValueOrDefault(),
-                Tags = p.PostTag.Select(pt => new Tag
+                Tags = p.Tags.Select(pt => new Tag
                 {
-                    NormalizedName = pt.Tag.NormalizedName,
-                    DisplayName = pt.Tag.DisplayName
+                    NormalizedName = pt.NormalizedName,
+                    DisplayName = pt.DisplayName
                 })
             }).ToListAsync();
 
@@ -124,7 +130,7 @@ namespace Moonglade.Core
                 // Pages
                 var pages = await _pageRepo.SelectAsync(page => new
                 {
-                    page.CreateOnUtc,
+                    page.CreateTimeUtc,
                     page.Slug,
                     page.IsPublished
                 });
@@ -133,7 +139,7 @@ namespace Moonglade.Core
                 {
                     writer.WriteStartElement("url");
                     writer.WriteElementString("loc", $"{siteRootUrl}/page/{item.Slug.ToLower()}");
-                    writer.WriteElementString("lastmod", item.CreateOnUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                    writer.WriteElementString("lastmod", item.CreateTimeUtc.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
                     writer.WriteElementString("changefreq", _settings.SiteMap.ChangeFreq["Pages"]);
                     await writer.WriteEndElementAsync();
                 }
@@ -177,7 +183,7 @@ namespace Moonglade.Core
                 // keyword: "dotnetrocks"
                 var k = rst.First();
                 var result = query.Where(p => p.Title.Contains(k) ||
-                                              p.PostTag.Select(pt => pt.Tag).Select(t => t.DisplayName).Contains(k));
+                                              p.Tags.Select(t => t.DisplayName).Contains(k));
                 return result;
             }
         }

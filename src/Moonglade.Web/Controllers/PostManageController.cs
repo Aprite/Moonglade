@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using DateTimeOps;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
@@ -9,8 +10,6 @@ using Microsoft.Extensions.Logging;
 using Moonglade.Configuration.Abstraction;
 using Moonglade.Core;
 using Moonglade.Data.Spec;
-using Moonglade.DateTimeOps;
-using Moonglade.Model;
 using Moonglade.Pingback;
 using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
@@ -19,45 +18,66 @@ namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [Route("post/manage")]
-    public class PostManageController : BlogController
+    public class PostManageController : Controller
     {
-        private readonly PostService _postService;
-        private readonly CategoryService _categoryService;
+        private readonly IPostService _postService;
+        private readonly ICategoryService _catService;
         private readonly IBlogConfig _blogConfig;
         private readonly IDateTimeResolver _dateTimeResolver;
         private readonly ILogger<PostManageController> _logger;
 
         public PostManageController(
-            PostService postService,
-            CategoryService categoryService,
+            IPostService postService,
+            ICategoryService catService,
             IBlogConfig blogConfig,
             IDateTimeResolver dateTimeResolver,
             ILogger<PostManageController> logger)
         {
             _postService = postService;
             _blogConfig = blogConfig;
-            _categoryService = categoryService;
+            _catService = catService;
             _dateTimeResolver = dateTimeResolver;
             _logger = logger;
         }
 
-        public async Task<IActionResult> Index()
+        [HttpPost]
+        [IgnoreAntiforgeryToken]
+        [Route("list-published")]
+        public async Task<IActionResult> ListPublished(DataTableRequest model)
         {
-            var list = await _postService.ListSegmentAsync(PostPublishStatus.Published);
-            return View(list);
+            var jqdtResponse = await GetJqDataTableResponse(PostStatus.Published, model);
+            return Json(jqdtResponse);
+        }
+
+        private async Task<JqDataTableResponse<PostSegment>> GetJqDataTableResponse(PostStatus status, DataTableRequest model)
+        {
+            var searchBy = model.Search?.Value;
+            var take = model.Length;
+            var offset = model.Start;
+
+            var posts = await _postService.ListSegment(status, offset, take, searchBy);
+            var jqdtResponse = new JqDataTableResponse<PostSegment>
+            {
+                Draw = model.Draw,
+                RecordsFiltered = posts.TotalRows,
+                RecordsTotal = posts.TotalRows,
+                Data = posts.Posts
+            };
+
+            return jqdtResponse;
         }
 
         [Route("draft")]
         public async Task<IActionResult> Draft()
         {
-            var list = await _postService.ListSegmentAsync(PostPublishStatus.Draft);
+            var list = await _postService.ListSegment(PostStatus.Draft);
             return View(list);
         }
 
         [Route("recycle-bin")]
         public async Task<IActionResult> RecycleBin()
         {
-            var list = await _postService.ListSegmentAsync(PostPublishStatus.Deleted);
+            var list = await _postService.ListSegment(PostStatus.Deleted);
             return View(list);
         }
 
@@ -67,13 +87,14 @@ namespace Moonglade.Web.Controllers
             var view = new PostEditViewModel
             {
                 IsPublished = false,
+                Featured = false,
                 EnableComment = true,
                 ExposedToSiteMap = true,
                 FeedIncluded = true,
-                ContentLanguageCode = _blogConfig.ContentSettings.DefaultLangCode
+                LanguageCode = _blogConfig.ContentSettings.DefaultLangCode
             };
 
-            var cats = await _categoryService.GetAllAsync();
+            var cats = await _catService.GetAllAsync();
             if (cats.Count > 0)
             {
                 var cbCatList = cats.Select(p =>
@@ -100,7 +121,8 @@ namespace Moonglade.Web.Controllers
                 EnableComment = post.CommentEnabled,
                 ExposedToSiteMap = post.ExposedToSiteMap,
                 FeedIncluded = post.IsFeedIncluded,
-                ContentLanguageCode = post.ContentLanguageCode
+                LanguageCode = post.ContentLanguageCode,
+                Featured = post.Featured
             };
 
             if (post.PubDateUtc is not null)
@@ -115,7 +137,7 @@ namespace Moonglade.Web.Controllers
             tagStr = tagStr.TrimEnd(',');
             viewModel.Tags = tagStr;
 
-            var cats = await _categoryService.GetAllAsync();
+            var cats = await _catService.GetAllAsync();
             if (cats.Count > 0)
             {
                 var cbCatList = cats.Select(p =>
@@ -130,9 +152,9 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpPost("createoredit")]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
-        [ServiceFilter(typeof(DeleteSubscriptionCache))]
-        [TypeFilter(typeof(DeletePagingCountCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
+        [ServiceFilter(typeof(ClearSubscriptionCache))]
+        [TypeFilter(typeof(ClearPagingCountCache))]
         public async Task<IActionResult> CreateOrEdit(PostEditViewModel model,
             [FromServices] LinkGenerator linkGenerator,
             [FromServices] IPingbackSender pingbackSender)
@@ -145,7 +167,7 @@ namespace Moonglade.Web.Controllers
                     ? Array.Empty<string>()
                     : model.Tags.Split(',').ToArray();
 
-                var request = new EditPostRequest(model.PostId)
+                var request = new UpdatePostRequest
                 {
                     Title = model.Title.Trim(),
                     Slug = model.Slug.Trim(),
@@ -153,8 +175,9 @@ namespace Moonglade.Web.Controllers
                     EnableComment = model.EnableComment,
                     ExposedToSiteMap = model.ExposedToSiteMap,
                     IsFeedIncluded = model.FeedIncluded,
-                    ContentLanguageCode = model.ContentLanguageCode,
+                    ContentLanguageCode = model.LanguageCode,
                     IsPublished = model.IsPublished,
+                    IsSelected = model.Featured,
                     Tags = tags,
                     CategoryIds = model.SelectedCategoryIds
                 };
@@ -170,7 +193,7 @@ namespace Moonglade.Web.Controllers
 
                 var postEntity = model.PostId == Guid.Empty ?
                     await _postService.CreateAsync(request) :
-                    await _postService.UpdateAsync(request);
+                    await _postService.UpdateAsync(model.PostId, request);
 
                 if (model.IsPublished)
                 {
@@ -203,9 +226,9 @@ namespace Moonglade.Web.Controllers
             }
         }
 
-        [ServiceFilter(typeof(DeleteSubscriptionCache))]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
-        [TypeFilter(typeof(DeletePagingCountCache))]
+        [ServiceFilter(typeof(ClearSubscriptionCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
+        [TypeFilter(typeof(ClearPagingCountCache))]
         [HttpPost("{postId:guid}/restore")]
         public async Task<IActionResult> Restore(Guid postId)
         {
@@ -215,13 +238,13 @@ namespace Moonglade.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            await _postService.RestoreDeletedAsync(postId);
+            await _postService.RestoreAsync(postId);
             return Ok();
         }
 
-        [ServiceFilter(typeof(DeleteSubscriptionCache))]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
-        [TypeFilter(typeof(DeletePagingCountCache))]
+        [ServiceFilter(typeof(ClearSubscriptionCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
+        [TypeFilter(typeof(ClearPagingCountCache))]
         [HttpDelete("{postId:guid}/recycle")]
         public async Task<IActionResult> Delete(Guid postId)
         {
@@ -235,8 +258,8 @@ namespace Moonglade.Web.Controllers
             return Ok();
         }
 
-        [ServiceFilter(typeof(DeleteSubscriptionCache))]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
+        [ServiceFilter(typeof(ClearSubscriptionCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
         [HttpDelete("{postId:guid}/destroy")]
         public async Task<IActionResult> DeleteFromRecycleBin(Guid postId)
         {
@@ -250,20 +273,20 @@ namespace Moonglade.Web.Controllers
             return Ok();
         }
 
-        [ServiceFilter(typeof(DeleteSubscriptionCache))]
-        [ServiceFilter(typeof(DeleteSiteMapCache))]
+        [ServiceFilter(typeof(ClearSubscriptionCache))]
+        [ServiceFilter(typeof(ClearSiteMapCache))]
         [HttpGet("empty-recycle-bin")]
         public async Task<IActionResult> EmptyRecycleBin()
         {
-            await _postService.DeleteRecycledAsync();
+            await _postService.PurgeRecycledAsync();
             return RedirectToAction("RecycleBin");
         }
 
         [HttpGet("insights")]
         public async Task<IActionResult> Insights()
         {
-            var topReadList = await _postService.GetInsightsAsync(PostInsightsType.TopRead);
-            var topCommentedList = await _postService.GetInsightsAsync(PostInsightsType.TopCommented);
+            var topReadList = await _postService.ListInsights(PostInsightsType.TopRead);
+            var topCommentedList = await _postService.ListInsights(PostInsightsType.TopCommented);
 
             var vm = new PostInsightsViewModel
             {

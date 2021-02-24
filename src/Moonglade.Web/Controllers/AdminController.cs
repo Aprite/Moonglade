@@ -11,10 +11,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
+using Moonglade.Auth;
+using Moonglade.Comments;
 using Moonglade.Core;
-using Moonglade.Model;
+using Moonglade.Menus;
+using Moonglade.Pages;
 using Moonglade.Pingback;
-using Moonglade.Web.Authentication;
 using Moonglade.Web.Models;
 using X.PagedList;
 
@@ -22,17 +24,17 @@ namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [Route("admin")]
-    public class AdminController : BlogController
+    public class AdminController : Controller
     {
         private readonly AuthenticationSettings _authenticationSettings;
-        private readonly LocalAccountService _localAccountService;
+        private readonly ILocalAccountService _localAccountService;
         private readonly IBlogAudit _blogAudit;
         private readonly ILogger<AdminController> _logger;
 
         public AdminController(ILogger<AdminController> logger,
             IOptions<AuthenticationSettings> authSettings,
             IBlogAudit blogAudit,
-            LocalAccountService localAccountService)
+            ILocalAccountService localAccountService)
         {
             _blogAudit = blogAudit;
             _localAccountService = localAccountService;
@@ -46,10 +48,10 @@ namespace Moonglade.Web.Controllers
             if (_authenticationSettings.Provider == AuthenticationProvider.AzureAD)
             {
                 await _blogAudit.AddAuditEntry(EventType.Authentication, AuditEventId.LoginSuccessAAD,
-                    $"Authentication success for Azure account '{User.Identity.Name}'");
+                    $"Authentication success for Azure account '{User.Identity?.Name}'");
             }
 
-            return RedirectToAction("Manage", "Post");
+            return RedirectToAction("Post");
         }
 
         #region Authentication
@@ -170,6 +172,8 @@ namespace Moonglade.Web.Controllers
             return Forbid();
         }
 
+        #endregion
+
         [HttpGet("about")]
         public IActionResult About()
         {
@@ -177,28 +181,34 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpGet("category")]
-        public async Task<IActionResult> Category([FromServices] CategoryService categoryService)
+        public async Task<IActionResult> Category([FromServices] ICategoryService categoryService)
         {
             var cats = await categoryService.GetAllAsync();
             return View(new CategoryManageViewModel { Categories = cats });
         }
 
-        [HttpGet("page")]
-        public async Task<IActionResult> Page([FromServices] PageService pageService)
+        [HttpGet("post")]
+        public IActionResult Post()
         {
-            var pageSegments = await pageService.ListSegmentAsync();
+            return View();
+        }
+
+        [HttpGet("page")]
+        public async Task<IActionResult> Page([FromServices] IPageService pageService)
+        {
+            var pageSegments = await pageService.ListSegment();
             return View(pageSegments);
         }
 
         [Route("tags")]
-        public async Task<IActionResult> Tags([FromServices] TagService tagService)
+        public async Task<IActionResult> Tags([FromServices] ITagService tagService)
         {
             var tags = await tagService.GetAllAsync();
             return View(tags);
         }
 
         [Route("comments")]
-        public async Task<IActionResult> Comments([FromServices] CommentService commentService, int page = 1)
+        public async Task<IActionResult> Comments([FromServices] ICommentService commentService, int page = 1)
         {
             const int pageSize = 10;
             var comments = await commentService.GetCommentsAsync(pageSize, page);
@@ -208,7 +218,7 @@ namespace Moonglade.Web.Controllers
         }
 
         [HttpGet("menu")]
-        public async Task<IActionResult> Menu([FromServices] MenuService menuService)
+        public async Task<IActionResult> Menu([FromServices] IMenuService menuService)
         {
             var menus = await menuService.GetAllAsync();
             var model = new MenuManageViewModel
@@ -225,8 +235,6 @@ namespace Moonglade.Web.Controllers
             var list = await pingbackService.GetPingbackHistoryAsync();
             return View(list);
         }
-
-        #endregion
 
         // Keep session from expire when writing a very long post
         [IgnoreAntiforgeryToken]

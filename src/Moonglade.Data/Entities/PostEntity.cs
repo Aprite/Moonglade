@@ -7,9 +7,9 @@ namespace Moonglade.Data.Entities
     {
         public PostEntity()
         {
-            Comment = new HashSet<CommentEntity>();
+            Comments = new HashSet<CommentEntity>();
             PostCategory = new HashSet<PostCategoryEntity>();
-            PostTag = new HashSet<PostTagEntity>();
+            Tags = new HashSet<TagEntity>();
         }
 
         public Guid Id { get; set; }
@@ -17,7 +17,7 @@ namespace Moonglade.Data.Entities
         public string Slug { get; set; }
         public string PostContent { get; set; }
         public bool CommentEnabled { get; set; }
-        public DateTime CreateOnUtc { get; set; }
+        public DateTime CreateTimeUtc { get; set; }
         public string ContentAbstract { get; set; }
         public string ContentLanguageCode { get; set; }
         public bool ExposedToSiteMap { get; set; }
@@ -26,10 +26,11 @@ namespace Moonglade.Data.Entities
         public DateTime? LastModifiedUtc { get; set; }
         public bool IsPublished { get; set; }
         public bool IsDeleted { get; set; }
+        public bool IsFeatured { get; set; }
 
         public virtual PostExtensionEntity PostExtension { get; set; }
-        public virtual ICollection<CommentEntity> Comment { get; set; }
+        public virtual ICollection<CommentEntity> Comments { get; set; }
         public virtual ICollection<PostCategoryEntity> PostCategory { get; set; }
-        public virtual ICollection<PostTagEntity> PostTag { get; set; }
+        public virtual ICollection<TagEntity> Tags { get; set; }
     }
 }

@@ -1,7 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Moonglade.Model.Settings;
 using Moonglade.Wechat;
 using System;
 using System.Threading.Tasks;
@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace Moonglade.Web.Controllers
 {
     [Route("wechat")]
-    public class WechatController : BlogController
+    public class WechatController : Controller
     {
         private readonly IJsSdkService _jsSdkService;
         private readonly ILogger<WechatController> _logger;
@@ -41,7 +41,7 @@ namespace Moonglade.Web.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e, "Error uploading image.");
-                return ServerError();
+                return StatusCode(StatusCodes.Status500InternalServerError);
             }
         }
     }

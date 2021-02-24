@@ -2,42 +2,67 @@
 @inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
 @inject IOptions<AuthenticationSettings> AuthOptions
 
-@using Moonglade.Web.Authentication
+@using Moonglade.Auth
 @{
-    var currentController = ViewContext.RouteData?.Values["controller"]?.ToString();
-    var currentAction = ViewContext.RouteData?.Values["action"]?.ToString();
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
 }
 <!DOCTYPE html>
 <html>
 <head>
     <title>
         @BlogConfig.GeneralSettings.SiteTitle @Localizer["Admin"]
-        <environment exclude="Production">
-            (@WebHostEnvironment.EnvironmentName)
-        </environment>
     </title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
     <meta name="keywords" content="@Html.Raw(BlogConfig.GeneralSettings.MetaKeyword)" />
     <link rel="start" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/" />
-    <link rel="alternate" type="application/rss+xml" title="@BlogConfig.FeedSettings.RssTitle" href="~/rss" />
-    <link type="application/opensearchdescription+xml" rel="search" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/opensearch" />
+    <rss title="@BlogConfig.FeedSettings.RssTitle" href="@Url.Action("Rss", "Subscription")" />
+    <feature name="OpenSearch">
+        <opensearch href="/opensearch" title="@BlogConfig.GeneralSettings.SiteTitle" />
+    </feature>
+    <feature name="Foaf">
+        <foaf href="/foaf.xml" />
+    </feature>
     <partial name="_Favicons" />
-    <link href="~/css/mooglade-css-bundle.min.css" rel="stylesheet" asp-append-version="true" />
-    <link href="~/css/mooglade-admin-bundle.min.css" rel="stylesheet" asp-append-version="true" />
+    <environment exclude="Development">
+        <link href="~/css/bundle.min.css" rel="stylesheet" asp-append-version="true" />
+        <link href="~/css/admin-bundle.min.css" rel="stylesheet" asp-append-version="true" />
+    </environment>
+    <environment include="Development">
+        <link href="~/css/bundle.css" rel="stylesheet" asp-append-version="true" />
+        <link href="~/css/3rd/bootstrap-tagsinput.css" rel="stylesheet" />
+        <link href="~/css/3rd/bootstrap-tagsinput-typeahead.css" rel="stylesheet" />
+        <link href="~/css/src/admin.css" rel="stylesheet" />
+    </environment>
     <link href="~/css/theme/@BlogConfig.GeneralSettings.ThemeFileName" rel="stylesheet" asp-append-version="true" />
     <environment exclude="Development">
         <script src="~/js/dist/app-bundle.min.js" asp-append-version="true"></script>
         <script src="~/js/dist/admin-bundle.min.js" asp-append-version="true"></script>
     </environment>
     <environment include="Development">
-        <script src="~/js/dist/app-bundle.js" asp-append-version="true"></script>
-        <script src="~/js/dist/admin-bundle.js" asp-append-version="true"></script>
+        <script src="~/js/3rd/jquery.min.js"></script>
+        <script src="~/js/3rd/bootstrap.bundle.min.js"></script>
+        <script src="~/js/3rd/jquery.qrcode.min.js"></script>
+        <script src="~/js/3rd/toastr.min.js"></script>
+        <script src="~/js/app/base.js"></script>
+        <script src="~/js/app/postslug.js"></script>
+        <script src="~/js/app/httpService.js"></script>
+        <script src="~/js/app/comments.js"></script>
+        <script src="~/js/app/darklighttheme.js"></script>
+
+        <script src="~/js/3rd/jquery.validate.min.js"></script>
+        <script src="~/js/3rd/jquery.validate.unobtrusive.min.js"></script>
+        <script src="~/js/3rd/jquery.unobtrusive-ajax.min.js"></script>
+        <script src="~/js/3rd/bootstrap-tagsinput.min.js"></script>
+        <script src="~/js/3rd/jquery.are-you-sure.min.js"></script>
+        <script src="~/js/app/admin.js"></script>
+        <script src="~/js/app/settings.js"></script>
     </environment>
     @await RenderSectionAsync("head", false)
 </head>
 <body class="admin-body">
-    <nav class="admin-navbar navbar fixed-top navbar-expand-lg navbar-dark bg-accent2">
+    <nav class="admin-navbar navbar sticky-top navbar-expand-lg navbar-dark bg-accent2">
         <a class="navbar-brand" asp-action="Index" asp-controller="Admin">@BlogConfig.GeneralSettings.SiteTitle</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
@@ -57,7 +82,7 @@
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" asp-controller="Admin" asp-action="About">
-                        <span class="icon-list"></span>
+                        <span class="icon-info"></span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -71,7 +96,7 @@
                 <img src="@Url.Action("Avatar", "Assets")"
                      alt="@BlogConfig.GeneralSettings.OwnerName"
                      class="rounded-circle admin-nav-head-pic mr-1" />
-                @User.Identity.Name
+                @User.Identity?.Name
             </span>
         </div>
     </nav>
@@ -79,7 +104,7 @@
         <aside class="admin-nav">
             <section class="admin-nav-section mt-4 mb-3">
                 <div class="list-group list-group-flush">
-                    <a asp-controller="PostManage" asp-action="Index" class="list-group-item list-group-item-action @(currentController == "PostManage" ? "active" : null)">
+                    <a asp-controller="Admin" asp-action="Post" class="list-group-item list-group-item-action @(currentAction == "Post" ? "active" : null)">
                         <span class="icon-file-text2"></span>
                         @Localizer["Posts"]
                     </a>

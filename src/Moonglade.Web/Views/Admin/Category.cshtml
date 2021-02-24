@@ -73,7 +73,7 @@
                 <small class="text-muted">@cat.RouteName</small>
             </div>
             <div class="card-footer">
-                <a href="javascript:;" data-catid="@cat.Id" class="btn btn-sm btn-primary btn-edit"><span class="icon-pencil"></span></a>
+                <a href="javascript:;" data-catid="@cat.Id" class="btn btn-sm btn-accent btn-edit"><span class="icon-pencil"></span></a>
                 <a href="javascript:;" data-catid="@cat.Id" class="btn btn-sm btn-danger btn-delete"><span class="icon-bin"></span></a>
                 <span id="span-processing-@cat.Id" style="display: none">...</span>
             </div>
@@ -97,17 +97,17 @@
                     <div asp-validation-summary="All" class="text-danger"></div>
                     <input type="hidden" asp-for="CategoryEditViewModel.Id" />
                     <div class="form-group">
-                        <label asp-for="CategoryEditViewModel.DisplayName" class="control-label"></label>
+                        <label asp-for="CategoryEditViewModel.DisplayName"></label>
                         <input asp-for="CategoryEditViewModel.DisplayName" class="form-control" />
                         <span asp-validation-for="CategoryEditViewModel.DisplayName" class="text-danger"></span>
                     </div>
                     <div class="form-group">
-                        <label asp-for="CategoryEditViewModel.RouteName" class="control-label"></label>
+                        <label asp-for="CategoryEditViewModel.RouteName"></label>
                         <input asp-for="CategoryEditViewModel.RouteName" class="form-control" />
                         <span asp-validation-for="CategoryEditViewModel.RouteName" class="text-danger"></span>
                     </div>
                     <div class="form-group">
-                        <label asp-for="CategoryEditViewModel.Note" class="control-label"></label>
+                        <label asp-for="CategoryEditViewModel.Note"></label>
                         <input asp-for="CategoryEditViewModel.Note" class="form-control" />
                         <span asp-validation-for="CategoryEditViewModel.Note" class="text-danger"></span>
                     </div>

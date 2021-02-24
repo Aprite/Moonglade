@@ -100,7 +100,7 @@
             border-right: 1px solid #dee2e6;
             border-bottom: 1px solid #dee2e6;
             width: 100%;
-            min-height: 512px;
+            min-height: calc(100vh - 330px);
         }
     </style>
 }
@@ -199,6 +199,6 @@
         {
             <button class="btn btn-outline-primary" id="btn-preview">@Localizer["Preview"]</button>
         }
-        <a asp-controller="Page" asp-action="Manage" class="btn btn-light">@Localizer["Cancel"]</a>
+        <a asp-controller="Admin" asp-action="Page" class="btn btn-light">@Localizer["Cancel"]</a>
     </div>
 </form>
