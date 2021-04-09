@@ -29,8 +29,6 @@ namespace Moonglade.Configuration
 
         public AdvancedSettings AdvancedSettings { get; set; }
 
-        public SecuritySettings SecuritySettings { get; set; }
-
         public CustomStyleSheetSettings CustomStyleSheetSettings { get; set; }
 
         private bool _hasInitialized;
@@ -49,7 +47,6 @@ namespace Moonglade.Configuration
             WatermarkSettings = new();
             FriendLinksSettings = new();
             AdvancedSettings = new();
-            SecuritySettings = new();
             CustomStyleSheetSettings = new();
 
             Initialize();
@@ -68,7 +65,6 @@ namespace Moonglade.Configuration
             WatermarkSettings = cfgDic[nameof(WatermarkSettings)].FromJson<WatermarkSettings>();
             FriendLinksSettings = cfgDic[nameof(FriendLinksSettings)].FromJson<FriendLinksSettings>();
             AdvancedSettings = cfgDic[nameof(AdvancedSettings)].FromJson<AdvancedSettings>();
-            SecuritySettings = cfgDic[nameof(SecuritySettings)].FromJson<SecuritySettings>();
             CustomStyleSheetSettings = cfgDic[nameof(CustomStyleSheetSettings)].FromJson<CustomStyleSheetSettings>();
 
             _hasInitialized = true;
@@ -93,6 +89,79 @@ namespace Moonglade.Configuration
             {
                 await task;
                 Dirty();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
+                throw;
+            }
+        }
+
+        public async Task SaveAssetAsync(Guid assetId, string assetBase64)
+        {
+            if (assetId == Guid.Empty) throw new ArgumentOutOfRangeException(nameof(assetId));
+            if (string.IsNullOrWhiteSpace(assetBase64)) throw new ArgumentNullException(nameof(assetBase64));
+
+            try
+            {
+                var exists = await
+                    _dbConnection.ExecuteScalarAsync<int>("SELECT TOP 1 1 FROM BlogAsset ba WHERE ba.Id = @assetId",
+                        new { assetId });
+
+                if (exists == 0)
+                {
+                    await _dbConnection.ExecuteAsync(
+                        "INSERT INTO BlogAsset(Id, Base64Data, LastModifiedTimeUtc) VALUES (@assetId, @assetBase64, @utcNow)",
+                        new
+                        {
+                            assetId,
+                            assetBase64,
+                            DateTime.UtcNow
+                        });
+                }
+                else
+                {
+                    await _dbConnection.ExecuteAsync(
+                        "UPDATE BlogAsset SET Base64Data = @assetBase64, LastModifiedTimeUtc = @utcNow WHERE Id = @assetId",
+                        new
+                        {
+                            assetId,
+                            assetBase64,
+                            DateTime.UtcNow
+                        });
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
+                throw;
+            }
+        }
+
+        public string GetAssetData(Guid assetId)
+        {
+            try
+            {
+                var asset = _dbConnection.QueryFirstOrDefault<BlogAsset>
+                    ("SELECT TOP 1 * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
+
+                return asset?.Base64Data;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
+                throw;
+            }
+        }
+
+        public async Task<string> GetAssetDataAsync(Guid assetId)
+        {
+            try
+            {
+                var asset = await _dbConnection.QueryFirstOrDefaultAsync<BlogAsset>
+                    ("SELECT TOP 1 * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
+
+                return asset?.Base64Data;
             }
             catch (Exception e)
             {

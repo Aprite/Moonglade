@@ -1,25 +1,47 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Moonglade.Configuration.Abstraction;
+using Microsoft.FeatureManagement.Mvc;
+using Moonglade.Auth;
+using Moonglade.Configuration.Settings;
 using Moonglade.Core;
-using Moonglade.Pingback.Mvc;
+using Moonglade.Data.Spec;
+using Moonglade.Pingback.AspNetCore;
 
 namespace Moonglade.Web.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     [Route("post")]
     public class PostController : Controller
     {
         private readonly IPostService _postService;
-        private readonly IBlogConfig _blogConfig;
 
         public PostController(
-            IPostService postService,
-            IBlogConfig blogConfig)
+            IPostService postService)
         {
             _postService = postService;
-            _blogConfig = blogConfig;
+        }
+
+        [HttpGet("segment/published")]
+        [FeatureGate(FeatureFlags.EnableWebApi)]
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationOptions.DefaultScheme)]
+        [ProducesResponseType(typeof(IEnumerable<PostSegment>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Segment()
+        {
+            try
+            {
+                // for security, only allow published posts to be listed to third party API calls
+                var list = await _postService.ListSegment(PostStatus.Published);
+                return Ok(list);
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
         }
 
         [Route("{year:int:min(1975):length(4)}/{month:int:range(1,12)}/{day:int:range(1,31)}/{slug:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
@@ -28,7 +50,7 @@ namespace Moonglade.Web.Controllers
         {
             if (year > DateTime.UtcNow.Year || string.IsNullOrWhiteSpace(slug)) return NotFound();
 
-            var slugInfo = new PostSlugInfo(year, month, day, slug);
+            var slugInfo = new PostSlug(year, month, day, slug);
             var post = await _postService.GetAsync(slugInfo);
 
             if (post is null) return NotFound();
@@ -37,31 +59,8 @@ namespace Moonglade.Web.Controllers
             return View(post);
         }
 
-        [Route("{year:int:min(1975):length(4)}/{month:int:range(1,12)}/{day:int:range(1,31)}/{slug:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}/{type:regex(^(meta|content)$)}")]
-        public async Task<IActionResult> Raw(int year, int month, int day, string slug, string type)
-        {
-            var slugInfo = new PostSlugInfo(year, month, day, slug);
-
-            if (!_blogConfig.SecuritySettings.EnablePostRawEndpoint
-                || year > DateTime.UtcNow.Year
-                || string.IsNullOrWhiteSpace(slug)) return NotFound();
-
-            switch (type.ToLower())
-            {
-                case "meta":
-                    var meta = await _postService.GetMeta(slugInfo);
-                    return Json(meta);
-
-                case "content":
-                    var content = await _postService.GetContent(slugInfo);
-                    return Content(content, "text/plain");
-            }
-
-            return BadRequest();
-        }
-
         [Authorize]
-        [Route("preview/{postId:guid}")]
+        [HttpGet("preview/{postId:guid}")]
         public async Task<IActionResult> Preview(Guid postId)
         {
             var post = await _postService.GetDraft(postId);

@@ -28,30 +28,30 @@ function ImageUploader(targetName, hw, imgMimeType) {
                 success: function (data) {
                     console.info(data);
                     $(`#${targetName}modal`).modal('hide');
-                    toastr.success('Updated');
+                    notyf.success('Updated');
                     d = new Date();
                     $(`.blogadmin-${targetName}`).attr('src', `/${targetName}?${d.getTime()}`);
                 },
                 statusCode: {
                     400: function (responseObject, textStatus, jqXHR) {
                         var message = buildErrorMessage(responseObject);
-                        toastr.error(message);
+                        notyf.error(message);
                     },
                     401: function (responseObject, textStatus, jqXHR) {
-                        toastr.error('Unauthorized');
+                        notyf.error('Unauthorized');
                     },
                     404: function (responseObject, textStatus, jqXHR) {
-                        toastr.error('Endpoint not found');
+                        notyf.error('Endpoint not found');
                     },
                     409: function (responseObject, textStatus, jqXHR) {
                         var message = buildErrorMessage(responseObject);
-                        toastr.error(message);
+                        notyf.error(message);
                     },
                     500: function (responseObject, textStatus, jqXHR) {
-                        toastr.error('Server went boom');
+                        notyf.error('Server went boom');
                     },
                     503: function (responseObject, textStatus, jqXHR) {
-                        toastr.error('Server went boom boom');
+                        notyf.error('Server went boom boom');
                     }
                 },
                 error: function (xhr, status, err) {
@@ -60,7 +60,7 @@ function ImageUploader(targetName, hw, imgMimeType) {
                 }
             });
         } else {
-            toastr.error('Please select an image');
+            notyf.error('Please select an image');
         }
     }
 
@@ -78,7 +78,7 @@ function ImageUploader(targetName, hw, imgMimeType) {
             }
 
             if (!file.type.match('image.*')) {
-                toastr.error('Please select an image file.');
+                notyf.error('Please select an image file.');
                 return;
             }
 
@@ -118,7 +118,7 @@ function ImageUploader(targetName, hw, imgMimeType) {
             }
             reader.readAsDataURL(file);
         } else {
-            toastr.error('The File APIs are not fully supported in this browser.');
+            notyf.error('The File APIs are not fully supported in this browser.');
         }
     }
 
@@ -275,8 +275,8 @@ var postEditor = {
         }
     },
     initEvents: function () {
-        $('#Title').change(function () {
-            $('#Slug').val(slugify($(this).val()));
+        $('#ViewModel_Title').change(function () {
+            $('#ViewModel_Slug').val(slugify($(this).val()));
         });
 
         var tagnames = new Bloodhound({
@@ -293,7 +293,7 @@ var postEditor = {
         });
 
         tagnames.initialize();
-        $('#Tags').tagsinput({
+        $('#ViewModel_Tags').tagsinput({
             typeaheadjs: {
                 name: 'tagnames',
                 displayKey: 'name',
@@ -316,7 +316,7 @@ var postEditor = {
 
         $('#btn-publish').click(function (e) {
             if ($('form').valid()) {
-                $('input[name="IsPublished"]').val('True');
+                $('input[name="ViewModel.IsPublished"]').val('True');
                 submitForm(e);
             }
         });
@@ -327,7 +327,7 @@ var postEditor = {
             }
 
             var selectCatCount = 0;
-            $('input[name="SelectedCategoryIds"]').each(function () {
+            $('input[name="ViewModel.SelectedCategoryIds"]').each(function () {
                 if ($(this).prop('checked') === true) {
                     ++selectCatCount;
                 }
@@ -335,10 +335,10 @@ var postEditor = {
 
             if ($('.post-edit-form').valid() && selectCatCount === 0) {
                 e.preventDefault();
-                window.toastr.error('Please select at least one category');
+                notyf.error('Please select at least one category');
             }
             else {
-                if ($('input[name="IsPublished"]').val() === 'True') {
+                if ($('input[name="ViewModel.IsPublished"]').val() === 'True') {
                     $('#btn-publish').hide();
                     $('#btn-preview').hide();
                 }
@@ -349,7 +349,7 @@ var postEditor = {
             message: 'You have unsaved changes, are you sure to leave this page?'
         });
 
-        $('#Title').focus();
+        $('#ViewModel_Title').focus();
     },
     keepAlive: function () {
         var tid = setInterval(postNonce, 60 * 1000);
@@ -381,7 +381,7 @@ var onPostCreateEditComplete = function () {
 var onPostCreateEditSuccess = function (data) {
     if (data.postId) {
         $('input[name="PostId"]').val(data.postId);
-        toastr.success('Post saved successfully.');
+        notyf.success('Post saved successfully.');
 
         if (isPreviewRequired) {
             isPreviewRequired = false;
@@ -392,47 +392,18 @@ var onPostCreateEditSuccess = function (data) {
 
 var onPostCreateEditFailed = function (context) {
     var message = buildErrorMessage(context);
-    if (window.toastr) {
-        window.toastr.error(message);
+    if (notyf) {
+        notyf.error(message);
     } else {
         alert(`Error: ${message}`);
-    }
-};
-
-var btnSubmitPage = '#btn-submit';
-var onPageCreateEditBegin = function () {
-    $(btnSubmitPage).text('Saving...');
-    $(btnSubmitPage).addClass('disabled');
-    $(btnSubmitPage).attr('disabled', 'disabled');
-};
-
-var onPageCreateEditComplete = function () {
-    $(btnSubmitPage).text('Save');
-    $(btnSubmitPage).removeClass('disabled');
-    $(btnSubmitPage).removeAttr('disabled');
-};
-
-var onPageCreateEditSuccess = function (data) {
-    if (data.pageId) {
-        $('input[name="Id"]').val(data.pageId);
-        toastr.success('Page saved successfully.');
-
-        if ($('input[name="IsPublished"]:checked').val() === 'true') {
-            $('#btn-preview').hide();
-        }
-
-        if (isPreviewRequired) {
-            isPreviewRequired = false;
-            window.open(`/page/preview/${data.pageId}`);
-        }
     }
 };
 
 var onPageCreateEditFailed = function (context) {
     var message = buildErrorMessage(context);
 
-    if (window.toastr) {
-        window.toastr.error(message);
+    if (notyf) {
+        notyf.error(message);
     } else {
         alert(`Error: ${message}`);
     }
@@ -440,26 +411,26 @@ var onPageCreateEditFailed = function (context) {
 
 function deletePost(postid) {
     $(`#span-processing-${postid}`).show();
-    callApi(`/post/manage/${postid}/destroy`, 'DELETE', {},
+    callApi(`/api/postmanage/${postid}/destroy`, 'DELETE', {},
         (resp) => {
             $(`#tr-${postid}`).hide();
-            toastr.success('Post deleted');
+            notyf.success('Post deleted');
         });
 }
 
 function restorePost(postid) {
     $(`#span-processing-${postid}`).show();
-    callApi(`/post/manage/${postid}/restore`, 'POST', {},
+    callApi(`/api/postmanage/${postid}/restore`, 'POST', {},
         (resp) => {
             $(`#tr-${postid}`).hide();
-            toastr.success('Post restored');
+            notyf.success('Post restored');
         });
 }
 
 function deleteFriendLink(friendlinkid) {
     $(`#span-processing-${friendlinkid}`).show();
 
-    callApi(`/admin/settings/friendlink/${friendlinkid}`, 'DELETE', {},
+    callApi(`/api/friendlink/${friendlinkid}`, 'DELETE', {},
         (resp) => {
             $(`#tr-${friendlinkid}`).hide();
         });
@@ -481,7 +452,7 @@ function initCreateFriendLink() {
 }
 
 function editFriendLink(id) {
-    $.get(`/admin/settings/friendlink/edit/${id}`, function (data) {
+    $.get(`/api/friendlink/${id}`, function (data) {
         $('#FriendLinkEditViewModel_Id').val(data.id);
         $('#FriendLinkEditViewModel_Title').val(data.title);
         $('#FriendLinkEditViewModel_LinkUrl').val(data.linkUrl);
@@ -492,7 +463,7 @@ function editFriendLink(id) {
 function deleteAccount(accountid) {
     $(`#span-processing-${accountid}`).show();
 
-    callApi(`/admin/settings/account/${accountid}`, 'DELETE', {},
+    callApi(`/api/localaccount/${accountid}`, 'DELETE', {},
         (resp) => {
             $(`#tr-${accountid}`).hide();
         });
@@ -510,6 +481,11 @@ function deleteSelectedComments() {
                 $(`#panel-comment-${value}`).slideUp();
             });
         });
+}
+
+function initCreateTag() {
+    $('#edit-form')[0].reset();
+    $('#editTagModal').modal();
 }
 
 function initCreateCategory() {
@@ -536,7 +512,7 @@ function deleteCat(catid) {
     callApi(`/api/category/delete/${catid}`, 'DELETE', {},
         (resp) => {
             $(`#card-${catid}`).hide();
-            toastr.success('Category deleted');
+            notyf.success('Category deleted');
         });
 }
 
@@ -565,12 +541,12 @@ function editMenu(id) {
 function deletePage(pageid, slug) {
     $(`#span-processing-${pageid}`).show();
 
-    callApi(`/page/${pageid}/${slug}`,
+    callApi(`/api/page/${pageid}/${slug}`,
         'DELETE',
         {},
         (resp) => {
             $(`#card-${pageid}`).hide();
-            toastr.success('Page deleted');
+            notyf.success('Page deleted');
         });
 }
 

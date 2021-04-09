@@ -1,7 +1,6 @@
-﻿@using Moonglade.Core
-@using Moonglade.Pages
+﻿@using Moonglade.Pages
 @using NUglify
-@model Page
+@model BlogPage
 
 @{
     ViewBag.TitlePrefix = Model.Title;
@@ -34,12 +33,14 @@
 
 @if (null != ViewBag.IsDraftPreview)
 {
-    <div class="alert alert-info">
-        @Localizer["This is a preview for draft content."]
+    <div class="container mt-3 mb-4">
+        <div class="alert alert-info">
+            @Localizer["This is a preview for draft content."]
+        </div>
     </div>
 }
 
-@if (BlogConfig.SecuritySettings.AllowScriptsInPage)
+@if (BlogConfig.AdvancedSettings.AllowScriptsInPage)
 {
     @Html.Raw(Model.RawHtmlContent)
 }

@@ -4,14 +4,12 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
-using System.Text;
 using AspNetCoreRateLimit;
 using Edi.Captcha;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.ApplicationInsights.Extensibility.Implementation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Configuration;
@@ -21,9 +19,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.FeatureManagement;
 using Moonglade.Auth;
-using Moonglade.Configuration;
+using Moonglade.Configuration.Abstraction;
 using Moonglade.Configuration.Settings;
-using Moonglade.Utils;
 using Moonglade.Web.Configuration;
 using Moonglade.Web.Middleware;
 using Moonglade.Web.Models;
@@ -49,10 +46,9 @@ namespace Moonglade.Web
 
             // Workaround stupid ASP.NET "by design" issue
             // https://github.com/aspnet/Configuration/issues/451
-            _supportedCultures = _appSettings.GetSection("SupportedCultures")
-                .GetChildren()
-                .Select(p => new CultureInfo(p.Value))
-                .ToList();
+            _supportedCultures = _configuration.GetSection("SupportedCultures").Get<string[]>()
+                                               .Select(p => new CultureInfo(p))
+                                               .ToList();
         }
 
         public void ConfigureServices(IServiceCollection services)
@@ -71,8 +67,12 @@ namespace Moonglade.Web
             services.TryAddSingleton<IActionContextAccessor, ActionContextAccessor>();
             services.AddLocalization(options => options.ResourcesPath = "Resources");
             services.AddMvc(options => options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute()))
+                    .ConfigureApiBehaviorOptions(ConfigureApiBehavior.BlogApiBehavior)
                     .AddViewLocalization()
-                    .AddDataAnnotationsLocalization();
+                    .AddDataAnnotationsLocalization().AddRazorPagesOptions(options =>
+                    {
+                        options.Conventions.AuthorizeFolder("/Admin");
+                    });
 
             services.Configure<RequestLocalizationOptions>(options =>
             {
@@ -89,15 +89,17 @@ namespace Moonglade.Web
                 options.HeaderName = "XSRF-TOKEN";
             });
 
+            services.AddSwaggerGen();
+
             // Blog Services
             services.AddBlogServices();
             services.Configure<List<BlogTheme>>(_configuration.GetSection("Themes"));
             services.Configure<List<ManifestIcon>>(_configuration.GetSection("ManifestIcons"));
-            services.Configure<List<TagNormalization>>(_configuration.GetSection("TagNormalization"));
+            services.Configure<Dictionary<string, string>>(_configuration.GetSection("TagNormalization"));
             services.AddBlogConfiguration(_appSettings);
             services.AddBlogAuthenticaton(_configuration);
             services.AddComments(_configuration);
-            services.AddNotification(_logger);
+            services.AddNotificationClient(_logger);
             services.AddDataStorage(_configuration.GetConnectionString("MoongladeDatabase"));
             services.AddImageStorage(_configuration, options =>
             {
@@ -109,12 +111,19 @@ namespace Moonglade.Web
             IApplicationBuilder app,
             ILogger<Startup> logger,
             IHostApplicationLifetime appLifetime,
+            IBlogConfig blogConfig,
             TelemetryConfiguration configuration)
         {
             _logger = logger;
 
-            // Support Chinese contents
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            if (_environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI(c =>
+                {
+                    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Moonglade API V1");
+                });
+            }
 
             if (!_environment.IsProduction())
             {
@@ -129,18 +138,30 @@ namespace Moonglade.Web
                 _logger.LogInformation("Moonglade is stopping...");
             });
 
+            app.UseCustomCss(options => options.MaxContentLength = 10240);
+            app.UseManifest(options => options.ThemeColor = "#333333");
             app.UseRobotsTxt();
 
-            app.UseForFeature(nameof(FeatureFlags.MetaWeblog), _ =>
+            app.UseOpenSearch(options =>
             {
-                // Support MetaWeblog API
-                app.UseMetaWeblog("/metaweblog");
+                options.RequestPath = "/opensearch";
+                options.IconFileType = "image/png";
+                options.IconFilePath = "/favicon-16x16.png";
             });
 
+            app.UseMiddlewareForFeature<FoafMiddleware>(nameof(FeatureFlags.Foaf));
+
+            if (blogConfig.AdvancedSettings.EnableMetaWeblog)
+            {
+                app.UseMiddleware<RSDMiddleware>();
+                app.UseMetaWeblog("/metaweblog");
+            }
+
+            app.UseMiddleware<SiteMapMiddleware>();
             app.UseMiddleware<PoweredByMiddleware>();
             app.UseMiddleware<DNTMiddleware>();
 
-            if (_configuration.GetValue<bool>("AppSettings:PreferAzureAppConfiguration"))
+            if (_configuration.GetValue<bool>("PreferAzureAppConfiguration"))
             {
                 app.UseAzureAppConfiguration();
             }
@@ -152,7 +173,7 @@ namespace Moonglade.Web
             }
             else
             {
-                app.UseStatusCodePages();
+                app.UseStatusCodePages(ConfigureStatusCodePages.Handler);
                 app.UseExceptionHandler("/error");
                 app.UseHttpsRedirection();
                 app.UseHsts();
@@ -167,39 +188,23 @@ namespace Moonglade.Web
 
             app.UseDefaultImage(options =>
             {
-                options.AllowedExtensions = _configuration.GetSection("ImageStorage:AllowedExtensions")
-                    .GetChildren()
-                    .Select(x => x.Value);
+                options.AllowedExtensions = _configuration.GetSection("ImageStorage:AllowedExtensions").Get<string[]>();
                 options.DefaultImagePath = _configuration["ImageStorage:DefaultImagePath"];
             });
 
             app.UseStaticFiles();
-            app.UseSession();
+            app.UseSession().UseCaptchaImage(options =>
+            {
+                options.RequestPath = "/captcha-image";
+                options.ImageHeight = _configuration.GetValue<int>("Captcha:ImageHeight");
+                options.ImageWidth = _configuration.GetValue<int>("Captcha:ImageWidth");
+            });
 
             app.UseIpRateLimiting();
             app.UseRouting();
             app.UseAuthentication();
             app.UseAuthorization();
-
-            app.UseEndpoints(endpoints =>
-            {
-                endpoints.MapGet("/ping", async context =>
-                {
-                    context.Response.Headers.Add("X-Moonglade-Version", Helper.AppVersion);
-                    var obj = new
-                    {
-                        MoongladeVersion = Helper.AppVersion,
-                        DotNetVersion = Environment.Version.ToString(),
-                        EnvironmentTags = Helper.GetEnvironmentTags()
-                    };
-
-                    await context.Response.WriteAsync(obj.ToJson(), Encoding.UTF8);
-                });
-                endpoints.MapControllerRoute(
-                    "default",
-                    "{controller=Home}/{action=Index}/{id?}");
-                endpoints.MapRazorPages();
-            });
+            app.UseEndpoints(ConfigureEndpoints.BlogEndpoints);
         }
     }
 }

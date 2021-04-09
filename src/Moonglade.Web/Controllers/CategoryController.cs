@@ -1,17 +1,20 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.FeatureManagement.Mvc;
+using Moonglade.Auth;
+using Moonglade.Configuration.Settings;
 using Moonglade.Core;
-using Moonglade.Web.Filters;
+using Moonglade.Utils;
 using Moonglade.Web.Models;
 
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
-    [AppendAppVersion]
     [Route("api/[controller]")]
     public class CategoryController : ControllerBase
     {
@@ -22,13 +25,22 @@ namespace Moonglade.Web.Controllers
             _catService = catService;
         }
 
+        [HttpGet("list")]
+        [FeatureGate(FeatureFlags.EnableWebApi)]
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationOptions.DefaultScheme)]
+        [ProducesResponseType(typeof(IEnumerable<Category>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> List()
+        {
+            var cats = await _catService.GetAll();
+            return Ok(cats);
+        }
+
         [HttpPost("create")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Create(CategoryEditViewModel model)
+        public async Task<IActionResult> Create(CategoryEditModel model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var request = new UpdateCatRequest
             {
                 RouteName = model.RouteName,
@@ -45,10 +57,10 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Edit(Guid id)
         {
-            var cat = await _catService.GetAsync(id);
+            var cat = await _catService.Get(id);
             if (null == cat) return NotFound();
 
-            var model = new CategoryEditViewModel
+            var model = new CategoryEditModel
             {
                 Id = cat.Id,
                 DisplayName = cat.DisplayName,
@@ -62,10 +74,8 @@ namespace Moonglade.Web.Controllers
         [HttpPost("edit")]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<IActionResult> Edit(CategoryEditViewModel model)
+        public async Task<IActionResult> Edit(CategoryEditModel model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var request = new UpdateCatRequest
             {
                 RouteName = model.RouteName,
@@ -85,7 +95,7 @@ namespace Moonglade.Web.Controllers
             if (id == Guid.Empty)
             {
                 ModelState.AddModelError(nameof(id), "value is empty");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             await _catService.DeleteAsync(id);

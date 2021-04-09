@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Moonglade.Notification.Client
 {
@@ -6,10 +7,10 @@ namespace Moonglade.Notification.Client
     {
         Task TestNotificationAsync();
 
-        Task NotifyCommentAsync(CommentPayload payload);
+        Task NotifyCommentAsync(string username, string email, string ipAddress, string postTitle, string commentContent, DateTime createTimeUtc);
 
-        Task NotifyCommentReplyAsync(CommentReplyPayload payload);
+        Task NotifyCommentReplyAsync(string email, string commentContent, string title, string replyContentHtml, string postLink);
 
-        Task NotifyPingbackAsync(PingPayload model);
+        Task NotifyPingbackAsync(string targetPostTitle, DateTime pingTimeUtc, string domain, string sourceIp, string sourceUrl, string sourceTitle);
     }
 }

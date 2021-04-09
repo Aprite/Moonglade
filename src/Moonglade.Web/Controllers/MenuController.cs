@@ -4,14 +4,12 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moonglade.Menus;
-using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
-    [AppendAppVersion]
     [Route("api/[controller]")]
     public class MenuController : ControllerBase
     {
@@ -24,10 +22,9 @@ namespace Moonglade.Web.Controllers
 
         [HttpPost("create")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Create(MenuEditViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var request = new UpdateMenuRequest
             {
                 DisplayOrder = model.DisplayOrder,
@@ -43,8 +40,11 @@ namespace Moonglade.Web.Controllers
 
         [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Delete(Guid id)
         {
+            if (id == Guid.Empty) return BadRequest();
+
             await _menuService.DeleteAsync(id);
             return Ok();
         }
@@ -54,6 +54,8 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> Edit(Guid id)
         {
+            if (id == Guid.Empty) return NotFound();
+
             var menu = await _menuService.GetAsync(id);
             if (null == menu) return NotFound();
 
@@ -75,8 +77,6 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<IActionResult> Edit(MenuEditViewModel model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var request = new UpdateMenuRequest
             {
                 Title = model.Title,

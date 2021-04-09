@@ -10,17 +10,9 @@ namespace Moonglade.Auth
 
         public IReadOnlyCollection<ApiKey> ApiKeys { get; set; }
 
-        public MetaWeblogCredential MetaWeblog { get; set; }
-
         public AuthenticationSettings()
         {
             Provider = AuthenticationProvider.None;
         }
-    }
-
-    public class MetaWeblogCredential
-    {
-        public string Username { get; set; }
-        public string Password { get; set; }
     }
 }

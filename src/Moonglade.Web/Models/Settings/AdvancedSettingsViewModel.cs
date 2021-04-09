@@ -23,6 +23,31 @@ namespace Moonglade.Web.Models.Settings
         [Display(Name = "Enable OpenGraph")]
         public bool EnableOpenGraph { get; set; }
 
+        [Display(Name = "Enable CDN for images")]
+        public bool EnableCDNRedirect { get; set; }
+
+        [Display(Name = "Enable MetaWeblog API")]
+        public bool EnableMetaWeblog { get; set; }
+
+        [Display(Name = "Enable OpenSearch")]
+        public bool EnableOpenSearch { get; set; }
+
+        public string CDNEndpoint { get; set; }
+
+        public string MetaWeblogPassword { get; set; }
+
+        [Display(Name = "Fit Image to Device Pixel Ratio")]
+        public bool FitImageToDevicePixelRatio { get; set; }
+
+        [Display(Name = "Show warning when clicking external links")]
+        public bool WarnExternalLink { get; set; }
+
+        [Display(Name = "Allow javascript in pages")]
+        public bool AllowScriptsInPage { get; set; }
+
+        [Display(Name = "Show Admin login button under sidebar")]
+        public bool ShowAdminLoginButton { get; set; }
+
         [Display(Name = "Enable Wechat")]
         public bool EnableWechat { get; set; }
     }

@@ -14,11 +14,13 @@ using X.PagedList;
 
 namespace Moonglade.Web.Controllers
 {
+    [ApiExplorerSettings(IgnoreApi = true)]
     public class HomeController : Controller
     {
         private readonly IPostService _postService;
         private readonly IPageService _pageService;
         private readonly ITagService _tagService;
+        private readonly IBlogArchiveService _blogArchiveService;
         private readonly IBlogCache _cache;
         private readonly IBlogConfig _blogConfig;
         private readonly ILogger<HomeController> _logger;
@@ -28,6 +30,7 @@ namespace Moonglade.Web.Controllers
             IPostService postService,
             IPageService pageService,
             ITagService tagService,
+            IBlogArchiveService blogArchiveService,
             IBlogCache cache,
             IBlogConfig blogConfig,
             ILogger<HomeController> logger,
@@ -36,6 +39,7 @@ namespace Moonglade.Web.Controllers
             _postService = postService;
             _pageService = pageService;
             _tagService = tagService;
+            _blogArchiveService = blogArchiveService;
             _cache = cache;
             _blogConfig = blogConfig;
             _logger = logger;
@@ -46,13 +50,13 @@ namespace Moonglade.Web.Controllers
         {
             var pagesize = _blogConfig.ContentSettings.PostListPageSize;
             var posts = await _postService.List(pagesize, page);
-            var count = _cache.GetOrCreate(CacheDivision.General, "postcount", _ => _postService.CountVisible());
+            var count = _cache.GetOrCreate(CacheDivision.General, "postcount", _ => _postService.CountPublic());
 
             var list = new StaticPagedList<PostDigest>(posts, page, pagesize, count);
             return View(list);
         }
 
-        [HttpGet("page/{slug:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
+        [Route("page/{slug:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
         public async Task<IActionResult> Page(string slug)
         {
             if (string.IsNullOrWhiteSpace(slug)) return BadRequest();
@@ -73,7 +77,7 @@ namespace Moonglade.Web.Controllers
         [Route("tags")]
         public async Task<IActionResult> Tags()
         {
-            var tags = await _tagService.GetTagCountListAsync();
+            var tags = await _tagService.GetTagCountList();
             return View(tags);
         }
 
@@ -99,7 +103,7 @@ namespace Moonglade.Web.Controllers
             if (string.IsNullOrWhiteSpace(routeName)) return NotFound();
 
             var pageSize = _blogConfig.ContentSettings.PostListPageSize;
-            var cat = await categoryService.GetAsync(routeName);
+            var cat = await categoryService.Get(routeName);
 
             if (cat is null) return NotFound();
 
@@ -117,15 +121,15 @@ namespace Moonglade.Web.Controllers
         }
 
         [Route("archive")]
-        public async Task<IActionResult> Archive([FromServices] IBlogArchiveService blogArchiveService)
+        public async Task<IActionResult> Archive()
         {
-            var archives = await blogArchiveService.ListAsync();
+            var archives = await _blogArchiveService.ListAsync();
             return View(archives);
         }
 
         [Route("archive/{year:int:length(4)}")]
         [Route("archive/{year:int:length(4)}/{month:int:range(1,12)}")]
-        public async Task<IActionResult> ArchiveList([FromServices] IBlogArchiveService blogArchiveService, int year, int? month)
+        public async Task<IActionResult> ArchiveList(int year, int? month)
         {
             if (year > DateTime.UtcNow.Year) return BadRequest();
 
@@ -135,13 +139,13 @@ namespace Moonglade.Web.Controllers
             {
                 // {year}/{month}
                 ViewBag.ArchiveInfo = $"{year}.{month}";
-                model = await blogArchiveService.ListPostsAsync(year, month.Value);
+                model = await _blogArchiveService.ListPostsAsync(year, month.Value);
             }
             else
             {
                 // {year}
                 ViewBag.ArchiveInfo = $"{year}";
-                model = await blogArchiveService.ListPostsAsync(year);
+                model = await _blogArchiveService.ListPostsAsync(year);
             }
 
             return View(model);

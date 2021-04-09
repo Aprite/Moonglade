@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 using Moonglade.Auditing;
 using Moonglade.Caching;
@@ -11,9 +12,9 @@ namespace Moonglade.Core
 {
     public interface ICategoryService
     {
-        Task<IReadOnlyList<Category>> GetAllAsync();
-        Task<Category> GetAsync(string categoryName);
-        Task<Category> GetAsync(Guid id);
+        Task<IReadOnlyList<Category>> GetAll();
+        Task<Category> Get(string categoryName);
+        Task<Category> Get(Guid id);
         Task CreateAsync(UpdateCatRequest request);
         Task DeleteAsync(Guid id);
         Task UpdateAsync(Guid id, UpdateCatRequest request);
@@ -25,6 +26,14 @@ namespace Moonglade.Core
         private readonly IRepository<PostCategoryEntity> _postCatRepo;
         private readonly IBlogAudit _audit;
         private readonly IBlogCache _cache;
+
+        private readonly Expression<Func<CategoryEntity, Category>> _categorySelector = c => new()
+        {
+            Id = c.Id,
+            DisplayName = c.DisplayName,
+            RouteName = c.RouteName,
+            Note = c.Note
+        };
 
         public CategoryService(
             IRepository<CategoryEntity> catRepo,
@@ -38,46 +47,24 @@ namespace Moonglade.Core
             _cache = cache;
         }
 
-        public Task<IReadOnlyList<Category>> GetAllAsync()
+        public Task<IReadOnlyList<Category>> GetAll()
         {
             return _cache.GetOrCreateAsync(CacheDivision.General, "allcats", async entry =>
             {
                 entry.SlidingExpiration = TimeSpan.FromHours(1);
-                var list = await _catRepo.SelectAsync(c => new Category
-                {
-                    Id = c.Id,
-                    DisplayName = c.DisplayName,
-                    RouteName = c.RouteName,
-                    Note = c.Note
-                });
+                var list = await _catRepo.SelectAsync(_categorySelector);
                 return list;
             });
         }
 
-        public Task<Category> GetAsync(string categoryName)
+        public Task<Category> Get(string categoryName)
         {
-            return _catRepo.SelectFirstOrDefaultAsync(
-                new CategorySpec(categoryName), category =>
-                    new Category
-                    {
-                        DisplayName = category.DisplayName,
-                        Id = category.Id,
-                        RouteName = category.RouteName,
-                        Note = category.Note
-                    });
+            return _catRepo.SelectFirstOrDefaultAsync(new CategorySpec(categoryName), _categorySelector);
         }
 
-        public Task<Category> GetAsync(Guid id)
+        public Task<Category> Get(Guid id)
         {
-            return _catRepo.SelectFirstOrDefaultAsync(
-                new CategorySpec(id), category =>
-                    new Category
-                    {
-                        DisplayName = category.DisplayName,
-                        Id = category.Id,
-                        RouteName = category.RouteName,
-                        Note = category.Note
-                    });
+            return _catRepo.SelectFirstOrDefaultAsync(new CategorySpec(id), _categorySelector);
         }
 
         public async Task CreateAsync(UpdateCatRequest request)

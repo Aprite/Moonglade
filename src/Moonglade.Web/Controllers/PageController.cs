@@ -1,11 +1,17 @@
 ﻿using System;
-using System.Net;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using Microsoft.FeatureManagement.Mvc;
+using Moonglade.Auth;
 using Moonglade.Caching;
+using Moonglade.Configuration.Settings;
 using Moonglade.Pages;
+using Moonglade.Utils;
 using Moonglade.Web.Filters;
 using Moonglade.Web.Models;
 using NUglify;
@@ -13,7 +19,8 @@ using NUglify;
 namespace Moonglade.Web.Controllers
 {
     [Authorize]
-    [Route("page")]
+    [ApiController]
+    [Route("api/[controller]")]
     public class PageController : Controller
     {
         private readonly IBlogCache _cache;
@@ -30,53 +37,32 @@ namespace Moonglade.Web.Controllers
             _logger = logger;
         }
 
-        [Route("preview/{pageId:guid}")]
-        public async Task<IActionResult> Preview(Guid pageId)
+        [HttpGet("segment/published")]
+        [FeatureGate(FeatureFlags.EnableWebApi)]
+        [Authorize(AuthenticationSchemes = ApiKeyAuthenticationOptions.DefaultScheme)]
+        [ProducesResponseType(typeof(IEnumerable<PageSegment>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Segment()
         {
-            var page = await _pageService.GetAsync(pageId);
-            if (page is null) return NotFound();
-
-            ViewBag.IsDraftPreview = true;
-
-            return View("~/Views/Home/Page.cshtml", page);
-        }
-
-        [HttpGet("manage/create")]
-        public IActionResult Create()
-        {
-            var model = new PageEditViewModel();
-            return View("CreateOrEdit", model);
-        }
-
-        [HttpGet("manage/edit/{id:guid}")]
-        public async Task<IActionResult> Edit(Guid id)
-        {
-            var page = await _pageService.GetAsync(id);
-            if (page is null) return NotFound();
-
-            var model = new PageEditViewModel
+            var pageSegments = await _pageService.ListSegment();
+            if (pageSegments is not null)
             {
-                Id = page.Id,
-                Title = page.Title,
-                Slug = page.Slug,
-                MetaDescription = page.MetaDescription,
-                CssContent = page.CssContent,
-                RawHtmlContent = page.RawHtmlContent,
-                HideSidebar = page.HideSidebar,
-                IsPublished = page.IsPublished
-            };
-
-            return View("CreateOrEdit", model);
+                // for security, only allow published pages to be listed to third party API calls
+                var published = pageSegments.Where(p => p.IsPublished);
+                return Ok(published);
+            }
+            return StatusCode(StatusCodes.Status500InternalServerError);
         }
 
-        [HttpPost("manage/createoredit")]
+        [HttpPost("createoredit")]
         [ServiceFilter(typeof(ClearSiteMapCache))]
-        public async Task<IActionResult> CreateOrEdit(PageEditViewModel model)
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> CreateOrEdit(PageEditModel model)
         {
             try
             {
-                if (!ModelState.IsValid) return BadRequest(ModelState);
-
                 if (!string.IsNullOrWhiteSpace(model.CssContent))
                 {
                     var uglifyTest = Uglify.Css(model.CssContent);
@@ -86,7 +72,7 @@ namespace Moonglade.Web.Controllers
                         {
                             ModelState.AddModelError(model.CssContent, err.ToString());
                         }
-                        return BadRequest(ModelState);
+                        return BadRequest(ModelState.CombineErrorMessages());
                     }
                 }
 
@@ -107,17 +93,17 @@ namespace Moonglade.Web.Controllers
 
                 _cache.Remove(CacheDivision.Page, req.Slug.ToLower());
 
-                return Json(new { PageId = uid });
+                return Ok(new { PageId = uid });
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error Create or Edit CustomPage.");
-                Response.StatusCode = (int)HttpStatusCode.InternalServerError;
-                return Json(e.Message);
+                return new StatusCodeResult(StatusCodes.Status500InternalServerError);
             }
         }
 
         [HttpDelete("{pageId:guid}/{slug}")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<IActionResult> Delete(Guid pageId, string slug)
         {
             await _pageService.DeleteAsync(pageId);

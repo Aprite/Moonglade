@@ -1,0 +1,157 @@
+﻿@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment WebHostEnvironment
+@inject IOptions<AuthenticationSettings> AuthOptions
+
+@using Moonglade.Auth
+@{
+    var currentPage = ViewContext.RouteData.Values["Page"]?.ToString();
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>
+        @BlogConfig.GeneralSettings.SiteTitle @Localizer["Admin"]
+    </title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+    <meta name="keywords" content="@Html.Raw(BlogConfig.GeneralSettings.MetaKeyword)" />
+    <link rel="start" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/" />
+    <rss title="@BlogConfig.FeedSettings.RssTitle" href="@Url.Action("Rss", "Subscription")" />
+    @if (BlogConfig.AdvancedSettings.EnableOpenSearch)
+    {
+        <opensearch href="/opensearch" title="@BlogConfig.GeneralSettings.SiteTitle" />
+    }
+    <feature name="Foaf">
+        <foaf href="/foaf.xml" />
+    </feature>
+    <partial name="_Favicons" />
+    <environment exclude="Development">
+        <link href="~/css/bundle.min.css" rel="stylesheet" asp-append-version="true" />
+        <link href="~/css/admin-bundle.min.css" rel="stylesheet" asp-append-version="true" />
+    </environment>
+    <environment include="Development">
+        <link href="~/css/bundle.css" rel="stylesheet" asp-append-version="true" />
+        <link href="~/css/3rd/bootstrap-tagsinput.css" rel="stylesheet" />
+        <link href="~/css/3rd/bootstrap-tagsinput-typeahead.css" rel="stylesheet" />
+        <link href="~/css/src/admin.css" rel="stylesheet" />
+    </environment>
+    <link href="~/css/theme/@BlogConfig.GeneralSettings.ThemeFileName" rel="stylesheet" asp-append-version="true" />
+    <environment exclude="Development">
+        <script src="~/js/dist/app-bundle.min.js" asp-append-version="true"></script>
+        <script src="~/js/dist/admin-bundle.min.js" asp-append-version="true"></script>
+    </environment>
+    <environment include="Development">
+        <script src="~/js/3rd/jquery.min.js"></script>
+        <script src="~/js/3rd/bootstrap.bundle.min.js"></script>
+        <script src="~/js/3rd/jquery.qrcode.min.js"></script>
+        <script src="~/js/3rd/notyf.min.js"></script>
+        <script src="~/js/app/base.js"></script>
+        <script src="~/js/app/postslug.js"></script>
+        <script src="~/js/app/httpService.js"></script>
+        <script src="~/js/app/comments.js"></script>
+        <script src="~/js/app/darklighttheme.js"></script>
+
+        <script src="~/js/3rd/jquery.validate.min.js"></script>
+        <script src="~/js/3rd/jquery.validate.unobtrusive.min.js"></script>
+        <script src="~/js/3rd/jquery.unobtrusive-ajax.min.js"></script>
+        <script src="~/js/3rd/bootstrap-tagsinput.min.js"></script>
+        <script src="~/js/3rd/jquery.are-you-sure.min.js"></script>
+        <script src="~/js/app/admin.js"></script>
+        <script src="~/js/app/settings.js"></script>
+    </environment>
+    @await RenderSectionAsync("head", false)
+</head>
+<body class="admin-body">
+    <nav class="admin-navbar navbar sticky-top navbar-expand-lg navbar-dark bg-accent2">
+        <a class="navbar-brand font-sairas" asp-action="Index" asp-controller="Admin">@BlogConfig.GeneralSettings.SiteTitle</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+            <ul class="navbar-nav ml-auto">
+
+                <li class="nav-item">
+                    <a class="nav-link" asp-page="/Settings/General">
+                        <span class="icon-cog"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-page="/Admin/About">
+                        <span class="icon-info"></span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" asp-controller="Home" asp-action="Index" target="_blank">
+                        <span class="icon-home"></span>
+                    </a>
+                </li>
+            </ul>
+
+            <span class="navbar-text mr-2">
+                <img src="@Url.Action("Avatar", "Assets")"
+                     alt="@BlogConfig.GeneralSettings.OwnerName"
+                     class="rounded-circle admin-nav-head-pic mr-1" />
+                <userinfo user="User"></userinfo>
+            </span>
+
+            <a class="navbar-text d-inline-block" asp-controller="Auth" asp-action="SignOut" title="Sign Out">
+                <span class="icon-enter"></span>
+            </a>
+        </div>
+    </nav>
+    <div class="d-flex admin-body-wrapper">
+        <aside class="admin-nav">
+            <section class="admin-nav-section mt-4 mb-3">
+                <div class="list-group list-group-flush">
+                    <a asp-page="/Admin/Post" class="list-group-item list-group-item-action @(currentPage is "/Admin/Post" or "/Admin/EditPost" or "/Admin/PostDraft" or "/Admin/PostInsights" or "/Admin/RecycleBin" ? "active" : null)">
+                        <span class="icon-file-text2"></span>
+                        @Localizer["Posts"]
+                    </a>
+                    <a asp-page="/Admin/BlogPage" class="list-group-item list-group-item-action @(currentPage is "/Admin/BlogPage" or "/Admin/EditPage" ? "active" : null)">
+                        <span class="icon-file-empty"></span>
+                        @Localizer["Pages"]
+                    </a>
+                    <a asp-page="/Admin/Category" class="list-group-item list-group-item-action @(currentPage is "/Admin/Category" ? "active" : null)">
+                        <span class="icon-folder"></span>
+                        @Localizer["Categories"]
+                    </a>
+                    <a asp-page="/Admin/Comments" class="list-group-item list-group-item-action @(currentPage is "/Admin/Comments" ? "active" : null)">
+                        <span class="icon-bubbles3"></span>
+                        @Localizer["Comments"]
+                    </a>
+                    <a asp-page="/Admin/Tags" class="list-group-item list-group-item-action @(currentPage is "/Admin/Tags" ? "active" : null)">
+                        <span class="icon-price-tag"></span>
+                        @Localizer["Tags"]
+                    </a>
+                    <a asp-page="/Admin/Pingback" class="list-group-item list-group-item-action @(currentPage is "/Admin/Pingback" ? "active" : null)">
+                        <span class="icon-earth"></span>
+                        @Localizer["Pingbacks"]
+                    </a>
+                    <a asp-page="/Admin/Menu" class="list-group-item list-group-item-action @(currentPage is "/Admin/Menu" ? "active" : null)">
+                        <span class="icon-list"></span>
+                        @Localizer["Menus"]
+                    </a>
+                    <a asp-page="/Admin/FriendLink" class="list-group-item list-group-item-action @(currentPage is "/Admin/FriendLink" ? "active" : null)">
+                        <span class="icon-link"></span>
+                        @Localizer["Friend Links"]
+                    </a>
+                    @if (AuthOptions.Value.Provider == AuthenticationProvider.Local)
+                    {
+                        <a asp-page="/Admin/LocalAccount" class="list-group-item list-group-item-action @(currentPage is "/Admin/LocalAccount" ? "active" : null)">
+                            <span class="icon-user"></span>
+                            @Localizer["Account"]
+                        </a>
+                    }
+                </div>
+            </section>
+        </aside>
+        <div class="admin-main pt-4 pr-3 pl-3">
+            <div class="container-fluid">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+    @await RenderSectionAsync("scripts", false)
+</body>
+</html>

@@ -74,6 +74,8 @@ namespace Moonglade.Auth
             }
 
             var account = await _accountRepo.GetAsync(p => p.Username == username);
+            if (account is null) return Guid.Empty;
+
             var valid = account.PasswordHash == HashPassword(inputPassword.Trim());
             return valid ? account.Id : Guid.Empty;
         }
@@ -85,9 +87,8 @@ namespace Moonglade.Auth
             {
                 entity.LastLoginIp = ipAddress.Trim();
                 entity.LastLoginTimeUtc = DateTime.UtcNow;
+                await _accountRepo.UpdateAsync(entity);
             }
-
-            await _accountRepo.UpdateAsync(entity);
         }
 
         public bool Exist(string username)

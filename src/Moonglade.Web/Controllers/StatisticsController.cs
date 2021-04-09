@@ -3,12 +3,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moonglade.Core;
+using Moonglade.Utils;
 using Moonglade.Web.Filters;
 
 namespace Moonglade.Web.Controllers
 {
     [ApiController]
-    [AppendAppVersion]
     [Route("api/[controller]")]
     public class StatisticsController : ControllerBase
     {
@@ -34,7 +34,7 @@ namespace Moonglade.Web.Controllers
             if (postId == Guid.Empty)
             {
                 ModelState.AddModelError(nameof(postId), "value is empty");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             var (hits, likes) = await _statistics.GetStatisticAsync(postId);
@@ -50,7 +50,7 @@ namespace Moonglade.Web.Controllers
             if (request.PostId == Guid.Empty)
             {
                 ModelState.AddModelError(nameof(request.PostId), "value is empty");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             if (DNT) return Ok();

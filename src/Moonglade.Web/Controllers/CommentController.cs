@@ -17,7 +17,6 @@ namespace Moonglade.Web.Controllers
 {
     [Authorize]
     [ApiController]
-    [AppendAppVersion]
     [Route("api/[controller]")]
     public class CommentController : ControllerBase
     {
@@ -42,28 +41,21 @@ namespace Moonglade.Web.Controllers
 
         [HttpPost("{postId:guid}")]
         [AllowAnonymous]
+        [ServiceFilter(typeof(ValidateCaptcha))]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status201Created)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         [ProducesResponseType(StatusCodes.Status409Conflict)]
-        public async Task<IActionResult> NewComment(Guid postId, NewCommentModel model, [FromServices] ISessionBasedCaptcha captcha)
+        public async Task<IActionResult> NewComment(Guid postId, NewCommentModel model)
         {
-            if (!ModelState.IsValid) return BadRequest(ModelState);
-
             if (!string.IsNullOrWhiteSpace(model.Email) && !Helper.IsValidEmailAddress(model.Email))
             {
                 ModelState.AddModelError(nameof(model.Email), "Invalid Email address.");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
-
-            if (!captcha.ValidateCaptchaCode(model.CaptchaCode, HttpContext.Session))
-            {
-                ModelState.AddModelError(nameof(model.CaptchaCode), "Wrong Captcha Code");
-                return Conflict(ModelState);
-            }
 
             var response = await _commentService.CreateAsync(new(postId)
             {
@@ -83,16 +75,13 @@ namespace Moonglade.Web.Controllers
             {
                 _ = Task.Run(async () =>
                 {
-                    var payload = new CommentPayload(
+                    await _notificationClient.NotifyCommentAsync(
                         response.Username,
                         response.Email,
                         response.IpAddress,
                         response.PostTitle,
-                        ContentProcessor.MarkdownToContent(response.CommentContent, ContentProcessor.MarkdownConvertType.Html),
-                        response.CreateTimeUtc
-                    );
-
-                    await _notificationClient.NotifyCommentAsync(payload);
+                        response.CommentContent,
+                        response.CreateTimeUtc);
                 });
             }
 
@@ -112,7 +101,7 @@ namespace Moonglade.Web.Controllers
             if (commentId == Guid.Empty)
             {
                 ModelState.AddModelError(nameof(commentId), "value is empty");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             await _commentService.ToggleApprovalAsync(new[] { commentId });
@@ -127,7 +116,7 @@ namespace Moonglade.Web.Controllers
             if (commentIds.Length == 0)
             {
                 ModelState.AddModelError(nameof(commentIds), "value is empty");
-                return BadRequest(ModelState);
+                return BadRequest(ModelState.CombineErrorMessages());
             }
 
             await _commentService.DeleteAsync(commentIds);
@@ -140,8 +129,11 @@ namespace Moonglade.Web.Controllers
         [ProducesResponseType(StatusCodes.Status403Forbidden)]
         public async Task<IActionResult> Reply(ReplyRequest request, [FromServices] LinkGenerator linkGenerator)
         {
-            if (request.CommentId == Guid.Empty) ModelState.AddModelError(nameof(request.CommentId), "value is empty");
-            if (!ModelState.IsValid) return BadRequest(ModelState);
+            if (request.CommentId == Guid.Empty)
+            {
+                ModelState.AddModelError(nameof(request.CommentId), "value is empty");
+                return BadRequest(ModelState.CombineErrorMessages());
+            }
 
             if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
 
@@ -151,14 +143,11 @@ namespace Moonglade.Web.Controllers
                 var postLink = GetPostUrl(linkGenerator, reply.PubDateUtc, reply.Slug);
                 _ = Task.Run(async () =>
                 {
-                    var payload = new CommentReplyPayload(
-                        reply.Email,
+                    await _notificationClient.NotifyCommentReplyAsync(reply.Email,
                         reply.CommentContent,
                         reply.Title,
                         reply.ReplyContentHtml,
                         postLink);
-
-                    await _notificationClient.NotifyCommentReplyAsync(payload);
                 });
             }
 

@@ -1,4 +1,4 @@
-# 🌕 Moonglade
+# Moonglade Blog System
 
 [![Build Status](https://dev.azure.com/ediwang/Edi-GitHub/_apis/build/status/EdiWang.Moonglade?branchName=master)](https://dev.azure.com/ediwang/Edi-GitHub/_build/latest?definitionId=68&branchName=master) ![Docker Build and Push](https://github.com/EdiWang/Moonglade/workflows/Docker%20Build%20and%20Push/badge.svg) ![.NET Build Linux](https://github.com/EdiWang/Moonglade/workflows/.NET%20Build%20Linux/badge.svg) ![ACR Build and Push](https://github.com/EdiWang/Moonglade/workflows/ACR%20Build%20and%20Push/badge.svg)
 
@@ -79,14 +79,7 @@ You need to create an [**Azure Blob Storage**](https://azure.microsoft.com/en-us
 }
 ```
 
-When configured the image storage to use Azure Blob, you can take advantage of CDN for your image resources. Set ```GetImageByCDNRedirect``` to ```true```, the blog will get images from client browser using a 302 redirect. 
-
-```json
-"CDNSettings": {
-    "EnableCDNRedirect": true,
-    "CDNEndpoint": "https://yourendpoint.azureedge.net/moonglade-images"
-}
-```
+When configured the image storage to use Azure Blob, you can take advantage of CDN for your image resources. Just enable CDN in admin settings, the blog will get images from client browser using a 302 redirect.
 
 #### File System (Not Recommended)
 
@@ -120,14 +113,8 @@ You need to hava an [**Minio Server**](https://docs.min.io/).
 
 ### 📧 Email Notification
 
-If you need email notification for new comments, new replies and pingbacks, you have to setup the [Moonglade.Notification Azure Function](https://github.com/EdiWang/Moonglade.Notification) first, and then set the values in ```appsettings.[env].json``` or in your runtime environment variables.
+If you need email notification for new comments, new replies and pingbacks, you have to setup the [Moonglade.Notification Azure Function](https://github.com/EdiWang/Moonglade.Notification) first, and then enable notification in admin portal.
 
-```json
-"Notification": {
-  "Enabled": true,
-  "AzureFunctionEndpoint": "{PROD-ENV-VARIABLE}"
-}
-```
 ### 🔩 Others
 
 - [System Settings](https://github.com/EdiWang/Moonglade/wiki/System-Settings)

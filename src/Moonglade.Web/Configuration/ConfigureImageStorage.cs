@@ -4,7 +4,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moonglade.ImageStorage;
 using Moonglade.ImageStorage.Providers;
-using Moonglade.Utils;
 
 namespace Moonglade.Web.Configuration
 {
@@ -22,33 +21,11 @@ namespace Moonglade.Web.Configuration
         {
             options(Options);
 
-            var imageStorage = new ImageStorageSettings();
-            configuration.Bind(nameof(ImageStorage), imageStorage);
-            services.Configure<ImageStorageSettings>(configuration.GetSection(nameof(ImageStorage)));
+            var section = configuration.GetSection(nameof(ImageStorage));
+            var imageStorage = section.Get<ImageStorageSettings>();
 
+            services.Configure<ImageStorageSettings>(section);
             services.AddScoped<IFileNameGenerator>(_ => new GuidFileNameGenerator(Guid.NewGuid()));
-
-            if (imageStorage.CDNSettings.EnableCDNRedirect)
-            {
-                if (string.IsNullOrWhiteSpace(imageStorage.CDNSettings.CDNEndpoint))
-                {
-                    throw new ArgumentNullException(nameof(imageStorage.CDNSettings.CDNEndpoint),
-                        $"{nameof(imageStorage.CDNSettings.CDNEndpoint)} must be specified when {nameof(imageStorage.CDNSettings.EnableCDNRedirect)} is set to 'true'.");
-                }
-
-                // _logger.LogWarning("Images are configured to use CDN, the endpoint is out of control, use it on your own risk.");
-
-                // Validate endpoint Url to avoid security risks
-                // But it still has risks:
-                // e.g. If the endpoint is compromised, the attacker could return any kind of response from a image with a big fuck to a script that can attack users.
-
-                var endpoint = imageStorage.CDNSettings.CDNEndpoint;
-                var isValidEndpoint = endpoint.IsValidUrl(UrlExtension.UrlScheme.Https);
-                if (!isValidEndpoint)
-                {
-                    throw new UriFormatException("CDN Endpoint is not a valid HTTPS Url.");
-                }
-            }
 
             if (null == imageStorage.Provider)
             {

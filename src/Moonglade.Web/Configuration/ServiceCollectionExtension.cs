@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
-using DateTimeOps;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -17,18 +16,16 @@ using Moonglade.Core;
 using Moonglade.Data;
 using Moonglade.Data.Infrastructure;
 using Moonglade.DataPorting;
-using Moonglade.Foaf;
 using Moonglade.FriendLink;
 using Moonglade.Menus;
 using Moonglade.Notification.Client;
 using Moonglade.Pages;
 using Moonglade.Syndication;
 using Moonglade.Web.Filters;
-using Moonglade.Web.SiteIconGenerator;
+using Moonglade.Web.Middleware;
 using MySql.Data.MySqlClient;
 using Polly;
 using WilderMinds.MetaWeblog;
-using MetaWeblogService = Moonglade.Web.MetaWeblog.MetaWeblogService;
 
 namespace Moonglade.Web.Configuration
 {
@@ -40,8 +37,8 @@ namespace Moonglade.Web.Configuration
             services.AddOptions();
             services.Configure<AppSettings>(appSettings);
             services.AddSingleton<IBlogConfig, BlogConfig>();
-            services.AddScoped<IDateTimeResolver>(c =>
-                new DateTimeResolver(c.GetService<IBlogConfig>()?.GeneralSettings.TimeZoneUtcOffset));
+            services.AddScoped<ITZoneResolver>(c =>
+                new BlogTZoneResolver(c.GetService<IBlogConfig>()?.GeneralSettings.TimeZoneUtcOffset));
         }
 
         public static void AddDataStorage(this IServiceCollection services, string connectionString)
@@ -69,7 +66,7 @@ namespace Moonglade.Web.Configuration
                     //}));
         }
 
-        public static void AddNotification(this IServiceCollection services, ILogger logger)
+        public static void AddNotificationClient(this IServiceCollection services, ILogger logger)
         {
             services.AddHttpClient<IBlogNotificationClient, NotificationClient>()
                     .AddTransientHttpErrorPolicy(builder =>
@@ -103,13 +100,12 @@ namespace Moonglade.Web.Configuration
             services.AddScoped<IPageService, PageService>();
             services.AddScoped<IFriendLinkService, FriendLinkService>();
             services.AddScoped<IBlogAudit, BlogAudit>();
-            services.AddScoped<ISiteIconGenerator, FileSystemIconGenerator>();
             services.AddScoped<IFoafWriter, FoafWriter>();
-            services.AddScoped<IRSDService, RSDService>();
             services.AddScoped<IExportManager, ExportManager>();
             services.AddScoped<IBlogStatistics, BlogStatistics>();
             services.AddScoped<ISyndicationService, SyndicationService>();
-            services.AddScoped<IMemoryStreamOpmlWriter, MemoryStreamOpmlWriter>();
+            services.AddScoped<IOpmlWriter, StringOpmlWriter>();
+            services.AddScoped<ValidateCaptcha>();
 
             services.AddBlogCache();
             services.AddPingback();

@@ -14,14 +14,11 @@ namespace Moonglade.Web.Models.Settings
         public bool SendEmailOnNewComment { get; set; }
 
         [Required]
-        [Display(Name = "Admin Email")]
-        [DataType(DataType.EmailAddress)]
-        [MaxLength(64)]
-        public string AdminEmail { get; set; }
-
-        [Required]
         [Display(Name = "Display Name")]
         [MaxLength(64)]
         public string EmailDisplayName { get; set; }
+
+        [Display(Name = "Azure Function Endpoint")]
+        public string AzureFunctionEndpoint { get; set; }
     }
 }

@@ -10,7 +10,7 @@
                 }
             })
             .catch(err => {
-                toastr.error(err);
+                notyf.error(err);
                 console.error(err);
             });
     },
@@ -47,7 +47,18 @@
         if (getResponsiveBreakpoint() !== 'xs') {
             $('.post-content img').click(function (e) {
                 var src = $(this).attr('src');
+                
                 $('#imgzoom').attr('src', src);
+
+                if (fitImageToDevicePixelRatio) {
+                    setTimeout(function () {
+                        var w = $('#imgzoom')[0].naturalWidth;
+                        console.info(w);
+
+                        $('#imgzoom').css('width', getImageWidthInDevicePixelRatio(w));
+                    }, 100);
+                }
+
                 $('#imgzoomModal').modal();
             });
         }
@@ -89,3 +100,11 @@
         });
     }
 };
+
+function getImageWidthInDevicePixelRatio(width) {
+    console.info(width);
+    if (width <= 0) return 0;
+    var dpr = window.devicePixelRatio;
+    if (dpr === 1) return width;
+    return width / dpr;
+}

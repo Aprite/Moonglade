@@ -2,7 +2,7 @@
 
 namespace Moonglade.Web.Models
 {
-    public class SignInViewModel
+    public class SignInViewModel : ICaptchable
     {
         [Required(ErrorMessage = "Please enter a username.")]
         [Display(Name = "Username")]
@@ -14,7 +14,11 @@ namespace Moonglade.Web.Models
         [Display(Name = "Password")]
         [DataType(DataType.Password)]
         [MinLength(8, ErrorMessage = "Password must be at least 8 characters"), MaxLength(32)]
-        [RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$", ErrorMessage = "Password must be minimum eight characters, at least one letter and one number")]
+        [RegularExpression(@"^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9._~!@#$^&*]{8,}$", ErrorMessage = "Password must be minimum eight characters, at least one letter and one number")]
         public string Password { get; set; }
+
+        [Required]
+        [StringLength(4)]
+        public string CaptchaCode { get; set; }
     }
 }

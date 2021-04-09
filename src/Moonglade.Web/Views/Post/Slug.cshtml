@@ -1,11 +1,10 @@
 ﻿@using Moonglade.Utils
-@using DateTimeOps
 
-@model Moonglade.Core.PostSlug
-@inject IDateTimeResolver DateTimeResolver
+@model Moonglade.Core.Post
+@inject ITZoneResolver TZoneResolver
+@Html.AntiForgeryToken()
 
 @{
-    ViewBag.ShowBloggerIntroInXS = true;
     ViewBag.BodyClass = "body-post-slug";
     var ec = Settings.Value.Editor;
     var content = ContentProcessor.AddLazyLoadToImgTag(Model.RawPostContent);
@@ -51,6 +50,14 @@
 @section scripts {
     <script src="~/js/3rd/highlight.pack.js"></script>
     <script>
+        var fitImageToDevicePixelRatio = false;
+        @if (BlogConfig.AdvancedSettings.FitImageToDevicePixelRatio)
+        {
+            <text>
+                fitImageToDevicePixelRatio = true;
+            </text>
+        }
+
         var pid = $("article").data("postid");
         postSlug.getStatistics(pid);
         postSlug.registerRatingButtons(pid);
@@ -59,7 +66,7 @@
         postSlug.renderCodeHighlighter();
 
         $(function() {
-            @if (BlogConfig.SecuritySettings.WarnExternalLink)
+            @if (BlogConfig.AdvancedSettings.WarnExternalLink)
             {
                 <text>
                     postSlug.warnExtLink();
@@ -89,6 +96,7 @@
                 </text>
             }
         });
+
     </script>
 }
 
@@ -122,14 +130,14 @@
         <div class="d-block d-sm-none">
             <div class="post-publish-info post-publish-info-mobile bg-light">
                 <span class="icon-calendar"></span>
-                <pubdate date-time-resolver="@DateTimeResolver" pub-date-utc="@Model.PubDateUtc"></pubdate>
+                <pubdate t-zone-resolver="@TZoneResolver" pub-date-utc="@Model.PubDateUtc"></pubdate>
                 @BlogConfig.GeneralSettings.TimeZoneId
             </div>
         </div>
 
         <div class="d-none d-md-block post-publish-info text-muted mb-2">
             <span class="icon-calendar"></span>
-            <pubdate date-time-resolver="@DateTimeResolver" pub-date-utc="@Model.PubDateUtc"></pubdate>
+            <pubdate t-zone-resolver="@TZoneResolver" pub-date-utc="@Model.PubDateUtc"></pubdate>
             @BlogConfig.GeneralSettings.TimeZoneId
             -
             <span class="post-hit-number"><span class="post-hit-number-text">...</span> @Localizer["Reads"]</span>
@@ -154,7 +162,7 @@
         </section>
     }
 
-    <partial name="_PostSlugActions" />
+    <partial name="_Actions" />
 </article>
 
 @if (null == ViewBag.IsDraftPreview)
@@ -167,7 +175,6 @@
                 <div class="card bg-light comment-form-containter mb-4">
                     <div class="card-header">
                         @Localizer["Comments"]
-                        <span class="badge badge-secondary float-right">@Model.CommentCount</span>
                     </div>
                     <form id="comment-form">
                         <div class="card-body">
@@ -202,7 +209,7 @@
                                 <div class="col-9">
                                     <div class="input-group">
                                         <div class="input-group-prepend">
-                                            <img id="img-captcha" src="@Url.Action("CaptchaImage", "Assets")" data-toggle="tooltip" data-placement="top" title="@Localizer["Can't read? Click to change another image."]" />
+                                            <img id="img-captcha" src="~/captcha-image" data-toggle="tooltip" data-placement="top" title="@Localizer["Can't read? Click to change another image."]" />
                                         </div>
                                         <input type="text"
                                                id="input-comment-captcha"
@@ -245,26 +252,23 @@
             @Localizer["Refresh the page to see your comment."]
         </div>
 
-        @if (Model.CommentCount > 0)
-        {
-            <section id="comments-list">
-                @await Component.InvokeAsync("CommentList", new { postId = Model.Id })
-            </section>
-        }
+        <section id="comments-list">
+            @await Component.InvokeAsync("CommentList", new { postId = Model.Id })
+        </section>
     </div>
 }
 
 <partial name="_LightSwitch" />
 
 <div class="modal fade" id="imgzoomModal" tabindex="-1" role="dialog" aria-labelledby="imgzoomModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-imgzoom" role="document">
+    <div class="modal-dialog modal-imgzoom" role="document" style="max-width: 100%">
         <div class="modal-content">
-            <img id="imgzoom" alt="imgzoom" />
+            <img id="imgzoom" alt="imgzoom" class="img-fluid" />
         </div>
     </div>
 </div>
 
-@if (BlogConfig.SecuritySettings.WarnExternalLink)
+@if (BlogConfig.AdvancedSettings.WarnExternalLink)
 {
     <div class="modal fade" id="externalLinkModal" tabindex="-1" role="dialog" aria-labelledby="externalLinkModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-externalLink" role="document">

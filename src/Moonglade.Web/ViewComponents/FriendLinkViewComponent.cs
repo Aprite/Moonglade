@@ -24,14 +24,12 @@ namespace Moonglade.Web.ViewComponents
             try
             {
                 var links = await _friendLinkService.GetAllAsync();
-                return View(links ?? new List<FriendLink.Link>());
+                return View(links ?? new List<Link>());
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error Reading FriendLink.");
-
-                ViewBag.ComponentErrorMessage = e.Message;
-                return View("~/Views/Shared/ComponentError.cshtml");
+                return Content(e.Message);
             }
         }
     }

@@ -1,11 +1,28 @@
-﻿window.toastr.options = {
-    "positionClass": 'toast-bottom-center'
-};
+﻿var notyf;
 
 var isDarkMode = false;
 var supportLightSwitch = false;
 
 $(function () {
+    notyf = new Notyf({
+        position: {
+            x: 'center',
+            y: 'bottom',
+        },
+        types: [
+            {
+                type: 'success',
+                background: 'var(--success)',
+                duration: 2000
+            },
+            {
+                type: 'error',
+                background: 'var(--danger)',
+                duration: 3000
+            }
+        ]
+    });
+
     $('[data-toggle="popover"]').popover();
     $('[data-toggle="tooltip"]').tooltip();
 
@@ -56,13 +73,17 @@ function getResponsiveBreakpoint() {
 function buildErrorMessage(responseObject) {
     if (responseObject.responseJSON) {
         var json = responseObject.responseJSON;
-        var errorMessage = 'Error(s):\n\r';
+        if (json.combinedErrorMessage) {
+            return json.combinedErrorMessage;
+        } else {
+            var errorMessage = 'Error(s):\n\r';
 
-        Object.keys(json).forEach(function (k) {
-            errorMessage += (k + ': ' + json[k]) + '\n\r';
-        });
+            Object.keys(json).forEach(function (k) {
+                errorMessage += (k + ': ' + json[k]) + '\n\r';
+            });
 
-        return errorMessage;
+            return errorMessage;
+        }
     }
 
     if (responseObject.responseText) {

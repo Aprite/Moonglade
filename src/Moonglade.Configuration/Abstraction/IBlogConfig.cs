@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 
 namespace Moonglade.Configuration.Abstraction
 {
@@ -11,9 +12,13 @@ namespace Moonglade.Configuration.Abstraction
         WatermarkSettings WatermarkSettings { get; set; }
         FriendLinksSettings FriendLinksSettings { get; set; }
         AdvancedSettings AdvancedSettings { get; set; }
-        SecuritySettings SecuritySettings { get; set; }
         CustomStyleSheetSettings CustomStyleSheetSettings { get; set; }
 
         Task SaveAsync<T>(T blogSettings) where T : BlogSettings;
+
+        Task SaveAssetAsync(Guid assetId, string assetBase64);
+
+        string GetAssetData(Guid assetId);
+        Task<string> GetAssetDataAsync(Guid assetId);
     }
 }

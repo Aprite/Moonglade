@@ -11,9 +11,9 @@ namespace Moonglade.Auth
     {
         public static void AddBlogAuthenticaton(this IServiceCollection services, IConfiguration configuration)
         {
-            var authentication = new AuthenticationSettings();
-            configuration.Bind("Authentication", authentication);
-            services.Configure<AuthenticationSettings>(configuration.GetSection("Authentication"));
+            var section = configuration.GetSection("Authentication");
+            var authentication = section.Get<AuthenticationSettings>();
+            services.Configure<AuthenticationSettings>(section);
             services.AddScoped<IGetApiKeyQuery, AppSettingsGetApiKeyQuery>();
             services.AddScoped<ILocalAccountService, LocalAccountService>();
 
@@ -40,9 +40,9 @@ namespace Moonglade.Auth
                     services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
                             .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
                             {
-                                options.AccessDeniedPath = "/admin/accessdenied";
-                                options.LoginPath = "/admin/signin";
-                                options.LogoutPath = "/admin/signout";
+                                options.AccessDeniedPath = "/auth/accessdenied";
+                                options.LoginPath = "/auth/signin";
+                                options.LogoutPath = "/auth/signout";
                             }).AddApiKeySupport(_ => { });
                     break;
                 case AuthenticationProvider.None:

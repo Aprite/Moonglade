@@ -24,7 +24,7 @@ namespace Moonglade.Web.ViewComponents
         {
             try
             {
-                var cats = await _categoryService.GetAllAsync();
+                var cats = await _categoryService.GetAll();
                 var items = cats.Select(c => new KeyValuePair<string, string>(c.DisplayName, c.RouteName));
 
                 return View(items);
@@ -32,9 +32,7 @@ namespace Moonglade.Web.ViewComponents
             catch (Exception e)
             {
                 _logger.LogError(e, "Error.");
-
-                ViewBag.ComponentErrorMessage = e.Message;
-                return View("~/Views/Shared/ComponentError.cshtml");
+                return Content(e.Message);
             }
         }
     }

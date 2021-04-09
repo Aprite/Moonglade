@@ -2,11 +2,14 @@
 using System.Data;
 using System.Diagnostics;
 using System.IO;
+using System.Text;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Moonglade.Configuration;
+using Moonglade.Configuration.Abstraction;
 using Moonglade.Setup;
 using Moonglade.Utils;
 
@@ -24,6 +27,9 @@ namespace Moonglade.Web
             Trace.WriteLine(info);
             Console.WriteLine(info);
 
+            // Support Chinese contents
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             var host = CreateHostBuilder(args).Build();
 
             using (var scope = host.Services.CreateScope())
@@ -34,12 +40,13 @@ namespace Moonglade.Web
 
                 try
                 {
-                    var dataDir = CreateDataDirectories();
+                    var dataDir = CreateDataDirectory();
                     AppDomain.CurrentDomain.SetData("DataDirectory", dataDir);
                     logger.LogInformation($"Using data directory '{dataDir}'");
 
                     var dbConnection = services.GetRequiredService<IDbConnection>();
                     TryInitFirstRun(dbConnection, logger);
+                    TryInitSiteIcons(services, logger);
                 }
                 catch (Exception ex)
                 {
@@ -64,7 +71,7 @@ namespace Moonglade.Web
                                         .AddJsonFile("tagnormalization.json", false, true);
 
                                   var settings = config.Build();
-                                  if (bool.Parse(settings["AppSettings:PreferAzureAppConfiguration"]))
+                                  if (settings.GetValue<bool>("PreferAzureAppConfiguration"))
                                   {
                                       config.AddAzureAppConfiguration(options =>
                                       {
@@ -84,7 +91,28 @@ namespace Moonglade.Web
                               });
                 });
 
-        private static string CreateDataDirectories()
+        private static void TryInitSiteIcons(IServiceProvider services, ILogger logger)
+        {
+            try
+            {
+                logger.LogInformation("Generating site icons");
+
+                var blogConfig = services.GetRequiredService<IBlogConfig>();
+                var env = services.GetRequiredService<IWebHostEnvironment>();
+
+                var iconData = blogConfig.GetAssetData(AssetId.SiteIconBase64);
+                MemoryStreamIconGenerator.GenerateIcons(iconData, env, logger);
+
+                logger.LogInformation($"Generated {IconRepository.SiteIconDictionary.Count} icon(s).");
+            }
+            catch (Exception e)
+            {
+                // Non critical error, just log, do not block application start
+                logger.LogError(e, e.Message);
+            }
+        }
+
+        private static string CreateDataDirectory()
         {
             // Use Temp folder as best practice
             // Do NOT create or modify anything under application directory
@@ -103,25 +131,24 @@ namespace Moonglade.Web
         private static void TryInitFirstRun(IDbConnection dbConnection, ILogger logger)
         {
             var setupHelper = new SetupRunner(dbConnection);
-            if (setupHelper.TestDatabaseConnection(ex =>
+
+            if (!setupHelper.TestDatabaseConnection(ex =>
             {
                 Trace.WriteLine(ex);
                 Console.WriteLine(ex);
-            }))
+            })) return;
+
+            if (!setupHelper.IsFirstRun()) return;
+
+            try
             {
-                if (setupHelper.IsFirstRun())
-                {
-                    try
-                    {
-                        logger.LogInformation("Initializing first run configuration...");
-                        setupHelper.InitFirstRun();
-                        logger.LogInformation("Database setup successfully.");
-                    }
-                    catch (Exception e)
-                    {
-                        logger.LogCritical(e, e.Message);
-                    }
-                }
+                logger.LogInformation("Initializing first run configuration...");
+                setupHelper.InitFirstRun();
+                logger.LogInformation("Database setup successfully.");
+            }
+            catch (Exception e)
+            {
+                logger.LogCritical(e, e.Message);
             }
         }
     }

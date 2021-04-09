@@ -25,7 +25,7 @@ namespace Moonglade.Web.ViewComponents
                 if (postId == Guid.Empty)
                 {
                     _logger.LogWarning($"postId: {postId} is not a valid GUID");
-                    return View("Error");
+                    throw new ArgumentOutOfRangeException(nameof(postId));
                 }
 
                 var comments = await _commentService.GetApprovedCommentsAsync(postId);
@@ -34,9 +34,7 @@ namespace Moonglade.Web.ViewComponents
             catch (Exception e)
             {
                 _logger.LogError(e, $"Error reading comments for post id: {postId}");
-
-                ViewBag.ComponentErrorMessage = e.Message;
-                return View("~/Views/Shared/ComponentError.cshtml");
+                return Content(e.Message);
             }
         }
     }

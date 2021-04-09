@@ -58,12 +58,15 @@
 
     <link rel="start" title="@BlogConfig.GeneralSettings.SiteTitle" href="~/" />
     <rss title="@BlogConfig.FeedSettings.RssTitle" href="@Url.Action("Rss", "Subscription")" />
-    <feature name="OpenSearch">
+    @if (BlogConfig.AdvancedSettings.EnableOpenSearch)
+    {
         <opensearch href="/opensearch" title="@BlogConfig.GeneralSettings.SiteTitle" />
-    </feature>
-    <feature name="RSD">
+    }
+
+    @if (BlogConfig.AdvancedSettings.EnableMetaWeblog)
+    {
         <rsd href="/rsd" />
-    </feature>
+    }
     <feature name="Foaf">
         <foaf href="/foaf.xml" />
     </feature>
@@ -73,7 +76,7 @@
     </environment>
     <environment include="Development">
         <link href="~/css/3rd/bootstrap.min.css" rel="stylesheet" />
-        <link href="~/css/3rd/toastr.min.css" rel="stylesheet" />
+        <link href="~/css/3rd/notyf.min.css" rel="stylesheet" />
         <link href="~/css/src/fonts.css" rel="stylesheet" />
         <link href="~/css/src/base.css" rel="stylesheet" />
         <link href="~/css/src/rwd.css" rel="stylesheet" />
@@ -90,7 +93,7 @@
         <script src="~/js/3rd/jquery.min.js"></script>
         <script src="~/js/3rd/bootstrap.bundle.min.js"></script>
         <script src="~/js/3rd/jquery.qrcode.min.js"></script>
-        <script src="~/js/3rd/toastr.min.js"></script>
+        <script src="~/js/3rd/notyf.min.js"></script>
         <script src="~/js/app/base.js"></script>
         <script src="~/js/app/postslug.js"></script>
         <script src="~/js/app/httpService.js"></script>
@@ -107,12 +110,12 @@
     <link href="~/css/theme/@BlogConfig.GeneralSettings.ThemeFileName" rel="stylesheet" asp-append-version="true" />
     @if (BlogConfig.CustomStyleSheetSettings.EnableCustomCss)
     {
-        <link href="@Url.Action("CustomCss", "Assets")" rel="stylesheet" asp-append-version="true" />
+        <link href="~/custom.css" rel="stylesheet" asp-append-version="true" />
     }
 </head>
 <body class="@ViewBag.BodyClass">
-    <header>
-        <nav id="blog-nav" class="navbar fixed-top navbar-expand-lg navbar-dark bg-accent1">
+    <header class="sticky-top">
+        <nav id="blog-nav" class="navbar navbar-expand-lg navbar-dark bg-accent1">
             <div class="container">
                 <div class="animbrand">
                     <a class="moonglade-logo font-sairas navbar-brand animate" href="/">
@@ -155,7 +158,7 @@
 
                         @await Component.InvokeAsync("Menu")
                     </ul>
-                    <form class="form-inline search-form my-2 my-lg-0" asp-controller="Search" asp-action="Post">
+                    <form class="form-inline search-form my-2 my-lg-0" asp-controller="Search" asp-action="Search" method="get">
                         <input id="term"
                                class="form-control bg-transparent mr-sm-2"
                                type="search"
@@ -181,7 +184,11 @@
     }
 
     <div id="page-content" class="content">
-        @if (null != ViewBag.ShowBloggerIntroInXS && ViewBag.ShowBloggerIntroInXS)
+        @if (null != ViewBag.HideSideBar && ViewBag.HideSideBar)
+        {
+            @RenderBody()
+        }
+        else
         {
             <section class="blogger-intro-mobile d-block d-sm-none">
                 <div class="card-bkimg-container">
@@ -202,13 +209,6 @@
                     </div>
                 </div>
             </section>
-        }
-        @if (null != ViewBag.HideSideBar && ViewBag.HideSideBar)
-        {
-            @RenderBody()
-        }
-        else
-        {
             <div class="container mt-4 mb-5">
                 <div class="row">
                     @if (BlogConfig.GeneralSettings.SideBarOption == SideBarOption.Left)
@@ -230,6 +230,7 @@
     </div>
     <div class="clearfix"></div>
     <partial name="_Footer" />
+    <partial name="_EnvInfo" />
 
     @await RenderSectionAsync("scripts", false)
     @if (BlogConfig.GeneralSettings.AutoDarkLightTheme)

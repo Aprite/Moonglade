@@ -1,11 +1,12 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Moonglade.Auditing;
-using Moonglade.Configuration.Settings;
 using Moonglade.Data.Entities;
 using Moonglade.Data.Infrastructure;
 using Moonglade.Data.Spec;
@@ -14,13 +15,14 @@ namespace Moonglade.Core
 {
     public interface ITagService
     {
-        Task<IReadOnlyList<Tag>> GetAllAsync();
-        Task<IReadOnlyList<string>> GetAllNamesAsync();
+        Task<IReadOnlyList<Tag>> GetAll();
+        Task<IReadOnlyList<string>> GetAllNames();
+        Task<Tag> Create(string name);
         Task UpdateAsync(int tagId, string newName);
         Task DeleteAsync(int tagId);
-        Task<IReadOnlyList<DegreeTag>> GetHotTagsAsync(int top);
+        Task<IReadOnlyList<KeyValuePair<Tag, int>>> GetHotTagsAsync(int top);
         Tag Get(string normalizedName);
-        Task<IReadOnlyList<DegreeTag>> GetTagCountListAsync();
+        Task<IReadOnlyList<KeyValuePair<Tag, int>>> GetTagCountList();
     }
 
     public class TagService : ITagService
@@ -28,13 +30,20 @@ namespace Moonglade.Core
         private readonly IRepository<TagEntity> _tagRepo;
         private readonly IRepository<PostTagEntity> _postTagRepo;
         private readonly IBlogAudit _audit;
-        private readonly IOptions<List<TagNormalization>> _tagNormalization;
+        private readonly IOptions<Dictionary<string, string>> _tagNormalization;
+
+        private readonly Expression<Func<TagEntity, Tag>> _tagSelector = t => new()
+        {
+            Id = t.Id,
+            NormalizedName = t.NormalizedName,
+            DisplayName = t.DisplayName
+        };
 
         public TagService(
             IRepository<TagEntity> tagRepo,
             IRepository<PostTagEntity> postTagRepo,
             IBlogAudit audit,
-            IOptions<List<TagNormalization>> tagNormalization)
+            IOptions<Dictionary<string, string>> tagNormalization)
         {
             _tagRepo = tagRepo;
             _postTagRepo = postTagRepo;
@@ -42,19 +51,41 @@ namespace Moonglade.Core
             _tagNormalization = tagNormalization;
         }
 
-        public Task<IReadOnlyList<Tag>> GetAllAsync()
+        public Task<IReadOnlyList<Tag>> GetAll()
         {
-            return _tagRepo.SelectAsync(t => new Tag
-            {
-                Id = t.Id,
-                NormalizedName = t.NormalizedName,
-                DisplayName = t.DisplayName
-            });
+            return _tagRepo.SelectAsync(_tagSelector);
         }
 
-        public Task<IReadOnlyList<string>> GetAllNamesAsync()
+        public Task<IReadOnlyList<string>> GetAllNames()
         {
             return _tagRepo.SelectAsync(t => t.DisplayName);
+        }
+
+        public async Task<Tag> Create(string name)
+        {
+            if (!ValidateTagName(name)) return null;
+
+            var normalizedName = NormalizeTagName(name, _tagNormalization.Value);
+            if (_tagRepo.Any(t => t.NormalizedName == normalizedName))
+            {
+                return Get(normalizedName);
+            }
+
+            var newTag = new TagEntity
+            {
+                DisplayName = name,
+                NormalizedName = normalizedName
+            };
+
+            var tag = await _tagRepo.AddAsync(newTag);
+            await _audit.AddAuditEntry(EventType.Content, AuditEventId.TagCreated,
+                $"Tag '{tag.NormalizedName}' created.");
+
+            return new()
+            {
+                DisplayName = newTag.DisplayName,
+                NormalizedName = newTag.NormalizedName
+            };
         }
 
         public async Task UpdateAsync(int tagId, string newName)
@@ -79,43 +110,40 @@ namespace Moonglade.Core
             await _audit.AddAuditEntry(EventType.Content, AuditEventId.TagDeleted, $"Tag id '{tagId}' is deleted");
         }
 
-        public async Task<IReadOnlyList<DegreeTag>> GetHotTagsAsync(int top)
+        public async Task<IReadOnlyList<KeyValuePair<Tag, int>>> GetHotTagsAsync(int top)
         {
-            if (!_tagRepo.Any()) return new List<DegreeTag>();
+            if (!_tagRepo.Any()) return new List<KeyValuePair<Tag, int>>();
 
             var spec = new TagSpec(top);
-            var tags = await _tagRepo.SelectAsync(spec, t => new DegreeTag
-            {
-                Degree = t.Posts.Count,
-                DisplayName = t.DisplayName,
-                NormalizedName = t.NormalizedName
-            });
+            var tags = await _tagRepo.SelectAsync(spec, t =>
+                new KeyValuePair<Tag, int>(new()
+                {
+                    Id = t.Id,
+                    DisplayName = t.DisplayName,
+                    NormalizedName = t.NormalizedName
+                }, t.Posts.Count));
 
             return tags;
         }
 
         public Tag Get(string normalizedName)
         {
-            var tag = _tagRepo.SelectFirstOrDefault(new TagSpec(normalizedName), tg => new Tag
-            {
-                Id = tg.Id,
-                NormalizedName = tg.NormalizedName,
-                DisplayName = tg.DisplayName
-            });
+            var tag = _tagRepo.SelectFirstOrDefault(new TagSpec(normalizedName), _tagSelector);
             return tag;
         }
 
-        public Task<IReadOnlyList<DegreeTag>> GetTagCountListAsync()
+        public Task<IReadOnlyList<KeyValuePair<Tag, int>>> GetTagCountList()
         {
-            return _tagRepo.SelectAsync(t => new DegreeTag
-            {
-                DisplayName = t.DisplayName,
-                NormalizedName = t.NormalizedName,
-                Degree = t.Posts.Count
-            });
+            return _tagRepo.SelectAsync(t =>
+                new KeyValuePair<Tag, int>(new()
+                {
+                    Id = t.Id,
+                    DisplayName = t.DisplayName,
+                    NormalizedName = t.NormalizedName
+                }, t.Posts.Count));
         }
 
-        public static string NormalizeTagName(string orgTagName, IList<TagNormalization> normalizations)
+        public static string NormalizeTagName(string orgTagName, IDictionary<string, string> normalizations)
         {
             var isEnglishName = Regex.IsMatch(orgTagName, @"^[a-zA-Z 0-9\.\-\+\#\s]*$");
             if (isEnglishName)
@@ -123,7 +151,7 @@ namespace Moonglade.Core
                 var result = new StringBuilder(orgTagName);
                 foreach (var item in normalizations)
                 {
-                    result.Replace(item.Source, item.Target);
+                    result.Replace(item.Key, item.Value);
                 }
                 return result.ToString().ToLower();
             }

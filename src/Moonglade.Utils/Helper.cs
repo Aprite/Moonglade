@@ -1,21 +1,47 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Win32;
 
 namespace Moonglade.Utils
 {
     public static class Helper
     {
-        public static string AppVersion =>
-            Assembly.GetEntryAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        public static string AppVersion
+        {
+            get
+            {
+                var asm = Assembly.GetEntryAssembly();
+                if (null == asm) return "N/A";
+
+                // e.g. 11.2.0.0
+                var fileVersion = asm.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
+
+                // e.g. 11.2-preview+e57ab0321ae44bd778c117646273a77123b6983f
+                var version = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+                if (!string.IsNullOrWhiteSpace(version) && version.IndexOf('+') > 0)
+                {
+                    var gitHash = version[(version.IndexOf('+') + 1)..]; // e57ab0321ae44bd778c117646273a77123b6983f
+                    var prefix = version[..version.IndexOf('+')]; // 11.2-preview
+
+                    if (gitHash.Length <= 6) return version;
+
+                    // consider valid hash
+                    var gitHashShort = gitHash.Substring(gitHash.Length - 6, 6);
+                    return !string.IsNullOrWhiteSpace(gitHashShort) ? $"{prefix} ({gitHashShort})" : fileVersion;
+                }
+
+                return version ?? fileVersion;
+            }
+        }
 
         public static string TryGetFullOSVersion()
         {
@@ -43,6 +69,26 @@ namespace Moonglade.Utils
             return osVer.VersionString;
         }
 
+        public static string GetMd5Hash(string input)
+        {
+            // Convert the input string to a byte array and compute the hash.
+            var data = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(input));
+
+            // Create a new Stringbuilder to collect the bytes
+            // and create a string.
+            var sBuilder = new StringBuilder();
+
+            // Loop through each byte of the hashed data
+            // and format each one as a hexadecimal string.
+            foreach (var t in data)
+            {
+                sBuilder.Append(t.ToString("x2"));
+            }
+
+            // Return the hexadecimal string.
+            return sBuilder.ToString();
+        }
+
         public static string ResolveRootUrl(HttpContext ctx, string canonicalPrefix, bool preferCanonical = false)
         {
             if (ctx is null && !preferCanonical)
@@ -58,34 +104,6 @@ namespace Moonglade.Utils
 
             var requestedRoot = $"{ctx.Request.Scheme}://{ctx.Request.Host}";
             return requestedRoot;
-        }
-
-        public static async Task<string> GetThemeColorAsync(string webRootPath, string currentTheme)
-        {
-            var color = AppDomain.CurrentDomain.GetData("CurrentThemeColor")?.ToString();
-            if (!string.IsNullOrWhiteSpace(color))
-            {
-                return color;
-            }
-
-            var cssPath = Path.Join(webRootPath, "css", "theme", currentTheme);
-            if (File.Exists(cssPath))
-            {
-                var lines = await File.ReadAllLinesAsync(cssPath);
-                var accentColorLine = lines.FirstOrDefault(l => l.Contains("accent-color1"));
-                if (accentColorLine is not null)
-                {
-                    var regex = new Regex("#(?:[0-9a-f]{3}){1,2}");
-                    var match = regex.Match(accentColorLine);
-                    if (match.Success)
-                    {
-                        var colorHex = match.Captures[0].Value;
-                        AppDomain.CurrentDomain.SetData("CurrentThemeColor", colorHex);
-                        return colorHex;
-                    }
-                }
-            }
-            return "#FFFFFF";
         }
 
         public static string SterilizeLink(string rawUrl)
@@ -129,7 +147,7 @@ namespace Moonglade.Utils
             if (uri.HostNameType == UriHostNameType.IPv4)
             {
                 // Disallow LAN IP (e.g. 192.168.0.1, 10.0.0.1)
-                if (Helper.IsPrivateIP(uri.Host))
+                if (IsPrivateIP(uri.Host))
                 {
                     return invalidReturn;
                 }
@@ -287,8 +305,132 @@ namespace Moonglade.Utils
 
         public static string RemoveAccent(this string txt)
         {
-            byte[] bytes = System.Text.Encoding.GetEncoding("Cyrillic").GetBytes(txt);
-            return System.Text.Encoding.ASCII.GetString(bytes);
+            byte[] bytes = Encoding.GetEncoding("Cyrillic").GetBytes(txt);
+            return Encoding.ASCII.GetString(bytes);
+        }
+
+        public static string CombineErrorMessages(this ModelStateDictionary modelStateDictionary, string sep = ", ")
+        {
+            var messages = GetErrorMessagesFromModelState(modelStateDictionary);
+            var enumerable = messages as string[] ?? messages.ToArray();
+            return enumerable.Any() ? string.Join(sep, enumerable) : string.Empty;
+        }
+
+        public static IEnumerable<string> GetErrorMessagesFromModelState(ModelStateDictionary modelStateDictionary)
+        {
+            if (modelStateDictionary is null) return null;
+            if (modelStateDictionary.ErrorCount == 0) return null;
+
+            return from modelState in modelStateDictionary.Values
+                   from error in modelState.Errors
+                   select error.ErrorMessage;
+        }
+
+        // https://referencesource.microsoft.com/#System.Web/Security/Membership.cs,fe744ec40cace139
+        private static readonly char[] Punctuations = "!@#$%^&*()_-+=[{]};:>|./?".ToCharArray();
+        public static string GeneratePassword(int length, int numberOfNonAlphanumericCharacters)
+        {
+            if (length < 1 || length > 128)
+            {
+                throw new ArgumentOutOfRangeException(nameof(length));
+            }
+
+            if (numberOfNonAlphanumericCharacters > length || numberOfNonAlphanumericCharacters < 0)
+            {
+                throw new ArgumentOutOfRangeException(nameof(numberOfNonAlphanumericCharacters));
+            }
+
+            string password;
+            int index;
+
+            do
+            {
+                var buf = new byte[length];
+                var cBuf = new char[length];
+                var count = 0;
+
+                new RNGCryptoServiceProvider().GetBytes(buf);
+
+                for (int iter = 0; iter < length; iter++)
+                {
+                    int i = (int)(buf[iter] % 87);
+                    if (i < 10)
+                        cBuf[iter] = (char)('0' + i);
+                    else if (i < 36)
+                        cBuf[iter] = (char)('A' + i - 10);
+                    else if (i < 62)
+                        cBuf[iter] = (char)('a' + i - 36);
+                    else
+                    {
+                        cBuf[iter] = Punctuations[i - 62];
+                        count++;
+                    }
+                }
+
+                if (count < numberOfNonAlphanumericCharacters)
+                {
+                    int j;
+                    var rand = new Random();
+
+                    for (j = 0; j < numberOfNonAlphanumericCharacters - count; j++)
+                    {
+                        int k;
+                        do
+                        {
+                            k = rand.Next(0, length);
+                        }
+                        while (!char.IsLetterOrDigit(cBuf[k]));
+
+                        cBuf[k] = Punctuations[rand.Next(0, Punctuations.Length)];
+                    }
+                }
+
+                password = new(cBuf);
+            }
+            while (IsDangerousString(password, out index));
+
+            return password;
+        }
+
+        private static readonly char[] StartingChars = { '<', '&' };
+        private static bool IsDangerousString(string s, out int matchIndex)
+        {
+            //bool inComment = false;
+            matchIndex = 0;
+
+            for (int i = 0; ;)
+            {
+                // Look for the start of one of our patterns
+                int n = s.IndexOfAny(StartingChars, i);
+
+                // If not found, the string is safe
+                if (n < 0) return false;
+
+                // If it's the last char, it's safe
+                if (n == s.Length - 1) return false;
+
+                matchIndex = n;
+
+                switch (s[n])
+                {
+                    case '<':
+                        // If the < is followed by a letter or '!', it's unsafe (looks like a tag or HTML comment)
+                        if (IsAtoZ(s[n + 1]) || s[n + 1] == '!' || s[n + 1] == '/' || s[n + 1] == '?') return true;
+                        break;
+                    case '&':
+                        // If the & is followed by a #, it's unsafe (e.g. &#83;)
+                        if (s[n + 1] == '#') return true;
+                        break;
+                }
+
+                // Continue searching
+                i = n + 1;
+            }
+        }
+
+        private static bool IsAtoZ(char c)
+        {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
         }
     }
 }
