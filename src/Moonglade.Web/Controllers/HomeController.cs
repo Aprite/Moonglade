@@ -81,7 +81,7 @@ namespace Moonglade.Web.Controllers
             return View(tags);
         }
 
-        [Route("tags/{normalizedName:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
+        [Route("TagList")]
         public async Task<IActionResult> TagList(string normalizedName, int page = 1)
         {
             var tagResponse = _tagService.Get(normalizedName);
@@ -97,7 +97,7 @@ namespace Moonglade.Web.Controllers
             return View(list);
         }
 
-        [Route("category/{routeName:regex(^(?!-)([[a-zA-Z0-9-]]+)$)}")]
+        [Route("category")]
         public async Task<IActionResult> CategoryList([FromServices] ICategoryService categoryService, string routeName, int page = 1)
         {
             if (string.IsNullOrWhiteSpace(routeName)) return NotFound();
