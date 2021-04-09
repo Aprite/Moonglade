@@ -189,6 +189,45 @@ namespace Moonglade.Web.Controllers
         }
 
 
+        [HttpGet(@"uploads/{filename:regex((?!-)([[a-z0-9-]]+)\.(mp4))}")]
+        public async Task<IActionResult> MediaAsync(string filename, [FromServices] IMemoryCache cache)
+        {
+            try
+            {
+                var invalidChars = Path.GetInvalidFileNameChars();
+                if (filename.IndexOfAny(invalidChars) >= 0)
+                {
+                    return BadRequest("invalid filename");
+                }
+
+                _logger.LogTrace($"Requesting image file {filename}");
+
+                if (_blogConfig.AdvancedSettings.EnableCDNRedirect)
+                {
+                    var imageUrl = _blogConfig.AdvancedSettings.CDNEndpoint.CombineUrl(filename);
+                    return Redirect(imageUrl);
+                }
+
+                var imageEntry = await cache.GetOrCreateAsync(filename, async entry =>
+                {
+                    _logger.LogTrace($"Image file {filename} not on cache, fetching image...");
+
+                    entry.SlidingExpiration = TimeSpan.FromMinutes(_settings.CacheSlidingExpirationMinutes["Image"]);
+                    var imgBytesResponse = await _imageStorage.GetAsync(filename);
+                    return imgBytesResponse;
+                });
+
+                if (null == imageEntry) return NotFound();
+
+                return File(imageEntry.ImageBytes, imageEntry.ImageContentType);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, $"Error requesting image {filename}");
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+        }
+
         [Authorize]
         [HttpPost("upload-media"), IgnoreAntiforgeryToken]
         public async Task<IActionResult> UploadMediaAsync(IFormFile file, [FromServices] IFileNameGenerator fileNameGenerator)
@@ -219,9 +258,9 @@ namespace Moonglade.Web.Controllers
                 var finalFileName = await _imageStorage.InsertAsync(primaryFileName,
                         stream.ToArray());
 
-                _logger.LogInformation($"Image '{primaryFileName}' uloaded.");
+                _logger.LogInformation($"Media '{primaryFileName}' uloaded.");
 
-                return Json(new
+                return Ok(new
                 {
                     location = $"/uploads/{finalFileName}",
                     filename = finalFileName

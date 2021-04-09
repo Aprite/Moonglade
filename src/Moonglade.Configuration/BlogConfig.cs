@@ -105,7 +105,7 @@ namespace Moonglade.Configuration
             try
             {
                 var exists = await
-                    _dbConnection.ExecuteScalarAsync<int>("SELECT TOP 1 1 FROM BlogAsset ba WHERE ba.Id = @assetId",
+                    _dbConnection.ExecuteScalarAsync<int>("SELECT 1 FROM BlogAsset ba WHERE ba.Id = @assetId",
                         new { assetId });
 
                 if (exists == 0)
@@ -143,7 +143,7 @@ namespace Moonglade.Configuration
             try
             {
                 var asset = _dbConnection.QueryFirstOrDefault<BlogAsset>
-                    ("SELECT TOP 1 * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
+                    ("SELECT * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
 
                 return asset?.Base64Data;
             }
@@ -159,7 +159,7 @@ namespace Moonglade.Configuration
             try
             {
                 var asset = await _dbConnection.QueryFirstOrDefaultAsync<BlogAsset>
-                    ("SELECT TOP 1 * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
+                    ("SELECT * FROM BlogAsset ba WHERE ba.Id = @assetId", new { assetId });
 
                 return asset?.Base64Data;
             }

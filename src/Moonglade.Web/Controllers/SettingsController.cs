@@ -260,26 +260,26 @@ namespace Moonglade.Web.Controllers
             }
         }
 
-        #endregion
+        //#endregion
 
-        #region Advanced Settings
+        //#region Advanced Settings
 
-        [HttpGet("advanced")]
-        public IActionResult Advanced()
-        {
-            var settings = _blogConfig.AdvancedSettings;
-            var vm = new AdvancedSettingsViewModel
-            {
-                DNSPrefetchEndpoint = settings.DNSPrefetchEndpoint,
-                RobotsTxtContent = settings.RobotsTxtContent,
-                EnablePingbackSend = settings.EnablePingBackSend,
-                EnablePingbackReceive = settings.EnablePingBackReceive,
-                EnableOpenGraph = settings.EnableOpenGraph,
-                EnableWechat = settings.EnableWechat
-            };
+        //[HttpGet("advanced")]
+        //public IActionResult Advanced()
+        //{
+        //    var settings = _blogConfig.AdvancedSettings;
+        //    var vm = new AdvancedSettingsViewModel
+        //    {
+        //        DNSPrefetchEndpoint = settings.DNSPrefetchEndpoint,
+        //        RobotsTxtContent = settings.RobotsTxtContent,
+        //        EnablePingbackSend = settings.EnablePingBackSend,
+        //        EnablePingbackReceive = settings.EnablePingBackReceive,
+        //        EnableOpenGraph = settings.EnableOpenGraph,
+        //        EnableWechat = settings.EnableWechat
+        //    };
 
-            return View(vm);
-        }
+        //    return View(vm);
+        //}
 
         [HttpPost("advanced")]
         [ProducesResponseType(StatusCodes.Status200OK)]
