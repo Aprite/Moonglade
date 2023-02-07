@@ -2,7 +2,7 @@ param(
     [string]$zipFileName=$(throw "请指定要部署的文件 -zipFileName 要部署的zip文件的名称")
 )
 
-$txServer="tx.aprite.cn"
+$txServer="ctyun.aprite.cn"
 
 Write-Host "------ 开始发布站点：$($txServer) ------"
 
