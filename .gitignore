@@ -3,6 +3,7 @@
 
 ## Sensitive data
 appsettings.Development.json
+appsettings.Production.json
 
 # User-specific files
 *.suo
