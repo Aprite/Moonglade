@@ -1,0 +1,96 @@
+﻿@page "/admin/mention"
+@using Moonglade.Mention.Common
+@{
+    ViewBag.Title = "Mentions";
+    var mentionRecords = await QueryMediator.QueryAsync(new ListMentionsQuery());
+}
+
+@Html.AntiForgeryToken()
+
+@section head {
+    <style>
+        .mentions-container {
+            height: calc(100vh - 230px);
+            overflow-y: scroll;
+            overflow-x: hidden;
+        }
+    </style>
+}
+
+@section scripts{
+    <script type="module" src="~/js/app/admin.mention.mjs" asp-append-version="true"></script>
+}
+
+@section admintoolbar{
+    <div class="admin-toolbar pb-2 border-bottom mb-3">
+        <div class="row">
+            <div class="col">
+                <a class="btn btn-outline-danger" href="javascript:;" data-bs-toggle="modal" data-bs-target="#clearmentionModal">
+                    <i class="bi-trash"></i>
+                    @SharedLocalizer["Clear all"]
+                </a>
+            </div>
+            <div class="col-auto">
+                <div class="text-muted admin-toolbar-text">
+                    <span id="mention-count">@mentionRecords.Count</span> item(s)
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div>
+    <input id="mentionFilter" type="text" class="form-control mb-3" maxlength="32" placeholder="Filter..">
+
+    <div class="mentions-container">
+        @foreach (var item in mentionRecords.OrderByDescending(p => p.PingTimeUtc))
+        {
+            <div class="mention-item-entry p-3 rounded-3 border mb-1">
+                <div id="mention-box-@item.Id" class="mention-item row">
+                    <div class="col">
+                        <strong>
+                            <a href="@item.SourceUrl" target="_blank">@item.SourceTitle</a>
+                        </strong>
+
+                        <div>
+                            <i class="bi-link"></i>
+
+                            @item.TargetPostTitle
+                        </div>
+
+                        <div class="text-muted">
+                            @item.Domain, @item.SourceIp,
+                            <time data-utc-label="@item.PingTimeUtc.ToString("u")">@item.PingTimeUtc</time>, 
+                            @item.Worker
+                        </div>
+                    </div>
+
+                    <div class="col-auto">
+                        <a class="btn btn-sm btn-outline-danger btn-delete" data-mentionId="@item.Id">
+                            <i class="bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="clearmentionModal" tabindex="-1" role="dialog" aria-labelledby="clearmentionModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clearmentionModalLabel">@SharedLocalizer["Clear Mention Logs"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                @SharedLocalizer["Are you sure?"]
+            </div>
+            <div class="modal-footer">
+                <a id="btn-clear-all" class="btn btn-outline-danger btn-clear"">@SharedLocalizer["Clear Now"]</a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@SharedLocalizer["Cancel"]</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,49 +1,53 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using LiteBus.Queries.Abstractions;
+using Microsoft.EntityFrameworkCore;
+using Moonglade.Data;
 using System.Text.RegularExpressions;
 
 namespace Moonglade.Core.PostFeature;
 
-public record SearchPostQuery(string Keyword) : IRequest<IReadOnlyList<PostDigest>>;
+public record SearchPostQuery(string Keyword) : IQuery<List<PostDigest>>;
 
-public class SearchPostQueryHandler : IRequestHandler<SearchPostQuery, IReadOnlyList<PostDigest>>
+public class SearchPostQueryHandler(MoongladeRepository<PostEntity> repo) : IQueryHandler<SearchPostQuery, List<PostDigest>>
 {
-    private readonly IRepository<PostEntity> _repo;
-    public SearchPostQueryHandler(IRepository<PostEntity> repo) => _repo = repo;
-
-    public async Task<IReadOnlyList<PostDigest>> Handle(SearchPostQuery request, CancellationToken ct)
+    public async Task<List<PostDigest>> HandleAsync(SearchPostQuery request, CancellationToken ct)
     {
-        if (null == request || string.IsNullOrWhiteSpace(request.Keyword))
+        if (string.IsNullOrWhiteSpace(request.Keyword))
         {
-            throw new ArgumentNullException(request?.Keyword);
+            throw new ArgumentException("Keyword must not be null or whitespace.", nameof(request.Keyword));
         }
 
-        var postList = SearchByKeyword(request.Keyword);
-        var resultList = await postList.Select(PostDigest.EntitySelector).ToListAsync(ct);
-
-        return resultList;
+        var query = BuildSearchQuery(request.Keyword);
+        var results = await query.Select(PostDigest.EntitySelector).ToListAsync(ct);
+        return results;
     }
 
-    private IQueryable<PostEntity> SearchByKeyword(string keyword)
+    private IQueryable<PostEntity> BuildSearchQuery(string keyword)
     {
-        var query = _repo.AsQueryable()
-            .Where(p => !p.IsDeleted && p.IsPublished).AsNoTracking();
+        var normalized = Regex.Replace(keyword.Trim(), @"\s+", " ");
+        var words = normalized.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
-        var str = Regex.Replace(keyword, @"\s+", " ");
-        var rst = str.Split(' ');
-        if (rst.Length > 1)
+        var query = repo.AsQueryable()
+            .Where(p => !p.IsDeleted && p.PostStatus == PostStatusConstants.Published)
+            .AsNoTracking();
+
+        if (words.Length > 1)
         {
-            // keyword: "dot  net rocks"
-            // search for post where Title containing "dot && net && rocks"
-            var result = rst.Aggregate(query, (current, s) => current.Where(p => p.Title.Contains(s)));
-            return result;
+            // All words must appear in Title
+            foreach (var word in words)
+            {
+                var temp = word; // Required for EF
+                query = query.Where(p => p.Title.Contains(temp));
+            }
         }
         else
         {
-            // keyword: "dotnetrocks"
-            var k = rst.First();
-            var result = query.Where(p => p.Title.Contains(k) ||
-                                          p.Tags.Select(t => t.DisplayName).Contains(k));
-            return result;
+            var word = words[0];
+            query = query.Where(p =>
+                p.Title.Contains(word) ||
+                p.Tags.Any(t => t.DisplayName.Contains(word))
+            );
         }
+
+        return query;
     }
 }

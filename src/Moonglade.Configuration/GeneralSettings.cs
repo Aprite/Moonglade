@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Moonglade.Configuration;
 
@@ -6,7 +7,7 @@ public class GeneralSettings : IBlogSettings
 {
     [Required]
     [Display(Name = "Meta keyword")]
-    [MaxLength(1024)]
+    [MaxLength(256)]
     public string MetaKeyword { get; set; }
 
     [Display(Name = "Canonical URL prefix")]
@@ -47,10 +48,9 @@ public class GeneralSettings : IBlogSettings
     [MaxLength(256)]
     public string Description { get; set; }
 
-    [Required]
-    [Display(Name = "Short description")]
+    [Display(Name = "Your pronouns")]
     [MaxLength(32)]
-    public string ShortDescription { get; set; }
+    public string Pronouns { get; set; }
 
     [Display(Name = "Side bar HTML code")]
     [DataType(DataType.MultilineText)]
@@ -65,24 +65,13 @@ public class GeneralSettings : IBlogSettings
     [MaxLength(4096)]
     public string FooterCustomizedHtmlPitch { get; set; }
 
-    public TimeSpan SelectedUtcOffset { get; set; }
-
-    [MaxLength(64)]
-    public string TimeZoneId { get; set; }
-
-    [Display(Name = "Auto Light / Dark theme regarding client system settings")]
-    public bool AutoDarkLightTheme { get; set; }
-
-    public int ThemeId { get; set; }
-
-    [Display(Name = "Show pride mouse cursor and flag")]
-    public bool Pride { get; set; }
-
     [Display(Name = "Profile")]
     public bool WidgetsProfile { get; set; } = true;
 
-    [Display(Name = "Tags")]
-    public bool WidgetsTags { get; set; } = true;
+    [Required]
+    [Display(Name = "How many tags to show on sidebar")]
+    [Range(0, 20)]
+    public int HotTagAmount { get; set; } = 10;
 
     [Display(Name = "Categories")]
     public bool WidgetsCategoryList { get; set; } = true;
@@ -93,15 +82,34 @@ public class GeneralSettings : IBlogSettings
     [Display(Name = "Subscription buttons")]
     public bool WidgetsSubscriptionButtons { get; set; } = true;
 
-    [Display(Name = "Show Admin login button under sidebar")]
-    public bool ShowAdminLoginButton { get; set; }
-
     [MaxLength(64)]
     public string AvatarUrl { get; set; }
 
-    public TimeSpan TimeZoneUtcOffset { get; set; }
+    [Display(Name = "Use my Gravatar as profile picture")]
+    public bool UseGravatarAsProfilePicture { get; set; }
 
-    public GeneralSettings() => ThemeId = 1;
+    [Required]
+    [RegularExpression("^[a-z]{2}-[a-zA-Z]{2,4}$")]
+    public string DefaultLanguageCode { get; set; } = "en-us";
+
+    [Display(Name = "Use Dublin Core Metadata")]
+    public bool UseDublinCoreMetaData { get; set; }
+
+    [Display(Name = "Dublin Core License URL")]
+    public string DcLicenseUrl { get; set; }
+
+    [JsonIgnore]
+    public static GeneralSettings DefaultValue => new()
+    {
+        OwnerName = "Admin",
+        OwnerEmail = "admin@edi.wang",
+        SiteTitle = "Moonglade",
+        Description = "Moonglade Admin",
+        LogoText = "moonglade",
+        MetaKeyword = "moonglade",
+        Copyright = $"[c] {DateTime.UtcNow.Year}",
+        HotTagAmount = 10
+    };
 }
 
 public enum SideBarOption

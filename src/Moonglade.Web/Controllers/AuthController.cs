@@ -6,21 +6,17 @@ using Microsoft.Extensions.Options;
 namespace Moonglade.Web.Controllers;
 
 [Route("auth")]
-public class AuthController : ControllerBase
+public class AuthController(IOptions<AuthenticationSettings> authSettings) : ControllerBase
 {
-    private readonly AuthenticationSettings _authenticationSettings;
-
-    public AuthController(
-        IOptions<AuthenticationSettings> authSettings) =>
-        _authenticationSettings = authSettings.Value;
+    private readonly AuthenticationSettings _authenticationSettings = authSettings.Value;
 
     [HttpGet("signout")]
     [ProducesResponseType(StatusCodes.Status302Found)]
-    public async Task<IActionResult> SignOut(int nounce = 1055)
+    public async Task<IActionResult> SignOut(int nounce = 996)
     {
         switch (_authenticationSettings.Provider)
         {
-            case AuthenticationProvider.AzureAD:
+            case AuthenticationProvider.EntraID:
                 var callbackUrl = Url.Page("/Index", null, null, Request.Scheme);
                 return SignOut(
                     new AuthenticationProperties { RedirectUri = callbackUrl },
@@ -35,7 +31,12 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
+    [HttpGet("/account/accessdenied")]
     [HttpGet("accessdenied")]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    public IActionResult AccessDenied() => Forbid();
+    public IActionResult AccessDenied()
+    {
+        Response.StatusCode = StatusCodes.Status403Forbidden;
+        return Content("Access Denied");
+    }
 }

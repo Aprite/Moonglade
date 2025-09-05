@@ -1,0 +1,99 @@
+﻿@page "/admin/settings/social-links"
+@Html.AntiForgeryToken()
+@{
+    var bc = BlogConfig.SocialLinkSettings;
+    var settings = new SocialLinkSettingsJsonModel
+            {
+                IsEnabled = bc.IsEnabled,
+                JsonData = bc.Links.ToJson(true)
+            };
+}
+
+@section scripts {
+    <script type="module" src="~/js/app/admin.settings.socaillinks.mjs" asp-append-version="true"></script>
+}
+
+@section head {
+    <style>
+        .th-actions {
+            width: 120px;
+        }
+
+        .form-control-url {
+            width: 300px;
+        }
+    </style>
+}
+
+@section admintoolbar {
+    <partial name="_SettingsHeader" />
+}
+
+<form id="form-settings" asp-controller="Settings" asp-action="SocialLink">
+    <div class="admin-settings-entry-container">
+        <div class="settings-entry row align-items-center py-3 px-2 rounded-3 border mb-3">
+            <div class="col-auto">
+                <i class="bi-menu-app settings-entry-icon"></i>
+            </div>
+            <div class="col">
+                <label asp-for="@settings.IsEnabled" class="form-check-label"></label>
+            </div>
+            <div class="col-md-5 text-end">
+                <div class="form-check form-switch form-control-lg">
+                    <input type="hidden" name="IsEnabled" value="false">
+                    <input type="checkbox" name="IsEnabled" value="true" class="form-check-input" @(@settings.IsEnabled ? "checked" : null) />
+                </div>
+            </div>
+        </div>
+
+        <table id="linksTable" class="table table-bordered p-3 rounded-3">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Icon</th>
+                    <th class="th-url">URL</th>
+                    <th class="th-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+
+        <div id="form" class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label for="name">Name</label>
+            </div>
+            <div class="col-auto">
+                <input type="text" id="name" class="form-control form-control-sm">
+            </div>
+            <div class="col-auto">
+                <label for="icon">Icon Class</label>
+            </div>
+            <div class="col-auto">
+                <input type="text" id="icon" class="form-control form-control-sm">
+            </div>
+            <div class="col-auto">
+                <label for="url">URL</label>
+            </div>
+            <div class="col-auto">
+                <input type="text" id="url" class="form-control form-control-sm form-control-url">
+            </div>
+            <div class="col-auto">
+                <button type="button" id="btn-update" class="btn btn-sm btn-outline-accent">Add / Update</button>
+            </div>
+            <div class="col-auto">
+                <button type="button" id="btn-cancel" class="btn btn-sm btn-outline-secondary">Cancel</button>
+            </div>
+
+            <span id="error" class="text-danger"></span>
+        </div>
+    </div>
+
+    <textarea asp-for="@settings.JsonData" class="settings-jsoncontent-textarea d-none"></textarea>
+
+    <div class="admin-settings-action-container border-top pt-2 mt-2">
+        <button type="submit" class="btn btn-outline-accent" id="btn-save-settings">
+            @SharedLocalizer["Save"]
+        </button>
+    </div>
+</form>

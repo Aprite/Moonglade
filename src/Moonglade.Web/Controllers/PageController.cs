@@ -1,56 +1,34 @@
-﻿using Moonglade.Caching.Filters;
+﻿using LiteBus.Commands.Abstractions;
+using LiteBus.Queries.Abstractions;
 using Moonglade.Core.PageFeature;
 using Moonglade.Web.Attributes;
-using NUglify;
 
 namespace Moonglade.Web.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("api/[controller]")]
-public class PageController : Controller
+public class PageController(ICacheAside cache, IQueryMediator queryMediator, ICommandMediator commandMediator) : Controller
 {
-    private readonly IBlogCache _cache;
-    private readonly IMediator _mediator;
-
-    public PageController(
-        IBlogCache cache,
-        IMediator mediator)
+    [HttpPost]
+    [TypeFilter(typeof(ClearBlogCache), Arguments = [BlogCacheType.SiteMap])]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> Create(EditPageRequest model)
     {
-        _cache = cache;
-        _mediator = mediator;
+        var uid = await commandMediator.SendAsync(new CreatePageCommand(model));
+
+        cache.Remove(BlogCachePartition.Page.ToString(), model.Slug.ToLower());
+        return Ok(new { PageId = uid });
     }
 
-    [HttpPost]
-    [TypeFilter(typeof(ClearBlogCache), Arguments = new object[] { BlogCacheType.SiteMap })]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    public Task<IActionResult> Create(EditPageRequest model) =>
-        CreateOrEdit(model, async request => await _mediator.Send(new CreatePageCommand(request)));
-
     [HttpPut("{id:guid}")]
-    [TypeFilter(typeof(ClearBlogCache), Arguments = new object[] { BlogCacheType.SiteMap })]
+    [TypeFilter(typeof(ClearBlogCache), Arguments = [BlogCacheType.SiteMap])]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    public Task<IActionResult> Edit([NotEmpty] Guid id, EditPageRequest model) =>
-        CreateOrEdit(model, async request => await _mediator.Send(new UpdatePageCommand(id, request)));
-
-    private async Task<IActionResult> CreateOrEdit(EditPageRequest model, Func<EditPageRequest, Task<Guid>> pageServiceAction)
+    public async Task<IActionResult> Edit([NotEmpty] Guid id, EditPageRequest model)
     {
-        if (!string.IsNullOrWhiteSpace(model.CssContent))
-        {
-            var uglifyTest = Uglify.Css(model.CssContent);
-            if (uglifyTest.HasErrors)
-            {
-                foreach (var err in uglifyTest.Errors)
-                {
-                    ModelState.AddModelError(model.CssContent, err.ToString());
-                }
-                return BadRequest(ModelState.CombineErrorMessages());
-            }
-        }
+        var uid = await commandMediator.SendAsync(new UpdatePageCommand(id, model));
 
-        var uid = await pageServiceAction(model);
-
-        _cache.Remove(CacheDivision.Page, model.Slug.ToLower());
+        cache.Remove(BlogCachePartition.Page.ToString(), model.Slug.ToLower());
         return Ok(new { PageId = uid });
     }
 
@@ -58,12 +36,12 @@ public class PageController : Controller
     [ApiConventionMethod(typeof(DefaultApiConventions), nameof(DefaultApiConventions.Delete))]
     public async Task<IActionResult> Delete([NotEmpty] Guid id)
     {
-        var page = await _mediator.Send(new GetPageByIdQuery(id));
+        var page = await queryMediator.QueryAsync(new GetPageByIdQuery(id));
         if (page == null) return NotFound();
 
-        await _mediator.Send(new DeletePageCommand(id));
+        await commandMediator.SendAsync(new DeletePageCommand(id));
 
-        _cache.Remove(CacheDivision.Page, page.Slug);
+        cache.Remove(BlogCachePartition.Page.ToString(), page.Slug);
         return NoContent();
     }
 }

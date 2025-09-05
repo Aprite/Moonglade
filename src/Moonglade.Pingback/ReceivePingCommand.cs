@@ -1,101 +1,78 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
 using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
-using Moonglade.Data.Spec;
-using System.Text.RegularExpressions;
+using Moonglade.Data.Specifications;
+using Moonglade.Mention.Common;
+using Moonglade.Utils;
 using System.Xml;
 
 namespace Moonglade.Pingback;
 
-public class ReceivePingCommand : IRequest<PingbackResponse>
+public class ReceivePingCommand(string requestBody, string ip) : ICommand<PingbackResponse>
 {
-    public ReceivePingCommand(string requestBody, string ip, Action<PingbackEntity> action)
-    {
-        RequestBody = requestBody;
-        IP = ip;
-        Action = action;
-    }
+    public string RequestBody { get; set; } = requestBody;
 
-    public string RequestBody { get; set; }
-
-    public string IP { get; set; }
-
-    public Action<PingbackEntity> Action { get; set; }
+    public string IP { get; set; } = ip;
 }
 
-public class ReceivePingCommandHandler : IRequestHandler<ReceivePingCommand, PingbackResponse>
+public class ReceivePingCommandHandler(
+        ILogger<ReceivePingCommandHandler> logger,
+        IMentionSourceInspector sourceInspector,
+        MoongladeRepository<MentionEntity> mentionRepo,
+        MoongladeRepository<PostEntity> postRepo) : ICommandHandler<ReceivePingCommand, PingbackResponse>
 {
-    private readonly ILogger<ReceivePingCommandHandler> _logger;
-    private readonly IPingSourceInspector _pingSourceInspector;
-    private readonly IRepository<PingbackEntity> _pingbackRepo;
-    private readonly IRepository<PostEntity> _postRepo;
-
     private string _sourceUrl;
     private string _targetUrl;
 
-    public ReceivePingCommandHandler(
-        ILogger<ReceivePingCommandHandler> logger,
-        IPingSourceInspector pingSourceInspector,
-        IRepository<PingbackEntity> pingbackRepo,
-        IRepository<PostEntity> postRepo)
-    {
-        _logger = logger;
-        _pingSourceInspector = pingSourceInspector;
-        _pingbackRepo = pingbackRepo;
-        _postRepo = postRepo;
-    }
-
-    public async Task<PingbackResponse> Handle(ReceivePingCommand request, CancellationToken ct)
+    public async Task<PingbackResponse> HandleAsync(ReceivePingCommand request, CancellationToken ct)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(request.RequestBody))
             {
-                _logger.LogError("Pingback requestBody is null");
+                logger.LogError("Pingback requestBody is null");
                 return PingbackResponse.GenericError;
             }
 
             var valid = ValidateRequest(request.RequestBody);
             if (!valid) return PingbackResponse.InvalidPingRequest;
 
-            _logger.LogInformation($"Processing Pingback from: {_sourceUrl} ({request.IP}) to {_targetUrl}");
+            logger.LogInformation($"Processing Pingback from: {_sourceUrl} ({request.IP}) to {_targetUrl}");
 
-            var pingRequest = await _pingSourceInspector.ExamineSourceAsync(_sourceUrl, _targetUrl);
+            var pingRequest = await sourceInspector.ExamineSourceAsync(_sourceUrl, _targetUrl);
             if (null == pingRequest) return PingbackResponse.InvalidPingRequest;
-            if (!pingRequest.SourceHasLink)
+
+            if (!pingRequest.SourceHasTarget)
             {
-                _logger.LogError("Pingback error: The source URI does not contain a link to the target URI.");
+                logger.LogError("Pingback error: The source URI does not contain a link to the target URI.");
                 return PingbackResponse.Error17SourceNotContainTargetUri;
             }
+
             if (pingRequest.ContainsHtml)
             {
-                _logger.LogWarning("Spam detected on current Pingback...");
+                logger.LogWarning("Spam detected on current Pingback...");
                 return PingbackResponse.SpamDetectedFakeNotFound;
             }
 
-            var (slug, pubDate) = GetSlugInfoFromUrl(pingRequest.TargetUrl);
-            var spec = new PostSpec(pubDate, slug);
-            var (id, title) = await _postRepo.FirstOrDefaultAsync(spec, p => new Tuple<Guid, string>(p.Id, p.Title));
+            var routeLink = UrlHelper.GetRouteLinkFromUrl(pingRequest.TargetUrl);
+            var spec = new PostByRouteLinkForIdTitleSpec(routeLink);
+            var (id, title) = await postRepo.FirstOrDefaultAsync(spec, ct);
             if (id == Guid.Empty)
             {
-                _logger.LogError($"Can not get post id and title for url '{pingRequest.TargetUrl}'");
+                logger.LogError($"Can not get post id and title for url '{pingRequest.TargetUrl}'");
                 return PingbackResponse.Error32TargetUriNotExist;
             }
 
-            _logger.LogInformation($"Post '{id}:{title}' is found for ping.");
+            logger.LogInformation($"Post '{id}:{title}' is found for ping.");
 
-            var pinged = await _pingbackRepo.AnyAsync(p =>
-                p.TargetPostId == id &&
-                p.SourceUrl == pingRequest.SourceUrl &&
-                p.SourceIp.Trim() == request.IP, ct);
-
+            var pinged = await mentionRepo.AnyAsync(new MentionSpec(id, pingRequest.SourceUrl, request.IP), ct);
             if (pinged) return PingbackResponse.Error48PingbackAlreadyRegistered;
 
-            _logger.LogInformation("Adding received pingback...");
+            logger.LogInformation("Adding received pingback...");
 
             var uri = new Uri(_sourceUrl);
-            var obj = new PingbackEntity
+            var obj = new MentionEntity
             {
                 Id = Guid.NewGuid(),
                 PingTimeUtc = DateTime.UtcNow,
@@ -104,46 +81,31 @@ public class ReceivePingCommandHandler : IRequestHandler<ReceivePingCommand, Pin
                 SourceTitle = pingRequest.Title,
                 TargetPostId = id,
                 TargetPostTitle = title,
-                SourceIp = request.IP
+                SourceIp = request.IP,
+                Worker = "Pingback"
             };
 
-            await _pingbackRepo.AddAsync(obj, ct);
-            request.Action?.Invoke(obj);
+            await mentionRepo.AddAsync(obj, ct);
 
-            return PingbackResponse.Success;
+            return new(PingbackStatus.Success)
+            {
+                MentionEntity = obj
+            };
         }
         catch (Exception e)
         {
-            _logger.LogError(e, nameof(ReceivePingCommandHandler));
+            logger.LogError(e, e.Message);
             return PingbackResponse.GenericError;
         }
     }
 
-    private static (string Slug, DateTime PubDate) GetSlugInfoFromUrl(string url)
-    {
-        var blogSlugRegex = new Regex(@"^https?:\/\/.*\/post\/(?<yyyy>\d{4})\/(?<MM>\d{1,12})\/(?<dd>\d{1,31})\/(?<slug>.*)$");
-        Match match = blogSlugRegex.Match(url);
-        if (!match.Success)
-        {
-            throw new FormatException("Invalid Slug Format");
-        }
-
-        int year = int.Parse(match.Groups["yyyy"].Value);
-        int month = int.Parse(match.Groups["MM"].Value);
-        int day = int.Parse(match.Groups["dd"].Value);
-        string slug = match.Groups["slug"].Value;
-        var date = new DateTime(year, month, day);
-
-        return (slug, date);
-    }
-
     private bool ValidateRequest(string requestBody)
     {
-        _logger.LogInformation($"Pingback received xml: {requestBody}");
+        logger.LogInformation($"Pingback received xml: {requestBody}");
 
         if (!requestBody.Contains("<methodName>pingback.ping</methodName>"))
         {
-            _logger.LogWarning("Could not find pingback method, request has been terminated.");
+            logger.LogWarning("Could not find pingback method, request has been terminated.");
             return false;
         }
 
@@ -155,7 +117,7 @@ public class ReceivePingCommandHandler : IRequestHandler<ReceivePingCommand, Pin
 
         if (list is null)
         {
-            _logger.LogWarning("Could not find Pingback sourceUrl and targetUrl, request has been terminated.");
+            logger.LogWarning("Could not find Pingback sourceUrl and targetUrl, request has been terminated.");
             return false;
         }
 

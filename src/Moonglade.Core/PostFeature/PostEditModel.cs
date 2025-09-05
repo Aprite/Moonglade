@@ -20,8 +20,6 @@ public class PostEditModel
     [MaxLength(64)]
     public string Author { get; set; }
 
-    [Required]
-    [MinLength(1)]
     public Guid[] SelectedCatIds { get; set; }
 
     [Required]
@@ -33,14 +31,13 @@ public class PostEditModel
     public string EditorContent { get; set; }
 
     [Required]
-    [Display(Name = "Publish Now")]
-    public bool IsPublished { get; set; }
+    public string PostStatus { get; set; }
 
     [Required]
     [Display(Name = "Featured")]
     public bool Featured { get; set; }
 
-    [Display(Name = "Feed Subscription")]
+    [Display(Name = "Include in feed and sitemap")]
     public bool FeedIncluded { get; set; }
 
     [Display(Name = "Tags")]
@@ -52,25 +49,39 @@ public class PostEditModel
     public string LanguageCode { get; set; }
 
     [DataType(DataType.MultilineText)]
-    [MaxLength(400)]
+    [MaxLength(1024)]
     public string Abstract { get; set; }
+
+    [MaxLength(256)]
+    [Display(Name = "Keywords (split by comma ',')")]
+    public string Keywords { get; set; }
 
     [Display(Name = "Publish Date")]
     [DataType(DataType.Date)]
     public DateTime? PublishDate { get; set; }
 
+    [Display(Name = "Scheduled Publish Time")]
+    [DataType(DataType.DateTime)]
+    public DateTime? ScheduledPublishTime { get; set; }
+
+    // Only used in editing mode
+    [DataType(DataType.DateTime)]
+    public DateTime? ScheduledPublishTimeUtc { get; set; }
+
+    public string ClientTimeZoneId { get; set; }
+
     [Display(Name = "Change Publish Date")]
     public bool ChangePublishDate { get; set; }
-
-    [Display(Name = "Origin Link")]
-    [DataType(DataType.Url)]
-    public string OriginLink { get; set; }
 
     [Display(Name = "Hero Image")]
     [DataType(DataType.Url)]
     public string HeroImageUrl { get; set; }
 
-    [Display(Name = "Inline CSS")]
-    [MaxLength(2048)]
-    public string InlineCss { get; set; }
+    [Display(Name = "Mark as outdated")]
+    public bool IsOutdated { get; set; }
+
+    public bool WarnSlugModification => PublishDate.HasValue && (DateTime.UtcNow - PublishDate.Value).Days > 3;
+
+    [HiddenInput]
+    public string LastModifiedUtc { get; set; }
 }

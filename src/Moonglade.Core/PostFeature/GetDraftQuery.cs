@@ -1,19 +1,17 @@
-﻿using Moonglade.Data.Spec;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Core.PostFeature;
 
-public record GetDraftQuery(Guid Id) : IRequest<Post>;
+public record GetDraftQuery(Guid Id) : IQuery<PostEntity>;
 
-public class GetDraftQueryHandler : IRequestHandler<GetDraftQuery, Post>
+public class GetDraftQueryHandler(MoongladeRepository<PostEntity> repo) : IQueryHandler<GetDraftQuery, PostEntity>
 {
-    private readonly IRepository<PostEntity> _repo;
-
-    public GetDraftQueryHandler(IRepository<PostEntity> repo) => _repo = repo;
-
-    public Task<Post> Handle(GetDraftQuery request, CancellationToken ct)
+    public Task<PostEntity> HandleAsync(GetDraftQuery request, CancellationToken ct)
     {
         var spec = new PostSpec(request.Id);
-        var post = _repo.FirstOrDefaultAsync(spec, Post.EntitySelector);
+        var post = repo.FirstOrDefaultAsync(spec, ct);
         return post;
     }
 }

@@ -1,27 +1,23 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
+using Moonglade.Data.Specifications;
 using Moonglade.Utils;
 
 namespace Moonglade.Comments;
 
-public record ReplyCommentCommand(Guid CommentId, string ReplyContent) : IRequest<CommentReply>;
+public record ReplyCommentCommand(Guid CommentId, string ReplyContent) : ICommand<CommentReply>;
 
-public class ReplyCommentCommandHandler : IRequestHandler<ReplyCommentCommand, CommentReply>
+public class ReplyCommentCommandHandler(
+    ILogger<ReplyCommentCommandHandler> logger,
+    MoongladeRepository<CommentEntity> commentRepo,
+    MoongladeRepository<CommentReplyEntity> commentReplyRepo) : ICommandHandler<ReplyCommentCommand, CommentReply>
 {
-    private readonly IRepository<CommentEntity> _commentRepo;
-    private readonly IRepository<CommentReplyEntity> _commentReplyRepo;
-
-    public ReplyCommentCommandHandler(IRepository<CommentEntity> commentRepo, IRepository<CommentReplyEntity> commentReplyRepo)
+    public async Task<CommentReply> HandleAsync(ReplyCommentCommand request, CancellationToken ct)
     {
-        _commentRepo = commentRepo;
-        _commentReplyRepo = commentReplyRepo;
-    }
-
-    public async Task<CommentReply> Handle(ReplyCommentCommand request, CancellationToken ct)
-    {
-        var cmt = await _commentRepo.GetAsync(request.CommentId, ct);
-        if (cmt is null) throw new InvalidOperationException($"Comment {request.CommentId} is not found.");
+        var cmt = await commentRepo.FirstOrDefaultAsync(new CommentWithPostByIdSpec(request.CommentId), ct)
+            ?? throw new InvalidOperationException($"Comment {request.CommentId} is not found.");
 
         var id = Guid.NewGuid();
         var model = new CommentReplyEntity
@@ -32,7 +28,7 @@ public class ReplyCommentCommandHandler : IRequestHandler<ReplyCommentCommand, C
             CommentId = request.CommentId
         };
 
-        await _commentReplyRepo.AddAsync(model, ct);
+        await commentReplyRepo.AddAsync(model, ct);
 
         var reply = new CommentReply
         {
@@ -41,14 +37,14 @@ public class ReplyCommentCommandHandler : IRequestHandler<ReplyCommentCommand, C
             Email = cmt.Email,
             Id = model.Id,
             PostId = cmt.PostId,
-            PubDateUtc = cmt.Post.PubDateUtc.GetValueOrDefault(),
             ReplyContent = model.ReplyContent,
             ReplyContentHtml = ContentProcessor.MarkdownToContent(model.ReplyContent, ContentProcessor.MarkdownConvertType.Html),
             ReplyTimeUtc = model.CreateTimeUtc,
-            Slug = cmt.Post.Slug,
+            RouteLink = cmt.Post.RouteLink,
             Title = cmt.Post.Title
         };
 
+        logger.LogInformation("Replied comment '{CommentId}' with reply '{ReplyId}'", request.CommentId, id);
         return reply;
     }
 }

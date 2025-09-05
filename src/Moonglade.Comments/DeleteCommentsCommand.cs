@@ -1,38 +1,27 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
-using Moonglade.Data.Spec;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Comments;
 
-public record DeleteCommentsCommand(Guid[] Ids) : IRequest;
+public record DeleteCommentsCommand(Guid[] Ids) : ICommand;
 
-public class DeleteCommentsCommandHandler : AsyncRequestHandler<DeleteCommentsCommand>
+public class DeleteCommentsCommandHandler(
+    MoongladeRepository<CommentEntity> commentRepo,
+    ILogger<DeleteCommentsCommandHandler> logger) : ICommandHandler<DeleteCommentsCommand>
 {
-    private readonly IRepository<CommentEntity> _commentRepo;
-    private readonly IRepository<CommentReplyEntity> _commentReplyRepo;
-
-    public DeleteCommentsCommandHandler(IRepository<CommentEntity> commentRepo, IRepository<CommentReplyEntity> commentReplyRepo)
+    public async Task HandleAsync(DeleteCommentsCommand request, CancellationToken ct)
     {
-        _commentRepo = commentRepo;
-        _commentReplyRepo = commentReplyRepo;
-    }
-
-    protected override async Task Handle(DeleteCommentsCommand request, CancellationToken ct)
-    {
-        var spec = new CommentSpec(request.Ids);
-        var comments = await _commentRepo.ListAsync(spec);
+        var spec = new CommentByIdsSepc(request.Ids);
+        var comments = await commentRepo.ListAsync(spec, ct);
         foreach (var cmt in comments)
         {
-            // 1. Delete all replies
-            var cReplies = await _commentReplyRepo.ListAsync(new CommentReplySpec(cmt.Id));
-            if (cReplies.Any())
-            {
-                await _commentReplyRepo.DeleteAsync(cReplies, ct);
-            }
-
-            // 2. Delete comment itself
-            await _commentRepo.DeleteAsync(cmt, ct);
+            cmt.Replies.Clear();
+            await commentRepo.DeleteAsync(cmt, ct);
         }
+
+        logger.LogInformation("Deleted {Count} comment(s)", comments.Count);
     }
 }

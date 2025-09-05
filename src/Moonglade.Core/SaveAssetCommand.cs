@@ -1,23 +1,22 @@
-﻿namespace Moonglade.Core;
+﻿using LiteBus.Events.Abstractions;
+using Moonglade.Data;
 
-public record SaveAssetCommand(Guid AssetId, string AssetBase64) : INotification;
+namespace Moonglade.Core;
 
-public class SaveAssetCommandHandler : INotificationHandler<SaveAssetCommand>
+public record SaveAssetEvent(Guid AssetId, string AssetBase64) : IEvent;
+
+public class SaveAssetEventHandler(MoongladeRepository<BlogAssetEntity> repo) : IEventHandler<SaveAssetEvent>
 {
-    private readonly IRepository<BlogAssetEntity> _repo;
-
-    public SaveAssetCommandHandler(IRepository<BlogAssetEntity> repo) => _repo = repo;
-
-    public async Task Handle(SaveAssetCommand request, CancellationToken ct)
+    public async Task HandleAsync(SaveAssetEvent request, CancellationToken ct)
     {
         if (request.AssetId == Guid.Empty) throw new ArgumentOutOfRangeException(nameof(request.AssetId));
         if (string.IsNullOrWhiteSpace(request.AssetBase64)) throw new ArgumentNullException(nameof(request.AssetBase64));
 
-        var entity = await _repo.GetAsync(request.AssetId, ct);
+        var entity = await repo.GetByIdAsync(request.AssetId, ct);
 
         if (null == entity)
         {
-            await _repo.AddAsync(new()
+            await repo.AddAsync(new()
             {
                 Id = request.AssetId,
                 Base64Data = request.AssetBase64,
@@ -28,7 +27,7 @@ public class SaveAssetCommandHandler : INotificationHandler<SaveAssetCommand>
         {
             entity.Base64Data = request.AssetBase64;
             entity.LastModifiedTimeUtc = DateTime.UtcNow;
-            await _repo.UpdateAsync(entity, ct);
+            await repo.UpdateAsync(entity, ct);
         }
     }
 }

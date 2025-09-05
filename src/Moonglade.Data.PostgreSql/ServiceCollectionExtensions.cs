@@ -1,6 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Moonglade.Data.Infrastructure;
 using Moonglade.Data.PostgreSql.Infrastructure;
 
 namespace Moonglade.Data.PostgreSql;
@@ -9,11 +8,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPostgreSqlStorage(this IServiceCollection services, string connectionString)
     {
-        services.AddScoped(typeof(IRepository<>), typeof(PostgreSqlDbContextRepository<>));
+        services.AddScoped(typeof(MoongladeRepository<>), typeof(PostgreSqlDbContextRepository<>));
 
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
-        services.AddDbContext<PostgreSqlBlogDbContext>(optionsAction => optionsAction
-            .UseLazyLoadingProxies()
+        services.AddDbContext<BlogDbContext, PostgreSqlBlogDbContext>(options => options
             .EnableDetailedErrors()
             .UseNpgsql(connectionString, options =>
             {

@@ -1,271 +1,43 @@
-﻿using Microsoft.AspNetCore.Cryptography.KeyDerivation;
-using Microsoft.AspNetCore.Http;
+﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Microsoft.Win32;
-using System.Net;
-using System.Reflection;
-using System.Runtime.InteropServices;
+using Microsoft.Extensions.Configuration;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Moonglade.Utils;
 
 public static class Helper
 {
-    public static string AppVersion
+    public static void SetAppDomainData(string key, object value)
     {
-        get
-        {
-            var asm = Assembly.GetEntryAssembly();
-            if (null == asm) return "N/A";
-
-            // e.g. 11.2.0.0
-            var fileVersion = asm.GetCustomAttribute<AssemblyFileVersionAttribute>()?.Version;
-
-            // e.g. 11.2-preview+e57ab0321ae44bd778c117646273a77123b6983f
-            var version = asm.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
-            if (!string.IsNullOrWhiteSpace(version) && version.IndexOf('+') > 0)
-            {
-                var gitHash = version[(version.IndexOf('+') + 1)..]; // e57ab0321ae44bd778c117646273a77123b6983f
-                var prefix = version[..version.IndexOf('+')]; // 11.2-preview
-
-                if (gitHash.Length <= 6) return version;
-
-                // consider valid hash
-                var gitHashShort = gitHash[..6];
-                return !string.IsNullOrWhiteSpace(gitHashShort) ? $"{prefix} ({gitHashShort})" : fileVersion;
-            }
-
-            return version ?? fileVersion;
-        }
+        AppDomain.CurrentDomain.SetData(key, value);
     }
 
-    public static string GetClientIP(HttpContext context) => context?.Connection.RemoteIpAddress?.ToString();
-
-    public static int ComputeCheckSum(string input)
+    public static T GetAppDomainData<T>(string key, T defaultValue = default(T))
     {
-        //using var md5 = MD5.Create();
-        //var bytes = md5.ComputeHash(Encoding.GetEncoding(1252).GetBytes(input));
-        //var luckyBytes = new[] { bytes[1], bytes[2], bytes[4], bytes[8] };
-        //var result = BitConverter.ToInt32(luckyBytes, 0);
-        //return result;
-
-        // https://andrewlock.net/why-is-string-gethashcode-different-each-time-i-run-my-program-in-net-core/
-        unchecked
+        object data = AppDomain.CurrentDomain.GetData(key);
+        if (data == null)
         {
-            int hash1 = (5381 << 16) + 5381;
-            int hash2 = hash1;
-
-            for (int i = 0; i < input.Length; i += 2)
-            {
-                hash1 = ((hash1 << 5) + hash1) ^ input[i];
-                if (i == input.Length - 1) break;
-                hash2 = ((hash2 << 5) + hash2) ^ input[i + 1];
-            }
-
-            return hash1 + (hash2 * 1566083941);
+            return defaultValue;
         }
+
+        return (T)data;
     }
 
-    public static string TryGetFullOSVersion()
+    // Get `sec-ch-prefers-color-scheme` header value
+    // This is to enhance user experience by stopping the screen from blinking when switching pages
+    public static bool UseServerSideDarkMode(IConfiguration configuration, HttpContext context)
     {
-        var osVer = Environment.OSVersion;
-        if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return osVer.VersionString;
-
-        try
+        bool useServerSideDarkMode = false;
+        bool usePrefersColorSchemeHeader = configuration.GetValue<bool>("PrefersColorSchemeHeader:Enabled");
+        var prefersColorScheme = context.Request.Headers[configuration["PrefersColorSchemeHeader:HeaderName"]!];
+        if (usePrefersColorSchemeHeader && prefersColorScheme == "dark")
         {
-            var currentVersion = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-            if (currentVersion != null)
-            {
-                var name = currentVersion.GetValue("ProductName", "Microsoft Windows NT");
-                var ubr = currentVersion.GetValue("UBR", string.Empty)?.ToString();
-                if (!string.IsNullOrWhiteSpace(ubr))
-                {
-                    return $"{name} {osVer.Version.Major}.{osVer.Version.Minor}.{osVer.Version.Build}.{ubr}";
-                }
-            }
-        }
-        catch
-        {
-            return osVer.VersionString;
+            useServerSideDarkMode = true;
         }
 
-        return osVer.VersionString;
+        return useServerSideDarkMode;
     }
-
-    public static string RemoveScriptTagFromHtml(string html)
-    {
-        if (string.IsNullOrWhiteSpace(html)) return string.Empty;
-
-        var regex = new Regex("\\<script(.+?)\\</script\\>", RegexOptions.Singleline | RegexOptions.IgnoreCase);
-        var result = regex.Replace(html, string.Empty);
-        return result;
-    }
-
-    public static string GetDNSPrefetchUrl(string cdnEndpoint)
-    {
-        if (string.IsNullOrWhiteSpace(cdnEndpoint)) return string.Empty;
-
-        var uri = new Uri(cdnEndpoint);
-        return $"{uri.Scheme}://{uri.Host}/";
-    }
-
-    public static string GetMd5Hash(string input)
-    {
-        // Convert the input string to a byte array and compute the hash.
-        var data = MD5.Create().ComputeHash(Encoding.UTF8.GetBytes(input));
-
-        // Create a new Stringbuilder to collect the bytes
-        // and create a string.
-        var sBuilder = new StringBuilder();
-
-        // Loop through each byte of the hashed data
-        // and format each one as a hexadecimal string.
-        foreach (var t in data)
-        {
-            sBuilder.Append(t.ToString("x2"));
-        }
-
-        // Return the hexadecimal string.
-        return sBuilder.ToString();
-    }
-
-    public static string HashPassword(string plainMessage)
-    {
-        if (string.IsNullOrWhiteSpace(plainMessage)) return string.Empty;
-
-        var data = Encoding.UTF8.GetBytes(plainMessage);
-        using var sha = SHA256.Create();
-        sha.TransformFinalBlock(data, 0, data.Length);
-        return Convert.ToBase64String(sha.Hash ?? throw new InvalidOperationException());
-    }
-
-    // https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/consumer-apis/password-hashing?view=aspnetcore-6.0
-    // This is not secure, but better than nothing.
-    public static string HashPassword2(string clearPassword, string saltBase64)
-    {
-        var salt = Convert.FromBase64String(saltBase64);
-
-        // derive a 256-bit subkey (use HMACSHA256 with 100,000 iterations)
-        string hashed = Convert.ToBase64String(KeyDerivation.Pbkdf2(
-            password: clearPassword!,
-            salt: salt,
-            prf: KeyDerivationPrf.HMACSHA256,
-            iterationCount: 100000,
-            numBytesRequested: 256 / 8));
-
-        return hashed;
-    }
-
-    public static string GenerateSalt()
-    {
-        // Generate a 128-bit salt using a sequence of cryptographically strong random bytes.
-        byte[] salt = RandomNumberGenerator.GetBytes(128 / 8); // divide by 8 to convert bits to bytes
-        return Convert.ToBase64String(salt);
-    }
-
-    public static string ResolveRootUrl(HttpContext ctx, string canonicalPrefix, bool preferCanonical = false, bool removeTailSlash = false)
-    {
-        if (ctx is null && !preferCanonical)
-        {
-            throw new ArgumentNullException(nameof(ctx), "HttpContext must not be null when preferCanonical is 'false'");
-        }
-
-        var url = preferCanonical ?
-            ResolveCanonicalUrl(canonicalPrefix, string.Empty) :
-            $"{ctx.Request.Scheme}://{ctx.Request.Host}";
-
-        if (removeTailSlash && url.EndsWith('/'))
-        {
-            return url.TrimEnd('/');
-        }
-
-        return url;
-    }
-
-    public static string SterilizeLink(string rawUrl)
-    {
-        bool IsUnderLocalSlash()
-        {
-            // Allows "/" or "/foo" but not "//" or "/\".
-            if (rawUrl[0] == '/')
-            {
-                // url is exactly "/"
-                if (rawUrl.Length == 1)
-                {
-                    return true;
-                }
-
-                // url doesn't start with "//" or "/\"
-                return rawUrl[1] is not '/' and not '\\';
-            }
-
-            return false;
-        }
-
-        string invalidReturn = "#";
-        if (string.IsNullOrWhiteSpace(rawUrl))
-        {
-            return invalidReturn;
-        }
-
-        if (!rawUrl.IsValidUrl())
-        {
-            return IsUnderLocalSlash() ? rawUrl : invalidReturn;
-        }
-
-        var uri = new Uri(rawUrl);
-        if (uri.IsLoopback)
-        {
-            // localhost, 127.0.0.1
-            return invalidReturn;
-        }
-
-        if (uri.HostNameType == UriHostNameType.IPv4)
-        {
-            // Disallow LAN IP (e.g. 192.168.0.1, 10.0.0.1)
-            if (IsPrivateIP(uri.Host))
-            {
-                return invalidReturn;
-            }
-        }
-
-        return rawUrl;
-    }
-
-    public static string ResolveCanonicalUrl(string prefix, string path)
-    {
-        if (string.IsNullOrWhiteSpace(prefix)) return string.Empty;
-        path ??= string.Empty;
-
-        if (!prefix.IsValidUrl())
-        {
-            throw new UriFormatException($"Prefix '{prefix}' is not a valid URL.");
-        }
-
-        var prefixUri = new Uri(prefix);
-        return Uri.TryCreate(baseUri: prefixUri, relativeUri: path, out var newUri) ?
-            newUri.ToString() :
-            string.Empty;
-    }
-
-    /// <summary>
-    /// Test an IPv4 address is LAN or not.
-    /// </summary>
-    /// <param name="ip">IPv4 address</param>
-    /// <returns>bool</returns>
-    public static bool IsPrivateIP(string ip) => IPAddress.Parse(ip).GetAddressBytes() switch
-    {
-        // Regex.IsMatch(ip, @"(^127\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)|(^192\.168\.)")
-        // Regex has bad performance, this is better
-
-        var x when x[0] is 192 && x[1] is 168 => true,
-        var x when x[0] is 10 => true,
-        var x when x[0] is 127 => true,
-        var x when x[0] is 172 && x[1] is >= 16 and <= 31 => true,
-        _ => false
-    };
 
     public static string FormatCopyright2Html(string copyrightCode)
     {
@@ -298,31 +70,6 @@ public static class Helper
         catch (FormatException)
         {
             return false;
-        }
-    }
-
-    /// <summary>
-    /// Get values from `MOONGLADE_TAGS` Environment Variable
-    /// </summary>
-    /// <returns>string values</returns>
-    public static IEnumerable<string> GetEnvironmentTags()
-    {
-        var tagsEnv = Environment.GetEnvironmentVariable("MOONGLADE_TAGS");
-        if (string.IsNullOrWhiteSpace(tagsEnv))
-        {
-            yield return string.Empty;
-            yield break;
-        }
-
-        var tagRegex = new Regex(@"^[a-zA-Z0-9-#@$()\[\]/]+$");
-        var tags = tagsEnv.Split(',');
-        foreach (string tag in tags)
-        {
-            var t = tag.Trim();
-            if (tagRegex.IsMatch(t))
-            {
-                yield return t;
-            }
         }
     }
 
@@ -368,33 +115,14 @@ public static class Helper
         return new(pattern, options);
     }
 
-    public static string GenerateSlug(this string phrase)
+    public static string GetCombinedErrorMessage(this ModelStateDictionary modelStateDictionary, string sep = ", ")
     {
-        string str = phrase.RemoveAccent().ToLower();
-        // invalid chars           
-        str = Regex.Replace(str, @"[^a-z0-9\s-]", "");
-        // convert multiple spaces into one space   
-        str = Regex.Replace(str, @"\s+", " ").Trim();
-        // cut and trim 
-        str = str[..(str.Length <= 45 ? str.Length : 45)].Trim();
-        str = Regex.Replace(str, @"\s", "-"); // hyphens   
-        return str;
+        var messages = modelStateDictionary.GetErrorMessages();
+        var enumerable = messages as string[] ?? [.. messages];
+        return enumerable.Length != 0 ? string.Join(sep, enumerable) : string.Empty;
     }
 
-    public static string RemoveAccent(this string txt)
-    {
-        byte[] bytes = Encoding.GetEncoding("Cyrillic").GetBytes(txt);
-        return Encoding.ASCII.GetString(bytes);
-    }
-
-    public static string CombineErrorMessages(this ModelStateDictionary modelStateDictionary, string sep = ", ")
-    {
-        var messages = GetErrorMessagesFromModelState(modelStateDictionary);
-        var enumerable = messages as string[] ?? messages.ToArray();
-        return enumerable.Any() ? string.Join(sep, enumerable) : string.Empty;
-    }
-
-    public static IEnumerable<string> GetErrorMessagesFromModelState(ModelStateDictionary modelStateDictionary)
+    public static IEnumerable<string> GetErrorMessages(this ModelStateDictionary modelStateDictionary)
     {
         if (modelStateDictionary is null) return null;
         if (modelStateDictionary.ErrorCount == 0) return null;
@@ -404,138 +132,21 @@ public static class Helper
                select error.ErrorMessage;
     }
 
-    // https://referencesource.microsoft.com/#System.Web/Security/Membership.cs,fe744ec40cace139
-    private static readonly char[] Punctuations = "!@#$%^&*()_-+=[{]};:>|./?".ToCharArray();
-    public static string GeneratePassword(int length, int numberOfNonAlphanumericCharacters)
-    {
-        if (length < 1 || length > 128)
-        {
-            throw new ArgumentOutOfRangeException(nameof(length));
-        }
-
-        if (numberOfNonAlphanumericCharacters > length || numberOfNonAlphanumericCharacters < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(numberOfNonAlphanumericCharacters));
-        }
-
-        string password;
-        int index;
-
-        do
-        {
-            var buf = new byte[length];
-            var cBuf = new char[length];
-            var count = 0;
-
-            var rng = RandomNumberGenerator.Create();
-            rng.GetBytes(buf);
-
-            for (int iter = 0; iter < length; iter++)
-            {
-                int i = (int)(buf[iter] % 87);
-                switch (i)
-                {
-                    case < 10:
-                        cBuf[iter] = (char)('0' + i);
-                        break;
-                    case < 36:
-                        cBuf[iter] = (char)('A' + i - 10);
-                        break;
-                    case < 62:
-                        cBuf[iter] = (char)('a' + i - 36);
-                        break;
-                    default:
-                        cBuf[iter] = Punctuations[i - 62];
-                        count++;
-                        break;
-                }
-            }
-
-            if (count < numberOfNonAlphanumericCharacters)
-            {
-                int j;
-                var rand = new Random();
-
-                for (j = 0; j < numberOfNonAlphanumericCharacters - count; j++)
-                {
-                    int k;
-                    do
-                    {
-                        k = rand.Next(0, length);
-                    }
-                    while (!char.IsLetterOrDigit(cBuf[k]));
-
-                    cBuf[k] = Punctuations[rand.Next(0, Punctuations.Length)];
-                }
-            }
-
-            password = new(cBuf);
-        }
-        while (IsDangerousString(password, out index));
-
-        return password;
-    }
-
-    private static readonly char[] StartingChars = { '<', '&' };
-    private static bool IsDangerousString(string s, out int matchIndex)
-    {
-        //bool inComment = false;
-        matchIndex = 0;
-
-        for (int i = 0; ;)
-        {
-            // Look for the start of one of our patterns
-            int n = s.IndexOfAny(StartingChars, i);
-
-            // If not found, the string is safe
-            if (n < 0) return false;
-
-            // If it's the last char, it's safe
-            if (n == s.Length - 1) return false;
-
-            matchIndex = n;
-
-            switch (s[n])
-            {
-                case '<':
-                    // If the < is followed by a letter or '!', it's unsafe (looks like a tag or HTML comment)
-                    if (IsAtoZ(s[n + 1]) || s[n + 1] == '!' || s[n + 1] == '/' || s[n + 1] == '?') return true;
-                    break;
-                case '&':
-                    // If the & is followed by a #, it's unsafe (e.g. &#83;)
-                    if (s[n + 1] == '#') return true;
-                    break;
-            }
-
-            // Continue searching
-            i = n + 1;
-        }
-    }
-
-    private static bool IsAtoZ(char c)
-    {
-        return c is >= 'a' and <= 'z' or >= 'A' and <= 'Z';
-    }
-
     public static void ValidatePagingParameters(int pageSize, int pageIndex)
     {
-        if (pageSize < 1)
+        if (pageSize is < 1 or > 1024)
         {
             throw new ArgumentOutOfRangeException(nameof(pageSize),
-                $"{nameof(pageSize)} can not be less than 1, current value: {pageSize}.");
+                $"{nameof(pageSize)} out of range, current value: {pageSize}.");
         }
 
-        if (pageIndex < 1)
+        if (pageIndex is < 1 or > 1024)
         {
             throw new ArgumentOutOfRangeException(nameof(pageIndex),
-                $"{nameof(pageIndex)} can not be less than 1, current value: {pageIndex}.");
+                $"{nameof(pageIndex)} out of range, current value: {pageIndex}.");
         }
     }
 
-    public static Dictionary<string, string> TagNormalizationDictionary => new()
-    {
-        { ".", "dot" },
-        { "#", "sharp" },
-        { " ", "-" }
-    };
+    public static string GetMagic(int value, int start, int end) =>
+        Convert.ToBase64String(SHA256.HashData(BitConverter.GetBytes(value)))[start..end];
 }

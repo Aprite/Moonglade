@@ -1,28 +1,27 @@
-﻿using Moonglade.Caching;
+﻿using Edi.CacheAside.InMemory;
+using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 
 namespace Moonglade.Core.PostFeature;
 
-public record RestorePostCommand(Guid Id) : IRequest;
+public record RestorePostCommand(Guid Id) : ICommand;
 
-public class RestorePostCommandHandler : AsyncRequestHandler<RestorePostCommand>
+public class RestorePostCommandHandler(
+    MoongladeRepository<PostEntity> repo,
+    ICacheAside cache,
+    ILogger<RestorePostCommandHandler> logger) : ICommandHandler<RestorePostCommand>
 {
-    private readonly IRepository<PostEntity> _repo;
-    private readonly IBlogCache _cache;
-
-    public RestorePostCommandHandler(IRepository<PostEntity> repo, IBlogCache cache)
+    public async Task HandleAsync(RestorePostCommand request, CancellationToken ct)
     {
-        _repo = repo;
-        _cache = cache;
-    }
+        var post = await repo.GetByIdAsync(request.Id, ct);
+        if (null == post) return;
 
-    protected override async Task Handle(RestorePostCommand request, CancellationToken ct)
-    {
-        var pp = await _repo.GetAsync(request.Id, ct);
-        if (null == pp) return;
+        post.IsDeleted = false;
+        await repo.UpdateAsync(post, ct);
 
-        pp.IsDeleted = false;
-        await _repo.UpdateAsync(pp, ct);
+        cache.Remove(BlogCachePartition.Post.ToString(), request.Id.ToString());
 
-        _cache.Remove(CacheDivision.Post, request.Id.ToString());
+        logger.LogInformation("Post [{PostId}] restored", request.Id);
     }
 }

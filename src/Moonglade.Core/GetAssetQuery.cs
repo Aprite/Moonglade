@@ -1,16 +1,15 @@
-﻿namespace Moonglade.Core;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
 
-public record GetAssetQuery(Guid AssetId) : IRequest<string>;
+namespace Moonglade.Core;
 
-public class GetAssetQueryHandler : IRequestHandler<GetAssetQuery, string>
+public record GetAssetQuery(Guid AssetId) : IQuery<string>;
+
+public class GetAssetQueryHandler(MoongladeRepository<BlogAssetEntity> repo) : IQueryHandler<GetAssetQuery, string>
 {
-    private readonly IRepository<BlogAssetEntity> _repo;
-
-    public GetAssetQueryHandler(IRepository<BlogAssetEntity> repo) => _repo = repo;
-
-    public async Task<string> Handle(GetAssetQuery request, CancellationToken ct)
+    public async Task<string> HandleAsync(GetAssetQuery request, CancellationToken ct)
     {
-        var asset = await _repo.GetAsync(request.AssetId, ct);
+        var asset = await repo.GetByIdAsync(request.AssetId, ct);
         return asset?.Base64Data;
     }
 }

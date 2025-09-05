@@ -1,5 +1,5 @@
 ﻿@using Moonglade.Utils
-@model IReadOnlyList<Moonglade.Comments.Comment>
+@model List<Moonglade.Comments.Comment>
 
 @{
     static string GetUserAvatarChar(string username)
@@ -9,7 +9,7 @@
             return "N/A";
         }
 
-        var sets = username.Split(' ');
+        var sets = username.Split(' ').Where(t => !string.IsNullOrWhiteSpace(t)).ToArray();
         if (sets.Length == 1)
         {
             return sets[0].First().ToString().ToUpper();
@@ -20,11 +20,16 @@
 
 @if (null != Model && Model.Any())
 {
+    var orderedList =
+        BlogConfig.CommentSettings.CommentOrder == CommentOrder.NewToOld ?
+            Model.OrderByDescending(m => m.CreateTimeUtc) :
+            Model.OrderBy(m => m.CreateTimeUtc);
+
     <div class="comment-list row">
-        @foreach (var item in Model.OrderBy(m => m.CreateTimeUtc))
+        @foreach (var item in orderedList)
         {
             <div class="col-md-1 mb-3 d-none d-sm-block">
-                @if (BlogConfig.ContentSettings.EnableGravatar && !string.IsNullOrWhiteSpace(item.Email))
+                @if (BlogConfig.CommentSettings.EnableGravatar && !string.IsNullOrWhiteSpace(item.Email))
                 {
                     <div class="user-avatar">
                         <gravatar email="@item.Email" />
@@ -38,34 +43,38 @@
                 }
             </div>
             <div class="col-md-11 mb-3">
-                <div class="card comment-item">
-                    <div class="card-header">
-                        <strong>@item.Username</strong>
-                        <span class="text-muted float-end">
+                <div role="comment" class="comment-item rounded-3 shadow-sm border mb-3 p-4" data-author="@item.Username">
+                    <div class="d-flex">
+                        <h6 class="card-title mb-3">@item.Username</h6>
+                        <span class="flex-spacer" aria-hidden="true" role="none"></span>
+                        <div class="card-subtitle text-body-secondary">
                             <time data-utc-label="@item.CreateTimeUtc.ToString("u")">@item.CreateTimeUtc</time>
-                        </span>
-                    </div>
-                    <div class="card-body">
-                        @Html.Raw(ContentProcessor.MarkdownToContent(item.CommentContent, ContentProcessor.MarkdownConvertType.Html))
-                        <div>
-                            @foreach (var reply in item.CommentReplies.OrderByDescending(t => t.ReplyTimeUtc))
-                            {
-                                <hr />
-                                <div class="reply-container">
-                                    <div>
-                                        <strong>
-                                            @SharedLocalizer["Author"]
-                                        </strong>
-                                        <span class="float-end text-muted">@SharedLocalizer["Replied at"]
-                                            <time data-utc-label="@reply.ReplyTimeUtc.ToString("u")">@reply.ReplyTimeUtc</time>
-                                            </span>
-                                    </div>
-                                    <p>
-                                        @Html.Raw(ContentProcessor.MarkdownToContent(reply.ReplyContent, ContentProcessor.MarkdownConvertType.Html))
-                                    </p>
-                                </div>
-                            }
                         </div>
+                    </div>
+
+                    <div>
+                        @Html.Raw(ContentProcessor.MarkdownToContent(item.CommentContent, ContentProcessor.MarkdownConvertType.Html))
+                    </div>
+
+                    <div>
+                        @foreach (var reply in item.CommentReplies.OrderByDescending(t => t.ReplyTimeUtc))
+                        {
+                            <hr/>
+                            <div class="reply-container">
+                                <div>
+                                    <strong>
+                                        @SharedLocalizer["Author"]
+                                    </strong>
+                                    <span class="float-end text-muted">
+                                        @SharedLocalizer["Replied at"]
+                                        <time data-utc-label="@reply.ReplyTimeUtc.ToString("u")">@reply.ReplyTimeUtc</time>
+                                    </span>
+                                </div>
+                                <p>
+                                    @Html.Raw(ContentProcessor.MarkdownToContent(reply.ReplyContent, ContentProcessor.MarkdownConvertType.Html))
+                                </p>
+                            </div>
+                        }
                     </div>
                 </div>
             </div>
@@ -74,7 +83,9 @@
 }
 else
 {
-    <div class="alert alert-info">
-        @SharedLocalizer["No Comments"]
+    <div class="text-muted text-center">
+        -
+        @SharedLocalizer["No comments yet"]
+        -
     </div>
 }

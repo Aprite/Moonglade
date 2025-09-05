@@ -1,4 +1,8 @@
-﻿namespace Moonglade.Core.PostFeature;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
+
+namespace Moonglade.Core.PostFeature;
 
 public enum CountType
 {
@@ -8,51 +12,37 @@ public enum CountType
     Featured
 }
 
-public record CountPostQuery(CountType CountType, Guid? CatId = null, int? TagId = null) : IRequest<int>;
+public record CountPostQuery(CountType CountType, Guid? CatId = null, int? TagId = null) : IQuery<int>;
 
-public class CountPostQueryHandler : IRequestHandler<CountPostQuery, int>
+public class CountPostQueryHandler(
+    MoongladeRepository<PostEntity> postRepo,
+    MoongladeRepository<PostTagEntity> postTagRepo,
+    MoongladeRepository<PostCategoryEntity> postCatRepo)
+    : IQueryHandler<CountPostQuery, int>
 {
-    private readonly IRepository<PostEntity> _postRepo;
-    private readonly IRepository<PostTagEntity> _postTagRepo;
-    private readonly IRepository<PostCategoryEntity> _postCatRepo;
-
-    public CountPostQueryHandler(
-        IRepository<PostEntity> postRepo,
-        IRepository<PostTagEntity> postTagRepo,
-        IRepository<PostCategoryEntity> postCatRepo)
+    public async Task<int> HandleAsync(CountPostQuery request, CancellationToken ct)
     {
-        _postRepo = postRepo;
-        _postTagRepo = postTagRepo;
-        _postCatRepo = postCatRepo;
-    }
-
-    public async Task<int> Handle(CountPostQuery request, CancellationToken ct)
-    {
-        int count = 0;
-
-        switch (request.CountType)
+        return request.CountType switch
         {
-            case CountType.Public:
-                count = await _postRepo.CountAsync(p => p.IsPublished && !p.IsDeleted, ct);
-                break;
+            CountType.Public => await postRepo.CountAsync(new PostByStatusSpec(PostStatus.Published), ct),
 
-            case CountType.Category:
-                if (request.CatId == null) throw new ArgumentNullException(nameof(request.CatId));
-                count = await _postCatRepo.CountAsync(c => c.CategoryId == request.CatId.Value
-                                                           && c.Post.IsPublished
-                                                           && !c.Post.IsDeleted, ct);
-                break;
+            CountType.Category => request.CatId is Guid catId
+                ? await postCatRepo.CountAsync(
+                    c => c.CategoryId == catId &&
+                         c.Post.PostStatus == PostStatusConstants.Published &&
+                         !c.Post.IsDeleted, ct)
+                : throw new InvalidOperationException("CatId must be provided for Category count."),
 
-            case CountType.Tag:
-                if (request.TagId == null) throw new ArgumentNullException(nameof(request.TagId));
-                count = await _postTagRepo.CountAsync(p => p.TagId == request.TagId.Value && p.Post.IsPublished && !p.Post.IsDeleted, ct);
-                break;
+            CountType.Tag => request.TagId is int tagId
+                ? await postTagRepo.CountAsync(
+                    p => p.TagId == tagId &&
+                         p.Post.PostStatus == PostStatusConstants.Published &&
+                         !p.Post.IsDeleted, ct)
+                : throw new InvalidOperationException("TagId must be provided for Tag count."),
 
-            case CountType.Featured:
-                count = await _postRepo.CountAsync(p => p.IsFeatured && p.IsPublished && !p.IsDeleted, ct);
-                break;
-        }
+            CountType.Featured => await postRepo.CountAsync(new FeaturedPostSpec(), ct),
 
-        return count;
+            _ => throw new ArgumentOutOfRangeException(nameof(request.CountType), "Unknown CountType.")
+        };
     }
 }

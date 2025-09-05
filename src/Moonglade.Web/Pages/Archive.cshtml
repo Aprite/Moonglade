@@ -1,74 +1,80 @@
 ﻿@page "/archive"
 @using System.Globalization
 @using Moonglade.Core.PostFeature
-@inject IMediator Mediator
 @{
     ViewBag.TitlePrefix = "Archive ";
-    var archives = await Mediator.Send(new GetArchiveQuery());
-    int[] yearList = null;
-    if (null != Model && archives.Any())
+    ViewBag.BodyClass = "body-archive-index bg-gray-1";
+
+    var archives = await QueryMediator.QueryAsync(new GetArchiveQuery());
+    var yearList = GetYearListFromArchives(archives);
+
+    static int[] GetYearListFromArchives(List<Archive> archives)
     {
-        yearList = (from item in archives
-                    orderby item.Year descending
-                    select item.Year).Distinct().ToArray();
+        return archives?.Any() == true 
+            ? archives.OrderByDescending(item => item.Year)
+                     .Select(item => item.Year)
+                     .Distinct()
+                     .ToArray()
+            : Array.Empty<int>();
     }
 
     static string GetMonthNameByNumber(int number)
     {
-        return number is > 12 or < 1 ? 
-            string.Empty : 
-            CultureInfo.GetCultureInfo("en-US").DateTimeFormat.GetMonthName(number);
+        return number is > 12 or < 1 
+            ? string.Empty 
+            : CultureInfo.CurrentUICulture.DateTimeFormat.GetMonthName(number);
+    }
+
+    static string GetPluralizedPostText(int count)
+    {
+        return count == 1 ? "Post" : "Posts";
     }
 }
 
-@section head{
+@section head {
     <link href="~/css/timeline.css" rel="stylesheet" asp-append-version="true" />
 }
 
-<h3>
+<h2 class="page-heading mb-4">
     @SharedLocalizer["Archive"]
-</h3>
-<hr />
+</h2>
 
-@if (null != Model && archives.Any() && null != yearList)
+@if (yearList.Length > 0)
 {
     <ul class="timeline" id="monthList">
-        @foreach (var item in yearList)
+        @for (var index = 0; index < yearList.Length; index++)
         {
-            var queryMonth = archives.Where(obj => obj.Year == item);
-            var yearEndChar = item % 10;
-            var badgeClass = (yearEndChar % 5) switch
-            {
-                0 => "primary",
-                1 => "success",
-                2 => "info",
-                3 => "warning",
-                4 => "danger",
-                _ => string.Empty
-            };
+            var currentYear = yearList[index];
+            var monthsInYear = archives.Where(archive => archive.Year == currentYear).ToList();
+            var totalPostsInYear = monthsInYear.Sum(month => month.Count);
 
-            <li class="@(item % 2 == 0 ? "timeline-inverted" : null)">
-                <div class="timeline-badge @badgeClass"><i class="bi-calendar2-week"></i></div>
-                <div class="timeline-panel">
-                    <div class="timeline-heading">
+            <li class="@(index % 2 == 0 ? string.Empty : "timeline-inverted")">
+                <div class="timeline-badge"></div>
+                <div class="timeline-panel shadow-sm bg-white">
+                    <div class="timeline-heading mb-3">
                         <h3 class="timeline-title">
-                            <a asp-page="./ArchiveList" asp-route-year="@item">@item</a>
+                            <a asp-page="./ArchiveList" asp-route-year="@currentYear">@currentYear</a>
                         </h3>
                     </div>
                     <div class="timeline-body">
-                        <div class="row g-2">
-                            @foreach (var month in queryMonth)
+                        <div class="row g-3">
+                            @foreach (var month in monthsInYear.OrderByDescending(m => m.Month))
                             {
-                                <div class="col-md-6 col-sm-6 col-6">
-                                    <span class="badge bg-secondary float-end">@(month.Count)</span>
+                                <div class="col-6">
+                                    <span class="archive-post-count-badge rounded-circle float-end">@month.Count</span>
                                     <a asp-page="./ArchiveList"
                                        asp-route-year="@month.Year"
-                                       asp-route-month="@month.Month">
+                                       asp-route-month="@month.Month"
+                                       class="archive-link-item"
+                                       title="@GetMonthNameByNumber(month.Month) @month.Year - @month.Count @GetPluralizedPostText(month.Count)">
                                         @GetMonthNameByNumber(month.Month)
                                     </a>
                                 </div>
                             }
                         </div>
+                    </div>
+                    <div class="timeline-footer text-muted border-top mt-3 pt-2">
+                        @totalPostsInYear @GetPluralizedPostText(totalPostsInYear)
                     </div>
                 </div>
             </li>
@@ -77,7 +83,7 @@
 }
 else
 {
-    <div class="alert alert-info">@SharedLocalizer["No Archive"]</div>
+    <div class="text-muted text-center">
+        - @SharedLocalizer["No Archive"] -
+    </div>
 }
-
-<partial name="_LightSwitch" />

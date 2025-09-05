@@ -21,12 +21,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Configuration", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".Solution Items", ".Solution Items", "{BE685106-CE96-4A43-A161-3425565C6A9D}"
 	ProjectSection(SolutionItems) = preProject
-		..\.gitattributes = ..\.gitattributes
 		..\.gitignore = ..\.gitignore
-		..\azure-pipelines.yml = ..\azure-pipelines.yml
 		Directory.Build.props = Directory.Build.props
 		..\Dockerfile = ..\Dockerfile
-		..\LICENSE = ..\LICENSE
 		..\README.md = ..\README.md
 	EndProjectSection
 EndProject
@@ -37,11 +34,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Deployment", "Deployment", "{F2B7F09C-55B8-4A24-9CCB-9883C0B72DF1}"
 	ProjectSection(SolutionItems) = preProject
 		..\Deployment\AzureQuickDeploy.ps1 = ..\Deployment\AzureQuickDeploy.ps1
-		..\Deployment\install.sh = ..\Deployment\install.sh
-		..\Deployment\uninstall.sh = ..\Deployment\uninstall.sh
+		..\Deployment\mssql-migration.sql = ..\Deployment\mssql-migration.sql
 	EndProjectSection
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Caching", "Moonglade.Caching\Moonglade.Caching.csproj", "{BBC1C4FB-52C8-4E89-BED5-B461298A652B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{F9400B71-ADCD-4FBE-A88F-F85873FDC60B}"
 EndProject
@@ -51,26 +45,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Comments", "Moong
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.FriendLink", "Moonglade.FriendLink\Moonglade.FriendLink.csproj", "{C2691740-A964-43C8-8024-DA64FB5DB624}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Notification.Client", "Moonglade.Notification.Client\Moonglade.Notification.Client.csproj", "{DF0D2D74-B9B7-4EB8-956D-E9CBDDF3390E}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Email.Client", "Moonglade.Email.Client\Moonglade.Email.Client.csproj", "{DF0D2D74-B9B7-4EB8-956D-E9CBDDF3390E}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Auth", "Moonglade.Auth\Moonglade.Auth.csproj", "{5B888FFB-8BF0-4AED-9D1E-91396290BC05}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Menus", "Moonglade.Menus\Moonglade.Menus.csproj", "{A5ED355A-D024-4176-B453-2F8F42E29414}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".vscode", ".vscode", "{FE0F6EA1-5520-4DD9-9CD4-7A2365A03C8C}"
-	ProjectSection(SolutionItems) = preProject
-		..\.vscode\launch.json = ..\.vscode\launch.json
-		..\.vscode\settings.json = ..\.vscode\settings.json
-		..\.vscode\tasks.json = ..\.vscode\tasks.json
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{9505BDE6-E5CB-43E1-A2F0-07E67BEF6948}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{2C27F5AF-7A99-4B49-A053-8E3486319F2B}"
-	ProjectSection(SolutionItems) = preProject
-		..\.github\workflows\docker.yml = ..\.github\workflows\docker.yml
-		..\.github\workflows\dotnet.yml = ..\.github\workflows\dotnet.yml
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Theme", "Moonglade.Theme\Moonglade.Theme.csproj", "{59770DF9-9CC5-4912-8677-5E99DA9C96CA}"
 EndProject
@@ -78,7 +55,33 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Data.SqlServer", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Data.MySql", "Moonglade.Data.MySql\Moonglade.Data.MySql.csproj", "{0267C513-2DB9-4697-A6FA-39BB83E1CA9B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Data.PostgreSql", "Moonglade.Data.PostgreSql\Moonglade.Data.PostgreSql.csproj", "{5750F136-DD4B-42F8-BA64-2371C2527505}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Data.PostgreSql", "Moonglade.Data.PostgreSql\Moonglade.Data.PostgreSql.csproj", "{5750F136-DD4B-42F8-BA64-2371C2527505}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Webmention", "Moonglade.Webmention\Moonglade.Webmention.csproj", "{D901FAD3-FB6C-4C24-8B43-52DFA68CA369}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Mention.Common", "Moonglade.Mention.Common\Moonglade.Mention.Common.csproj", "{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Mention", "Mention", "{1AE9B003-34B0-4F5D-BF84-E1C714A7EE31}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Moonglade.Setup", "Moonglade.Setup\Moonglade.Setup.csproj", "{648FDD86-E047-49A4-9054-BF041FCD0447}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.IndexNow.Client", "Moonglade.IndexNow.Client\Moonglade.IndexNow.Client.csproj", "{F06B2391-938E-44FB-8281-6764DC2BC024}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Utils.Tests", "Moonglade.Utils.Tests\Moonglade.Utils.Tests.csproj", "{FE981421-C384-413F-AE74-57C55F47ACEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.ImageStorage.Tests", "Moonglade.ImageStorage.Tests\Moonglade.ImageStorage.Tests.csproj", "{73D4A58E-168F-4E44-992A-BE0B34F44CB7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Theme.Tests", "Moonglade.Theme.Tests\Moonglade.Theme.Tests.csproj", "{EE19B05A-2B89-4E74-8CFE-936A4A641FBD}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Moderation", "Moonglade.Moderation\Moonglade.Moderation.csproj", "{85C3B5B6-0F80-4536-A96C-FC2A54EB1711}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Moderation.Tests", "Moonglade.Moderation.Tests\Moonglade.Moderation.Tests.csproj", "{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Web.Middleware", "Moonglade.Web.Middleware\Moonglade.Web.Middleware.csproj", "{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Moonglade.Web.Middleware.Tests", "Moonglade.Web.Middleware.Tests\Moonglade.Web.Middleware.Tests.csproj", "{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -114,10 +117,6 @@ Global
 		{DB2020AF-391A-4D5F-8037-541462DAEEE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB2020AF-391A-4D5F-8037-541462DAEEE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB2020AF-391A-4D5F-8037-541462DAEEE8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{BBC1C4FB-52C8-4E89-BED5-B461298A652B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{BBC1C4FB-52C8-4E89-BED5-B461298A652B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{BBC1C4FB-52C8-4E89-BED5-B461298A652B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{BBC1C4FB-52C8-4E89-BED5-B461298A652B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9C2D082D-39B8-4D51-B532-3274431EA606}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9C2D082D-39B8-4D51-B532-3274431EA606}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9C2D082D-39B8-4D51-B532-3274431EA606}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -138,10 +137,6 @@ Global
 		{5B888FFB-8BF0-4AED-9D1E-91396290BC05}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B888FFB-8BF0-4AED-9D1E-91396290BC05}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B888FFB-8BF0-4AED-9D1E-91396290BC05}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A5ED355A-D024-4176-B453-2F8F42E29414}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A5ED355A-D024-4176-B453-2F8F42E29414}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A5ED355A-D024-4176-B453-2F8F42E29414}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A5ED355A-D024-4176-B453-2F8F42E29414}.Release|Any CPU.Build.0 = Release|Any CPU
 		{59770DF9-9CC5-4912-8677-5E99DA9C96CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{59770DF9-9CC5-4912-8677-5E99DA9C96CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{59770DF9-9CC5-4912-8677-5E99DA9C96CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -158,6 +153,50 @@ Global
 		{5750F136-DD4B-42F8-BA64-2371C2527505}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5750F136-DD4B-42F8-BA64-2371C2527505}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5750F136-DD4B-42F8-BA64-2371C2527505}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D901FAD3-FB6C-4C24-8B43-52DFA68CA369}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D901FAD3-FB6C-4C24-8B43-52DFA68CA369}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D901FAD3-FB6C-4C24-8B43-52DFA68CA369}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D901FAD3-FB6C-4C24-8B43-52DFA68CA369}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{648FDD86-E047-49A4-9054-BF041FCD0447}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{648FDD86-E047-49A4-9054-BF041FCD0447}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{648FDD86-E047-49A4-9054-BF041FCD0447}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{648FDD86-E047-49A4-9054-BF041FCD0447}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F06B2391-938E-44FB-8281-6764DC2BC024}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F06B2391-938E-44FB-8281-6764DC2BC024}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F06B2391-938E-44FB-8281-6764DC2BC024}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F06B2391-938E-44FB-8281-6764DC2BC024}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE981421-C384-413F-AE74-57C55F47ACEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE981421-C384-413F-AE74-57C55F47ACEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE981421-C384-413F-AE74-57C55F47ACEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE981421-C384-413F-AE74-57C55F47ACEF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{73D4A58E-168F-4E44-992A-BE0B34F44CB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{73D4A58E-168F-4E44-992A-BE0B34F44CB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{73D4A58E-168F-4E44-992A-BE0B34F44CB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{73D4A58E-168F-4E44-992A-BE0B34F44CB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE19B05A-2B89-4E74-8CFE-936A4A641FBD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE19B05A-2B89-4E74-8CFE-936A4A641FBD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE19B05A-2B89-4E74-8CFE-936A4A641FBD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE19B05A-2B89-4E74-8CFE-936A4A641FBD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{85C3B5B6-0F80-4536-A96C-FC2A54EB1711}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{85C3B5B6-0F80-4536-A96C-FC2A54EB1711}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{85C3B5B6-0F80-4536-A96C-FC2A54EB1711}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{85C3B5B6-0F80-4536-A96C-FC2A54EB1711}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -169,24 +208,32 @@ Global
 		{702AEE84-D06A-403F-8D7F-BE1955E9D062} = {41072B8B-1052-4CC6-930F-83A5F8EA7482}
 		{D050818F-EDAD-43F1-9824-9627A0B4324C} = {F9400B71-ADCD-4FBE-A88F-F85873FDC60B}
 		{3675CD24-B29D-4F1E-AB8E-9B563B000338} = {97439361-03B4-46C9-BC06-49F76BA57879}
-		{DB2020AF-391A-4D5F-8037-541462DAEEE8} = {97439361-03B4-46C9-BC06-49F76BA57879}
+		{DB2020AF-391A-4D5F-8037-541462DAEEE8} = {1AE9B003-34B0-4F5D-BF84-E1C714A7EE31}
 		{F2B7F09C-55B8-4A24-9CCB-9883C0B72DF1} = {BE685106-CE96-4A43-A161-3425565C6A9D}
-		{BBC1C4FB-52C8-4E89-BED5-B461298A652B} = {F9400B71-ADCD-4FBE-A88F-F85873FDC60B}
 		{9C2D082D-39B8-4D51-B532-3274431EA606} = {F9400B71-ADCD-4FBE-A88F-F85873FDC60B}
 		{80E6D51F-0920-4910-9A0A-A2E4ACF9F36D} = {97439361-03B4-46C9-BC06-49F76BA57879}
 		{C2691740-A964-43C8-8024-DA64FB5DB624} = {97439361-03B4-46C9-BC06-49F76BA57879}
 		{DF0D2D74-B9B7-4EB8-956D-E9CBDDF3390E} = {97439361-03B4-46C9-BC06-49F76BA57879}
 		{5B888FFB-8BF0-4AED-9D1E-91396290BC05} = {97439361-03B4-46C9-BC06-49F76BA57879}
-		{A5ED355A-D024-4176-B453-2F8F42E29414} = {97439361-03B4-46C9-BC06-49F76BA57879}
-		{FE0F6EA1-5520-4DD9-9CD4-7A2365A03C8C} = {BE685106-CE96-4A43-A161-3425565C6A9D}
-		{9505BDE6-E5CB-43E1-A2F0-07E67BEF6948} = {BE685106-CE96-4A43-A161-3425565C6A9D}
-		{2C27F5AF-7A99-4B49-A053-8E3486319F2B} = {9505BDE6-E5CB-43E1-A2F0-07E67BEF6948}
 		{59770DF9-9CC5-4912-8677-5E99DA9C96CA} = {97439361-03B4-46C9-BC06-49F76BA57879}
 		{1ED1FD2A-703E-471D-AEDA-9885748194FF} = {41072B8B-1052-4CC6-930F-83A5F8EA7482}
 		{0267C513-2DB9-4697-A6FA-39BB83E1CA9B} = {41072B8B-1052-4CC6-930F-83A5F8EA7482}
 		{5750F136-DD4B-42F8-BA64-2371C2527505} = {41072B8B-1052-4CC6-930F-83A5F8EA7482}
+		{D901FAD3-FB6C-4C24-8B43-52DFA68CA369} = {1AE9B003-34B0-4F5D-BF84-E1C714A7EE31}
+		{F8E8ECCB-0379-416A-8D34-3F3D8428F2E1} = {1AE9B003-34B0-4F5D-BF84-E1C714A7EE31}
+		{1AE9B003-34B0-4F5D-BF84-E1C714A7EE31} = {97439361-03B4-46C9-BC06-49F76BA57879}
+		{648FDD86-E047-49A4-9054-BF041FCD0447} = {97439361-03B4-46C9-BC06-49F76BA57879}
+		{F06B2391-938E-44FB-8281-6764DC2BC024} = {97439361-03B4-46C9-BC06-49F76BA57879}
+		{FE981421-C384-413F-AE74-57C55F47ACEF} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{73D4A58E-168F-4E44-992A-BE0B34F44CB7} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{EE19B05A-2B89-4E74-8CFE-936A4A641FBD} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{85C3B5B6-0F80-4536-A96C-FC2A54EB1711} = {97439361-03B4-46C9-BC06-49F76BA57879}
+		{F8BF6745-6DEB-4232-9D9F-B5A0F8D899B8} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{7C95D0F5-8F23-46D2-BD8B-8C02281EF8D8} = {9B62AB08-D68E-440E-819C-2C4636FF9C78}
+		{1CDEA73E-F5F9-4D21-BB22-C8F07BB3B1EC} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {EBD14882-9899-4C4B-B9BC-22C0B93BD559}
+		RESX_CultureCountyOverrides = zh=zh-Hant
 	EndGlobalSection
 EndGlobal

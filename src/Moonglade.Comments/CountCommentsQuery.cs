@@ -1,16 +1,12 @@
-﻿using MediatR;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
 
 namespace Moonglade.Comments;
 
-public record CountCommentsQuery : IRequest<int>;
+public record CountCommentsQuery : IQuery<int>;
 
-public class CountCommentsQueryHandler : IRequestHandler<CountCommentsQuery, int>
+public class CountCommentsQueryHandler(MoongladeRepository<CommentEntity> repo) : IQueryHandler<CountCommentsQuery, int>
 {
-    private readonly IRepository<CommentEntity> _repo;
-
-    public CountCommentsQueryHandler(IRepository<CommentEntity> repo) => _repo = repo;
-
-    public Task<int> Handle(CountCommentsQuery request, CancellationToken ct) => _repo.CountAsync(ct: ct);
+    public Task<int> HandleAsync(CountCommentsQuery request, CancellationToken ct) => repo.CountAsync(ct);
 }

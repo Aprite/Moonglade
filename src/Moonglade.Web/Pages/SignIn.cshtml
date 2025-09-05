@@ -1,6 +1,5 @@
 ﻿@page "/auth/signin"
 @model Moonglade.Web.Pages.SignInModel
-@inject Microsoft.ApplicationInsights.AspNetCore.JavaScriptSnippet JavaScriptSnippet
 @using Moonglade.Utils
 @{
     Layout = null;
@@ -17,25 +16,31 @@
     <partial name="_Favicons" />
     <link href="~/lib/twitter-bootstrap/css/bootstrap.min.css" rel="stylesheet" asp-append-version="true" />
     <link href="~/css/base.css" rel="stylesheet" asp-append-version="true" />
-    <environment exclude="Development">
-        @Html.Raw(JavaScriptSnippet.FullScript)
-    </environment>
     <link href="~/theme.css" rel="stylesheet" asp-append-version="true" />
-    @if (BlogConfig.CustomStyleSheetSettings.EnableCustomCss)
+    @if (BlogConfig.AppearanceSettings.EnableCustomCss)
     {
         <link href="~/custom.css" rel="stylesheet" asp-append-version="true" />
     }
     <style>
+        main {
+            height: 100vh;
+        }
+
+        .login-card {
+            min-width: 365px;
+        }
+
         #img-captcha {
             border-radius: 0 3px 3px 0;
+            cursor: pointer;
         }
     </style>
 </head>
-<body class="pt-5 bg-gray-1">
+<body>
     <div class="container">
-        <div class="row justify-content-md-center">
-            <div class="col-md-4">
-                <div class="card shadow">
+        <main class="position-relative">
+            <div class="position-absolute top-50 start-50 translate-middle">
+                <div class="login-card card shadow">
                     <div class="card-body">
                         <h5 class="card-title text-center mb-4">@SharedLocalizer["Sign In"]</h5>
 
@@ -50,15 +55,15 @@
                                 <label asp-for="Password"></label>
                             </div>
 
-                            <div class="mb-3">
+                            <div class="mb-3" id="captcha-container" style="display: none;">
                                 <div class="input-group">
                                     <input asp-for="CaptchaCode"
                                            minlength="4"
                                            maxlength="4"
-                                           placeholder="Captcha Code"
+                                           placeholder="@SharedLocalizer["Captcha code"]"
                                            autocomplete="off"
                                            class="form-control" required />
-                                    <img id="img-captcha" onclick="getNewCaptcha()" src="~/captcha-image" data-bs-toggle="tooltip" data-placement="top" title="@SharedLocalizer["Can't read? Click to change another image."]" />
+                                    <img id="img-captcha" title="@SharedLocalizer["Can't read? Click to change another image."]" />
                                 </div>
                             </div>
 
@@ -67,18 +72,22 @@
                     </div>
                 </div>
                 <p class="text-muted mt-4 small text-center">
-                    Moonglade @Helper.AppVersion
+                    Moonglade @VersionHelper.AppVersion
                 </p>
             </div>
-        </div>
+        </main>
     </div>
+    <script type="module" src="~/js/app/base.mjs" asp-append-version="true"></script>
+    <script type="module">
+        import { resetCaptchaImage, showCaptcha } from '/js/app/captchaService.mjs';
 
-    <script src="~/lib/twitter-bootstrap/js/bootstrap.bundle.min.js" asp-append-version="true"></script>
-    <script>
-        function getNewCaptcha() {
-            d = new Date();
-            document.querySelector('#img-captcha').src = `/captcha-image?${d.getTime()}`;
-        };
+        document.getElementById('img-captcha')?.addEventListener('click', function () {
+            resetCaptchaImage();
+        });
+
+        document.getElementById('Password')?.addEventListener('focus', function () {
+            showCaptcha();
+        });
     </script>
 </body>
 </html>

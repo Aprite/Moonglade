@@ -1,0 +1,29 @@
+﻿@model CreateThemeRequest
+
+<div class="modal fade" id="thememodal" tabindex="-1" role="dialog" aria-labelledby="themeLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="themeLabel">@SharedLocalizer["Custom Theme"]</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <form method="post" action="/api/theme" onsubmit="createTheme(this);return false;">
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <input type="text" asp-for="Name" class="form-control" placeholder="@SharedLocalizer["Name"]" required />
+                    </div>
+                    <div class="row g-2">
+                        <div class="col">
+                            <label asp-for="AccentColor" class="form-label">@SharedLocalizer["Accent Color"]</label>
+                            <input type="color" class="form-control form-control-color" asp-for="AccentColor" value="#2a579a" title="@SharedLocalizer["Accent Color"]" required>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-accent" id="btn-save-theme">@SharedLocalizer["Save"]</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

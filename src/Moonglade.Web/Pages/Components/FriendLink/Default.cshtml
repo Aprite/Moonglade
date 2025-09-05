@@ -1,15 +1,15 @@
 ﻿@using Moonglade.Utils
-@model IReadOnlyList<Moonglade.FriendLink.Link>
+@model List<Moonglade.Data.Entities.FriendLinkEntity>
 
 @if (Model.Any())
 {
-    <div class="card">
-        <div class="card-header">@SharedLocalizer["Links"]</div>
-        
-        <div class="card-body">
-            @foreach (var item in Model.OrderBy(c => c.Title))
+    <div class="aside-widget p-3 rounded-3 shadow-sm border">
+        <h6 class="card-subtitle mb-3 text-secondary">@SharedLocalizer["Links"]</h6>
+
+        <div role="list">
+            @foreach (var item in Model.OrderBy(c => c.Rank).ThenBy(c => c.Title))
             {
-                <a href="@Helper.SterilizeLink(item.LinkUrl)" target="_blank" class="d-block mb-3 mt-2">
+                <a href="@SecurityHelper.SterilizeLink(item.LinkUrl)" target="_blank" class="d-block mb-3 mt-2" role="listitem">
                     <i class="bi-link-45deg me-1"></i>
                     @item.Title
                 </a>

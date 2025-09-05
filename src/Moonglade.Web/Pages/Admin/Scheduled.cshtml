@@ -1,0 +1,81 @@
+﻿@page "/admin/post/scheduled"
+@using Moonglade.Core.PostFeature
+@using Moonglade.Data.Specifications
+@inject IConfiguration Configuration
+
+@{
+    ViewBag.Title = "Scheduled";
+    var posts = await QueryMediator.QueryAsync(new ListPostSegmentByStatusQuery(PostStatus.Scheduled));
+}
+
+@section scripts {
+    <script type="module" src="~/js/app/admin.scheduled.mjs" asp-append-version="true"></script>
+}
+
+@section admintoolbar {
+    <partial name="_PostManageHeader" />
+}
+
+@if (!Configuration.GetValue<bool>("PostScheduler:Enabled"))
+{
+    <div class="alert alert-warning mb-3">
+        @SharedLocalizer["Post scheduler is disabled, pending posts will not be published automatically."]
+    </div>
+}
+
+<div>
+    @if (posts.Any())
+    {
+        @Html.AntiForgeryToken()
+
+        @foreach (var post in posts.OrderByDescending(p => p.ScheduledPublishTimeUtc))
+        {
+            <div id="post-@post.Id" class="admin-post-entry p-3 mb-2 rounded-3 shadow-sm border">
+                <div class="row">
+                    <div class="col">
+                        <a asp-page="./EditPost" asp-route-id="@post.Id">
+                            <h6>
+                                @post.Title
+                            </h6>
+                        </a>
+                        <div class="mb-2">
+                            @post.ContentAbstract
+                        </div>
+                        <div>
+                            <i class="bi-clock"></i>
+
+                            <span class="text-muted me-2">
+                                @SharedLocalizer["Scheduled for"]
+
+                                <time data-utc-label="@post.ScheduledPublishTimeUtc.Value.ToString("u")">
+                                    @post.ScheduledPublishTimeUtc
+                                </time>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="col-auto">
+                        <a class="btn btn-outline-accent btn-sm btn-publish" data-postid="@post.Id" data-bs-toggle="modal" data-bs-target="#publishPostModal">
+                            <i class="bi-send"></i>
+                            @SharedLocalizer["Publish Now"]
+                        </a>
+                        <a class="btn btn-outline-accent btn-sm btn-postpone" data-postid="@post.Id">
+                            <i class="bi-clock"></i>
+                            @SharedLocalizer["Postpone"]
+                        </a>
+                        <a class="btn btn-outline-accent btn-sm btn-edit" asp-page="./EditPost" asp-route-id="@post.Id"><i class="bi-pen"></i></a>
+                        <a class="btn btn-outline-danger btn-sm btn-delete" data-postid="@post.Id" href="javascript:;">
+                            <i class="bi-trash"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <partial name="_NoPosts" />
+    }
+</div>
+
+<partial name="_PublishPostModal" />

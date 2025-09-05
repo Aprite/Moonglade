@@ -1,21 +1,17 @@
-﻿using MediatR;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
-using Moonglade.Data.Spec;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Comments;
 
-public record GetApprovedCommentsQuery(Guid PostId) : IRequest<IReadOnlyList<Comment>>;
+public record GetApprovedCommentsQuery(Guid PostId) : IQuery<List<Comment>>;
 
-public class GetApprovedCommentsQueryHandler : IRequestHandler<GetApprovedCommentsQuery, IReadOnlyList<Comment>>
+public class GetApprovedCommentsQueryHandler(MoongladeRepository<CommentEntity> repo) : IQueryHandler<GetApprovedCommentsQuery, List<Comment>>
 {
-    private readonly IRepository<CommentEntity> _repo;
-
-    public GetApprovedCommentsQueryHandler(IRepository<CommentEntity> repo) => _repo = repo;
-
-    public Task<IReadOnlyList<Comment>> Handle(GetApprovedCommentsQuery request, CancellationToken ct)
+    public Task<List<Comment>> HandleAsync(GetApprovedCommentsQuery request, CancellationToken ct)
     {
-        return _repo.SelectAsync(new CommentSpec(request.PostId), c => new Comment
+        return repo.SelectAsync(new CommentWithRepliesSpec(request.PostId), c => new Comment
         {
             CommentContent = c.CommentContent,
             CreateTimeUtc = c.CreateTimeUtc,
@@ -26,6 +22,6 @@ public class GetApprovedCommentsQueryHandler : IRequestHandler<GetApprovedCommen
                 ReplyContent = cr.ReplyContent,
                 ReplyTimeUtc = cr.CreateTimeUtc
             }).ToList()
-        });
+        }, ct);
     }
 }

@@ -1,0 +1,1074 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!-- 
+    Microsoft ResX Schema 
+    
+    Version 2.0
+    
+    The primary goals of this format is to allow a simple XML format 
+    that is mostly human readable. The generation and parsing of the 
+    various data types are done through the TypeConverter classes 
+    associated with the data types.
+    
+    Example:
+    
+    ... ado.net/XML headers & schema ...
+    <resheader name="resmimetype">text/microsoft-resx</resheader>
+    <resheader name="version">2.0</resheader>
+    <resheader name="reader">System.Resources.ResXResourceReader, System.Windows.Forms, ...</resheader>
+    <resheader name="writer">System.Resources.ResXResourceWriter, System.Windows.Forms, ...</resheader>
+    <data name="Name1"><value>this is my long string</value><comment>this is a comment</comment></data>
+    <data name="Color1" type="System.Drawing.Color, System.Drawing">Blue</data>
+    <data name="Bitmap1" mimetype="application/x-microsoft.net.object.binary.base64">
+        <value>[base64 mime encoded serialized .NET Framework object]</value>
+    </data>
+    <data name="Icon1" type="System.Drawing.Icon, System.Drawing" mimetype="application/x-microsoft.net.object.bytearray.base64">
+        <value>[base64 mime encoded string representing a byte array form of the .NET Framework object]</value>
+        <comment>This is a comment</comment>
+    </data>
+                
+    There are any number of "resheader" rows that contain simple 
+    name/value pairs.
+    
+    Each data row contains a name, and value. The row also contains a 
+    type or mimetype. Type corresponds to a .NET class that support 
+    text/value conversion through the TypeConverter architecture. 
+    Classes that don't support this are serialized and stored with the 
+    mimetype set.
+    
+    The mimetype is used for serialized objects, and tells the 
+    ResXResourceReader how to depersist the object. This is currently not 
+    extensible. For a given mimetype the value must be set accordingly:
+    
+    Note - application/x-microsoft.net.object.binary.base64 is the format 
+    that the ResXResourceWriter will generate, however the reader can 
+    read any of the formats listed below.
+    
+    mimetype: application/x-microsoft.net.object.binary.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Binary.BinaryFormatter
+            : and then encoded with base64 encoding.
+    
+    mimetype: application/x-microsoft.net.object.soap.base64
+    value   : The object must be serialized with 
+            : System.Runtime.Serialization.Formatters.Soap.SoapFormatter
+            : and then encoded with base64 encoding.
+
+    mimetype: application/x-microsoft.net.object.bytearray.base64
+    value   : The object must be serialized into a byte array 
+            : using a System.ComponentModel.TypeConverter
+            : and then encoded with base64 encoding.
+    -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="* Image width and height must be equal" xml:space="preserve">
+    <value>* Bildhöhe und -breite müssen gleich sein</value>
+  </data>
+  <data name="* Requires restarting application" xml:space="preserve">
+    <value>* Erfordert Neustart der Anwendung</value>
+  </data>
+  <data name="* Username: moonglade" xml:space="preserve">
+    <value>* Benutzername: moonglade</value>
+  </data>
+  <data name=".NET Version" xml:space="preserve">
+    <value>.NET Version</value>
+  </data>
+  <data name=".png file" xml:space="preserve">
+    <value>.png Datei</value>
+  </data>
+  <data name=".png or .jpg file" xml:space="preserve">
+    <value>.png oder .jpg Datei</value>
+  </data>
+  <data name="About" xml:space="preserve">
+    <value>Über mich</value>
+  </data>
+  <data name="Abstract" xml:space="preserve">
+    <value>Zusammenfassung</value>
+  </data>
+  <data name="Account Information" xml:space="preserve">
+    <value>Kontoinformationen</value>
+  </data>
+  <data name="Action" xml:space="preserve">
+    <value>Aktion</value>
+  </data>
+  <data name="Admin" xml:space="preserve">
+    <value>Admin</value>
+  </data>
+  <data name="Admin Sign In" xml:space="preserve">
+    <value>Admin einloggen</value>
+  </data>
+  <data name="Advanced" xml:space="preserve">
+    <value>Erweitert</value>
+  </data>
+  <data name="Advanced Settings" xml:space="preserve">
+    <value>Erweiterte Einstellungen</value>
+  </data>
+  <data name="All Posts" xml:space="preserve">
+    <value>Alle Artikel</value>
+  </data>
+  <data name="All Tags" xml:space="preserve">
+    <value>Alle Tags</value>
+  </data>
+  <data name="Archive" xml:space="preserve">
+    <value>Archiv</value>
+  </data>
+  <data name="Are you sure to restart website? All current requests will be terminated." xml:space="preserve">
+    <value>Möchten Sie die Webseite wirklich neu starten? Alle aktuellen Anfragen werden verworfen.</value>
+  </data>
+  <data name="Are you sure?" xml:space="preserve">
+    <value>Sind Sie sicher?</value>
+  </data>
+  <data name="Author" xml:space="preserve">
+    <value>Autor</value>
+  </data>
+  <data name="Author Name" xml:space="preserve">
+    <value>Autorenname</value>
+  </data>
+  <data name="Admin Email" xml:space="preserve">
+    <value>Admin Email</value>
+  </data>
+  <data name="Block Comment" xml:space="preserve">
+    <value>Blockkommentar</value>
+  </data>
+  <data name="Blocked words" xml:space="preserve">
+    <value>Blockierte Wörter</value>
+  </data>
+  <data name="Blocked words will be masked as *** in comment content." xml:space="preserve">
+    <value>Blockierte Wörter werden im Inhalt mit *** maskiert.</value>
+  </data>
+  <data name="Blog Identity" xml:space="preserve">
+    <value>Blog Identität</value>
+  </data>
+  <data name="Blog posts" xml:space="preserve">
+    <value>Blogartikel</value>
+  </data>
+  <data name="Blog title" xml:space="preserve">
+    <value>Blogtitel</value>
+  </data>
+  <data name="Call-out" xml:space="preserve">
+    <value>Call-out</value>
+  </data>
+  <data name="Call-out section HTML code" xml:space="preserve">
+    <value>Call-out HTML Code Sektion</value>
+  </data>
+  <data name="Can't read? Click to change another image." xml:space="preserve">
+    <value>Können Sie es nicht lesen? Probieren Sie eine andere Sprache.</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="Canonical URL prefix" xml:space="preserve">
+    <value>Canonical URL prefix</value>
+  </data>
+  <data name="Categories" xml:space="preserve">
+    <value>Kategorien</value>
+  </data>
+  <data name="Category Information" xml:space="preserve">
+    <value>Kategorieinformation</value>
+  </data>
+  <data name="Change" xml:space="preserve">
+    <value>Ändern</value>
+  </data>
+  <data name="Change Avatar" xml:space="preserve">
+    <value>Avatar ändern</value>
+  </data>
+  <data name="Change Publish Date" xml:space="preserve">
+    <value>Veröffentlichungsdatum änden</value>
+  </data>
+  <data name="Change Site Icon" xml:space="preserve">
+    <value>Seiten Favicon ändern</value>
+  </data>
+  <data name="Changing publish date will modify the URL of the post, and may cause unexpected results like breaking links on third parties that were pointing to this post. Please check the checkbox below if you confirm." xml:space="preserve">
+    <value>Das Veröffentlichungsdatum zu ändern wird die URL, unter der der Artkel verfügbar ist, ändern. Ausserdem kann es zu unerwarteten Problemen, wie nicht funktionierende Links an dritter Stelle. Bitte betätigen Sie die Checkbox um zu bestätigen.</value>
+  </data>
+  <data name="Check now" xml:space="preserve">
+    <value>Jetzt prüfen</value>
+  </data>
+  <data name="Check online for new Moonglade release." xml:space="preserve">
+    <value>Prüfen auf neu Moonglade-Releases</value>
+  </data>
+  <data name="Clear all" xml:space="preserve">
+    <value>Alles löschen</value>
+  </data>
+  <data name="Clear Now" xml:space="preserve">
+    <value>Jetzt löschen</value>
+  </data>
+  <data name="Clear Pingback Logs" xml:space="preserve">
+    <value>Pingback-Logs löschen</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Schliessen</value>
+  </data>
+  <data name="Comment of this post is disabled." xml:space="preserve">
+    <value>Kommentare für diesen Artikel ausgeschaltet.</value>
+  </data>
+  <data name="Comments" xml:space="preserve">
+    <value>Kommentare</value>
+  </data>
+  <data name="Comments require review and approval" xml:space="preserve">
+    <value>Kommentare bedürfen Kontrolle und Annahme durch den Admin.</value>
+  </data>
+  <data name="Content" xml:space="preserve">
+    <value>Inhalt</value>
+  </data>
+  <data name="Continue" xml:space="preserve">
+    <value>Fortfahren</value>
+  </data>
+  <data name="Copyright" xml:space="preserve">
+    <value>Copyright</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Erstellen</value>
+  </data>
+  <data name="Create Tag" xml:space="preserve">
+    <value>Tag erstellen</value>
+  </data>
+  <data name="Create Time (UTC)" xml:space="preserve">
+    <value>Erstelle Zeit (UTC)</value>
+  </data>
+  <data name="Current Endpoint:" xml:space="preserve">
+    <value>Aktueller Endpunkt：</value>
+  </data>
+  <data name="Custom CSS" xml:space="preserve">
+    <value>Benutzerdefiniertes CSS</value>
+  </data>
+  <data name="Custom Theme" xml:space="preserve">
+    <value>Benutzerdefiniertes Theme</value>
+  </data>
+  <data name="Data Directory" xml:space="preserve">
+    <value>Datenverzeichnis</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Löschen</value>
+  </data>
+  <data name="Delete cached objects both in memory and on disk" xml:space="preserve">
+    <value>Löschen von Objekten (cached) im Speicher und auf der Festplatte</value>
+  </data>
+  <data name="Delete selected" xml:space="preserve">
+    <value>Ausgewählte löschen</value>
+  </data>
+  <data name="Description" xml:space="preserve">
+    <value>Beschreibung</value>
+  </data>
+  <data name="Directory" xml:space="preserve">
+    <value>Verzeichnis</value>
+  </data>
+  <data name="Disabled" xml:space="preserve">
+    <value>Ausgeschaltet</value>
+  </data>
+  <data name="Display name" xml:space="preserve">
+    <value>Anzeige Name</value>
+  </data>
+  <data name="Display Order" xml:space="preserve">
+    <value>Anzeige Reihenfolge</value>
+  </data>
+  <data name="Docker Container" xml:space="preserve">
+    <value>Docker Container</value>
+  </data>
+  <data name="Drafts" xml:space="preserve">
+    <value>Entwürfe</value>
+  </data>
+  <data name="Drag and drop image file here" xml:space="preserve">
+    <value>Ziehen Sie eine Bilddatei hierhin</value>
+  </data>
+  <data name="e.g. Your blog post license information." xml:space="preserve">
+    <value>z.B. Ihre Artikel Lizenzinformation.</value>
+  </data>
+  <data name="Edit on" xml:space="preserve">
+    <value>Bearbeitet am</value>
+  </data>
+  <data name="Editor" xml:space="preserve">
+    <value>Bearbietet</value>
+  </data>
+  <data name="Email address to receive notifications from this blog." xml:space="preserve">
+    <value>Emailadresse zum Empfang von Benachrichtigungen von diesem Blog.</value>
+  </data>
+  <data name="Email Options" xml:space="preserve">
+    <value>Emailoptionen</value>
+  </data>
+  <data name="Empty Recycle Bin" xml:space="preserve">
+    <value>Papierkorb leeren.</value>
+  </data>
+  <data name="Enable CDN for images" xml:space="preserve">
+    <value>CDN für Bilder aktivieren</value>
+  </data>
+  <data name="Enable Comment" xml:space="preserve">
+    <value>Kommentar einschalten</value>
+  </data>
+  <data name="Enable comments" xml:space="preserve">
+    <value>Kommentare einschalten</value>
+  </data>
+  <data name="Enable Custom CSS" xml:space="preserve">
+    <value>Benutzerdefiniertes CSS einschalten</value>
+  </data>
+  <data name="Enable email sending" xml:space="preserve">
+    <value>Emailversand einschalten</value>
+  </data>
+  <data name="Enable Gravatar in comment list" xml:space="preserve">
+    <value>Gravatar für Kommentarliste einschalten</value>
+  </data>
+  <data name="Enable OpenSearch" xml:space="preserve">
+    <value>OpenSearch einschalten</value>
+  </data>
+  <data name="Enable FOAF" xml:space="preserve">
+    <value>FOAF einschalten</value>
+  </data>
+  <data name="Enable Site Map" xml:space="preserve">
+    <value>SiteMap einschalten</value>
+  </data>
+  <data name="Enable word filter" xml:space="preserve">
+    <value>Wortfilter aktivieren</value>
+  </data>
+  <data name="Enabled watermark" xml:space="preserve">
+    <value>Wasserzeichen aktivieren</value>
+  </data>
+  <data name="Endpoint" xml:space="preserve">
+    <value>CDN Endpunkt</value>
+  </data>
+  <data name="Environment" xml:space="preserve">
+    <value>Umgebung</value>
+  </data>
+  <data name="Export Data" xml:space="preserve">
+    <value>Daten exportieren</value>
+  </data>
+  <data name="Featured" xml:space="preserve">
+    <value>Vorgestellt</value>
+  </data>
+  <data name="Featured Posts" xml:space="preserve">
+    <value>Vorgestellte Artikel</value>
+  </data>
+  <data name="Fit image to device pixel ratio" xml:space="preserve">
+    <value>Bild an das Pixelverhältnis des Geräts anpassen</value>
+  </data>
+  <data name="Font size" xml:space="preserve">
+    <value>Schriftgröße</value>
+  </data>
+  <data name="Footer" xml:space="preserve">
+    <value>Fussbereich</value>
+  </data>
+  <data name="Footer HTML code" xml:space="preserve">
+    <value>Fussbereich HTML Code</value>
+  </data>
+  <data name="Friend Link Information" xml:space="preserve">
+    <value>FriendLink Information</value>
+  </data>
+  <data name="Friend Link Options" xml:space="preserve">
+    <value>FriendLink Optionen</value>
+  </data>
+  <data name="General" xml:space="preserve">
+    <value>Allgemein</value>
+  </data>
+  <data name="Generate password" xml:space="preserve">
+    <value>Passwort erstellen</value>
+  </data>
+  <data name="Get update" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="Hide Sidebar" xml:space="preserve">
+    <value>Seitenleiste verstecken</value>
+  </data>
+  <data name="Home" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="HTML Pitch" xml:space="preserve">
+    <value>HTML Platz</value>
+  </data>
+  <data name="Icon" xml:space="preserve">
+    <value>Icon</value>
+  </data>
+  <data name="Icon CSS Class" xml:space="preserve">
+    <value>CSS Klasse des Icons</value>
+  </data>
+  <data name="Image" xml:space="preserve">
+    <value>Bild</value>
+  </data>
+  <data name="Invalid Icon CSS Class" xml:space="preserve">
+    <value>Falsche Icon CSS-Klasse</value>
+  </data>
+  <data name="It will show up once blog administrator approved your comment." xml:space="preserve">
+    <value>Es wird nach der Bestätigung des Administrators veröffentlicht.</value>
+  </data>
+  <data name="Keep origin image" xml:space="preserve">
+    <value>Behalte Herkunftsbild</value>
+  </data>
+  <data name="Language" xml:space="preserve">
+    <value>Sprache</value>
+  </data>
+  <data name="Latest Posts" xml:space="preserve">
+    <value>Letzte Artikel</value>
+  </data>
+  <data name="Left" xml:space="preserve">
+    <value>Links</value>
+  </data>
+  <data name="Link" xml:space="preserve">
+    <value>Link</value>
+  </data>
+  <data name="Logo text" xml:space="preserve">
+    <value>Logo Text</value>
+  </data>
+  <data name="Machine Name" xml:space="preserve">
+    <value>Maschinenname</value>
+  </data>
+  <data name="Mask Word" xml:space="preserve">
+    <value>Wort maskieren</value>
+  </data>
+  <data name="Memory" xml:space="preserve">
+    <value>Speicher</value>
+  </data>
+  <data name="Menu Editor" xml:space="preserve">
+    <value>Menü Editor</value>
+  </data>
+  <data name="Menus" xml:space="preserve">
+    <value>Menüs</value>
+  </data>
+  <data name="Meta keyword" xml:space="preserve">
+    <value>Meta keyword</value>
+  </data>
+  <data name="Moonglade Configuration" xml:space="preserve">
+    <value>Moonglade Konfiguration</value>
+  </data>
+  <data name="Moonglade Update" xml:space="preserve">
+    <value>Moonglade Update</value>
+  </data>
+  <data name="Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="New" xml:space="preserve">
+    <value>Neu</value>
+  </data>
+  <data name="No Archive" xml:space="preserve">
+    <value>Kein Archiv</value>
+  </data>
+  <data name="no items to show" xml:space="preserve">
+    <value>keine Artikel</value>
+  </data>
+  <data name="No Matching Result" xml:space="preserve">
+    <value>Kein passendes Ergebnis</value>
+  </data>
+  <data name="No Pages" xml:space="preserve">
+    <value>Keine Seiten</value>
+  </data>
+  <data name="No Posts" xml:space="preserve">
+    <value>Keine Artikel</value>
+  </data>
+  <data name="No Posts Found" xml:space="preserve">
+    <value>Keine Artikel gefunden</value>
+  </data>
+  <data name="No Tags" xml:space="preserve">
+    <value>Keine Tags</value>
+  </data>
+  <data name="Notification" xml:space="preserve">
+    <value>Benachrichtigung</value>
+  </data>
+  <data name="Notification Options" xml:space="preserve">
+    <value>Benachrichtigungsoptionen</value>
+  </data>
+  <data name="Only letters, numbers, - and [] are allowed." xml:space="preserve">
+    <value>Nur Buchstaben, Zahlen und [] erlaubt.</value>
+  </data>
+  <data name="Only lower case letters and hyphens are allowed." xml:space="preserve">
+    <value>Nur kleingeschriebene Buchstaben und Bindestriche erlaubt.</value>
+  </data>
+  <data name="Open in New Tab" xml:space="preserve">
+    <value>In neuem Tab öffnen</value>
+  </data>
+  <data name="Options" xml:space="preserve">
+    <value>Optionen</value>
+  </data>
+  <data name="or override with environment variables." xml:space="preserve">
+    <value>oder mit Umgebungsvariablen überschreiben.</value>
+  </data>
+  <data name="Order" xml:space="preserve">
+    <value>Sortieren</value>
+  </data>
+  <data name="Owner email" xml:space="preserve">
+    <value>Benutzeremail</value>
+  </data>
+  <data name="Pages" xml:space="preserve">
+    <value>Seiten</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Passwort</value>
+  </data>
+  <data name="Pingbacks" xml:space="preserve">
+    <value>Pingbacks</value>
+  </data>
+  <data name="Post footer HTML code" xml:space="preserve">
+    <value>Artikelfußzeilen-HTML</value>
+  </data>
+  <data name="Post list page size" xml:space="preserve">
+    <value>Artikellisten Seitengröße</value>
+  </data>
+  <data name="Posts" xml:space="preserve">
+    <value>Artkel</value>
+  </data>
+  <data name="Preview" xml:space="preserve">
+    <value>Vorschau</value>
+  </data>
+  <data name="Processing..." xml:space="preserve">
+    <value>Verarbeiten……</value>
+  </data>
+  <data name="Providing your email address can enable blog admin to send notifications for replying your comment. Your email address will also be used to show Gravatar if it has one." xml:space="preserve">
+    <value>Die Angabe Ihrer E-Mail-Adresse ermöglicht es dem Blog-Administrator, Benachrichtigungen für die Beantwortung Ihres Kommentars zu senden. Ihre E-Mail-Adresse wird auch verwendet, um Gravatar anzuzeigen, wenn Sie einen haben.</value>
+  </data>
+  <data name="Publish" xml:space="preserve">
+    <value>Veröffentlichen</value>
+  </data>
+  <data name="Publish Date" xml:space="preserve">
+    <value>Veröffentlichungsdatum</value>
+  </data>
+  <data name="Published" xml:space="preserve">
+    <value>Veröffentlicht</value>
+  </data>
+  <data name="Read origin article" xml:space="preserve">
+    <value>Dieser Artikel ist eine Bearbeitung eines anderen Artikels. Lies den Originalartikel hier.</value>
+  </data>
+  <data name="Recycle Bin" xml:space="preserve">
+    <value>Papierkorb</value>
+  </data>
+  <data name="Refresh the page to see your comment." xml:space="preserve">
+    <value>Aktualisieren Sie die Seite um Ihren Kommentar anzuzeigen.</value>
+  </data>
+  <data name="Release time" xml:space="preserve">
+    <value>Release-Zeit</value>
+  </data>
+  <data name="Replied at" xml:space="preserve">
+    <value>Gantwortet am</value>
+  </data>
+  <data name="Reply" xml:space="preserve">
+    <value>Antworten</value>
+  </data>
+  <data name="Reset Password" xml:space="preserve">
+    <value>Passwort zurücksetzen</value>
+  </data>
+  <data name="Restart" xml:space="preserve">
+    <value>Neustart</value>
+  </data>
+  <data name="Restart Website" xml:space="preserve">
+    <value>Webseite neu starten</value>
+  </data>
+  <data name="Restore" xml:space="preserve">
+    <value>Wiederherstellen</value>
+  </data>
+  <data name="Right" xml:space="preserve">
+    <value>Rechts</value>
+  </data>
+  <data name="Route Name" xml:space="preserve">
+    <value>Routenname</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="Scan QR Code on your phone" xml:space="preserve">
+    <value>Scanne den QR Code auf ihrem Telefon</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Suchen</value>
+  </data>
+  <data name="Search Result" xml:space="preserve">
+    <value>Suchergebnis</value>
+  </data>
+  <data name="Security Settings" xml:space="preserve">
+    <value>Sicherheitseinstellungen</value>
+  </data>
+  <data name="Send email on comment reply" xml:space="preserve">
+    <value>Sende Email nach Kommentarantwort</value>
+  </data>
+  <data name="Send email on new comment" xml:space="preserve">
+    <value>Sende Email nach neuem Kommentar</value>
+  </data>
+  <data name="Send Test Email" xml:space="preserve">
+    <value>Sende Testmail</value>
+  </data>
+  <data name="Server Information" xml:space="preserve">
+    <value>Serverinformation</value>
+  </data>
+  <data name="Set a primary domain if your website binds to multiple domian names." xml:space="preserve">
+    <value>Legen Sie eine primäre Domäne fest, wenn Ihre Website an mehrere Domänennamen gebunden ist.</value>
+  </data>
+  <data name="Show call-out section" xml:space="preserve">
+    <value>Call-Out section anzeigen</value>
+  </data>
+  <data name="Show customize footer on each post" xml:space="preserve">
+    <value>Die benutzerdefinierte Fusszeile nach jedem Artikel anzeigen</value>
+  </data>
+  <data name="Show warning when clicking external links" xml:space="preserve">
+    <value>Warnung bei Benutzung externer Links anzeigen</value>
+  </data>
+  <data name="Side Bar" xml:space="preserve">
+    <value>Seitenleiste</value>
+  </data>
+  <data name="Side bar display" xml:space="preserve">
+    <value>Seitenleiste anzeigen</value>
+  </data>
+  <data name="Side bar HTML code" xml:space="preserve">
+    <value>HTML Code für Seitenleiste</value>
+  </data>
+  <data name="Sign In" xml:space="preserve">
+    <value>Einloggen</value>
+  </data>
+  <data name="Start Time" xml:space="preserve">
+    <value>Startzeit</value>
+  </data>
+  <data name="Sub Menu" xml:space="preserve">
+    <value>Untermenü</value>
+  </data>
+  <data name="Sub Menu Properties" xml:space="preserve">
+    <value>Untermenüeigenschaften</value>
+  </data>
+  <data name="Submit" xml:space="preserve">
+    <value>Übermitteln</value>
+  </data>
+  <data name="Subscription" xml:space="preserve">
+    <value>Abonnements</value>
+  </data>
+  <data name="System" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Tag name" xml:space="preserve">
+    <value>Tagname</value>
+  </data>
+  <data name="Tags" xml:space="preserve">
+    <value>Tags</value>
+  </data>
+  <data name="Thanks for your comment." xml:space="preserve">
+    <value>Danke für deinen Kommentar.</value>
+  </data>
+  <data name="Thanks, your comment is pending approval now." xml:space="preserve">
+    <value>Danke, dein Kommentar wartet auf Freigabe.</value>
+  </data>
+  <data name="The call-out section will display on top of every page in the website." xml:space="preserve">
+    <value>Die Call-Out Sektion wird oben auf jeder Seite angezeigt.</value>
+  </data>
+  <data name="The first {0} character(s) will be used as abstract if you leave this field blank." xml:space="preserve">
+    <value>Die ersten {0} Zeichen werden benutzt, wenn Sie dieses Feld leer lassen.</value>
+  </data>
+  <data name="Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="This field is required." xml:space="preserve">
+    <value>Dieses Feld ist erforderlich.</value>
+  </data>
+  <data name="This is a preview for draft content." xml:space="preserve">
+    <value>DIes ist eine Vorschau für Inhalte im Entwurfsmodus.</value>
+  </data>
+  <data name="Title" xml:space="preserve">
+    <value>Titel</value>
+  </data>
+  <data name="Update" xml:space="preserve">
+    <value>Aktualisieren</value>
+  </data>
+  <data name="Upload" xml:space="preserve">
+    <value>Hochladen</value>
+  </data>
+  <data name="Upload Image" xml:space="preserve">
+    <value>Bild hochladen</value>
+  </data>
+  <data name="URL" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="Url (Relative or Absolute)" xml:space="preserve">
+    <value>Url (relativ oder absolut)</value>
+  </data>
+  <data name="Use full blog post content instead of abstract" xml:space="preserve">
+    <value>Benutze den vollständigen Artikel, statt einer Zusammenfassung</value>
+  </data>
+  <data name="Use [c] for copyright mark: &amp;copy;, [year] for current year." xml:space="preserve">
+    <value>Benutzen Sie [c] für das Copyrightzeichen &amp;copy; und [year] für das aktuelle Jahr.</value>
+  </data>
+  <data name="User Account" xml:space="preserve">
+    <value>Benutzerkonto</value>
+  </data>
+  <data name="User Name" xml:space="preserve">
+    <value>Benutzername</value>
+  </data>
+  <data name="Username" xml:space="preserve">
+    <value>Benutzername</value>
+  </data>
+  <data name="Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Watermark" xml:space="preserve">
+    <value>Wasserzeichen</value>
+  </data>
+  <data name="Watermark text" xml:space="preserve">
+    <value>Wasserzeichentext</value>
+  </data>
+  <data name="Word filter mode" xml:space="preserve">
+    <value>Wortfiltermodus</value>
+  </data>
+  <data name="Worker Process" xml:space="preserve">
+    <value>Worker-Prozess</value>
+  </data>
+  <data name="Your comments (Markdown supported)" xml:space="preserve">
+    <value>Ihre Kommentare (Markdown wird unterstützt)</value>
+  </data>
+  <data name="Your description" xml:space="preserve">
+    <value>Ihre Beschreibung</value>
+  </data>
+  <data name="Your name" xml:space="preserve">
+    <value>Ihr Name</value>
+  </data>
+  <data name="Center" xml:space="preserve">
+    <value>Zentrieren</value>
+  </data>
+  <data name="Export" xml:space="preserve">
+    <value>Exportieren</value>
+  </data>
+  <data name="Account" xml:space="preserve">
+    <value>Konto</value>
+  </data>
+  <data name="Enable Pingback" xml:space="preserve">
+    <value>Pingback aktivieren</value>
+  </data>
+  <data name="Include in feed and sitemap" xml:space="preserve">
+    <value>Hinzufügen von Abonnements und Sitemaps</value>
+  </data>
+  <data name="Friend links" xml:space="preserve">
+    <value>Verknüpfungen</value>
+  </data>
+  <data name="How many tags to show on sidebar" xml:space="preserve">
+    <value>In der Seitenleiste wird die Anzahl der Beschriftungen angezeigt</value>
+  </data>
+  <data name="Login IP" xml:space="preserve">
+    <value>Login IP</value>
+  </data>
+  <data name="Login Time (UTC)" xml:space="preserve">
+    <value>Anmeldezeit (UTC)</value>
+  </data>
+  <data name="No comments yet" xml:space="preserve">
+    <value>Es gibt noch keine Bewertungen</value>
+  </data>
+  <data name="Feed items" xml:space="preserve">
+    <value>Anzahl der Abonnementeinträge</value>
+  </data>
+  <data name="The number of entries to include in RSS/ATOM feed." xml:space="preserve">
+    <value>Die Anzahl der Einträge, die im RSS/ATOM enthalten sind</value>
+  </data>
+  <data name="lower case English letters (a-z) and numbers (0-9) with/out hyphen (-) in middle." xml:space="preserve">
+    <value>Kleinbuchstaben (a-z) und Ziffern (0-9), mit oder ohne Bindestriche (-)</value>
+  </data>
+  <data name="RSS / Atom Feed" xml:space="preserve">
+    <value>RSS / Atom-Feeds</value>
+  </data>
+  <data name="ASP.NET Core Environment" xml:space="preserve">
+    <value>ASP.NET Kernumgebung</value>
+  </data>
+  <data name="Warning: This blog post is marked as outdated by it's author. Consider finding more recent information on this topic to ensure that you are utilizing the most up-to-date and effective strategies." xml:space="preserve">
+    <value>Warnung: Dieser Blogbeitrag wurde vom Autor als veraltet gekennzeichnet. Erwägen Sie, nach aktuelleren Informationen zu diesem Thema zu suchen, um sicherzustellen, dass Sie die aktuellste und effektivste Strategie verwenden.</value>
+  </data>
+  <data name="No categories" xml:space="preserve">
+    <value>Es gibt keine Klassifizierung</value>
+  </data>
+  <data name="Auto" xml:space="preserve">
+    <value>Automatisch</value>
+  </data>
+  <data name="Dark" xml:space="preserve">
+    <value>dunkel</value>
+  </data>
+  <data name="Light" xml:space="preserve">
+    <value>hell</value>
+  </data>
+  <data name="External Links May Pose a Security Risk" xml:space="preserve">
+    <value>Externe Links können ein Sicherheitsrisiko darstellen</value>
+  </data>
+  <data name="Link URL:" xml:space="preserve">
+    <value>Link-URL:</value>
+  </data>
+  <data name="By clicking &quot;Continue&quot;, you agree that you are aware of the risks and will proceed at your own discretion." xml:space="preserve">
+    <value>Indem Sie auf "Weiter" klicken, erklären Sie sich damit einverstanden, dass Sie die Risiken verstehen und nach eigenem Ermessen fortfahren werden.</value>
+  </data>
+  <data name="You are about to leave this website and go to an external link." xml:space="preserve">
+    <value>Sie sind im Begriff, diese Website zu verlassen und auf einen externen Link zu gelangen.</value>
+  </data>
+  <data name="This link could lead to websites with malicious content, phishing attempts, or other security threats. It is important to exercise caution when clicking on any external link." xml:space="preserve">
+    <value>Dieser Link kann zu bösartigen Inhalten, Phishing-Versuchen oder anderen Sicherheitsbedrohungen führen. Seien Sie immer vorsichtig, wenn Sie auf externe Links klicken.</value>
+  </data>
+  <data name="By continuing to browse this website and accessing any external links, you acknowledge and accept the following:" xml:space="preserve">
+    <value>Durch die weitere Nutzung dieser Website und den Zugriff auf externe Links erkennen Sie Folgendes an und akzeptieren dies:</value>
+  </data>
+  <data name="The website owner and administrators are not responsible for the content or security of external websites." xml:space="preserve">
+    <value>Die Eigentümer und Administratoren der Website sind nicht verantwortlich für den Inhalt oder die Sicherheit externer Websites.</value>
+  </data>
+  <data name="Your personal information and computer system may be at risk when visiting external websites." xml:space="preserve">
+    <value>Beim Besuch externer Websites können Ihre persönlichen Daten und Computersysteme gefährdet sein.</value>
+  </data>
+  <data name="It is your responsibility to ensure the safety and security of your own browsing experience." xml:space="preserve">
+    <value>Es liegt in Ihrer Verantwortung, Ihr Surferlebnis sicher zu halten.</value>
+  </data>
+  <data name="Use my Gravatar as profile picture" xml:space="preserve">
+    <value>Verwende meinen Gravatar als deinen Avatar</value>
+  </data>
+  <data name="Please make sure you have setup Gravatar with your email address" xml:space="preserve">
+    <value>Bitte stellen Sie sicher, dass Sie sich mit Ihrer E-Mail-Adresse für Gravatar angemeldet haben</value>
+  </data>
+  <data name="Enter your email to receive reply notifications and display your Gravatar. Your email will not be displayed publicly." xml:space="preserve">
+    <value>Geben Sie Ihre E-Mail-Adresse ein, um eine Antwortbenachrichtigung zu erhalten und Ihren Gravatar anzuzeigen. Ihre E-Mail ist dann nicht für die Öffentlichkeit sichtbar.</value>
+  </data>
+  <data name="Captcha code" xml:space="preserve">
+    <value>Das Kaptcha</value>
+  </data>
+  <data name="Email (Optional)" xml:space="preserve">
+    <value>E-Mail (optional)</value>
+  </data>
+  <data name="Default language" xml:space="preserve">
+    <value>Standardsprache</value>
+  </data>
+  <data name="Blog will use this language for SEO by default unless specified in blog post." xml:space="preserve">
+    <value>Das Blogging-System verwendet diese Sprache standardmäßig für die Suchmaschinenoptimierung, es sei denn, die Sprache ist im Blogbeitrag angegeben.</value>
+  </data>
+  <data name="Profile" xml:space="preserve">
+    <value>Personenbezogene Daten</value>
+  </data>
+  <data name="Dublin Core Metadata" xml:space="preserve">
+    <value>Dublin Core Metadaten</value>
+  </data>
+  <data name="Dublin Core License URL" xml:space="preserve">
+    <value>URL der Dublin Core-Lizenz</value>
+  </data>
+  <data name="Use Dublin Core Metadata" xml:space="preserve">
+    <value>Dublin Core-Metadaten verwenden</value>
+  </data>
+  <data name="Pronouns" xml:space="preserve">
+    <value>Pronomen der Geschlechtsidentität</value>
+  </data>
+  <data name="Subscription buttons" xml:space="preserve">
+    <value>Schaltfläche "Abonnieren"</value>
+  </data>
+  <data name="Side bar items" xml:space="preserve">
+    <value>Elemente in der Seitenleiste</value>
+  </data>
+  <data name="Show or hide widgets that display on the side bar" xml:space="preserve">
+    <value>Ein- oder Ausblenden der Widgets, die in der Seitenleiste angezeigt werden</value>
+  </data>
+  <data name="Comment provider" xml:space="preserve">
+    <value>Anbieter des Kommentarmoduls</value>
+  </data>
+  <data name="Built in" xml:space="preserve">
+    <value>Aufgebaut</value>
+  </data>
+  <data name="Third party" xml:space="preserve">
+    <value>Dreiseitig</value>
+  </data>
+  <data name="Set to 0 to never close comments after any days" xml:space="preserve">
+    <value>Eine Einstellung von 0 bedeutet, dass Kommentare nach einem Datum nie geschlossen werden</value>
+  </data>
+  <data name="Old to new" xml:space="preserve">
+    <value>Aus Alt mach Neu</value>
+  </data>
+  <data name="New to old" xml:space="preserve">
+    <value>Aus alt mach neu</value>
+  </data>
+  <data name="Blocked words will be masked as * in content." xml:space="preserve">
+    <value>Blockierte Wörter werden durch "*" im Inhalt ersetzt</value>
+  </data>
+  <data name="How many words to use for generating abstract when it's absent, change this value will only affect new posts" xml:space="preserve">
+    <value>Wenn die Zusammenfassung nicht vorhanden ist und wie viele Wörter zum Generieren der Zusammenfassung verwendet werden, wirkt sich die Änderung dieses Werts nur auf den neuen Artikel aus</value>
+  </data>
+  <data name="Automatically close comments on posts older than x days" xml:space="preserve">
+    <value>Kommentare zu Artikeln, die älter als x Tage sind, automatisch schließen</value>
+  </data>
+  <data name="Comments display order" xml:space="preserve">
+    <value>Die Reihenfolge, in der Kommentare angezeigt werden</value>
+  </data>
+  <data name="Post title alignment" xml:space="preserve">
+    <value>Ausrichtung der Artikeltitel</value>
+  </data>
+  <data name="Word count in abstract" xml:space="preserve">
+    <value>Die Anzahl der Wörter in der Zusammenfassung</value>
+  </data>
+  <data name="Show post outline as side navigation" xml:space="preserve">
+    <value>Die Artikelgliederung wird in der seitlichen Navigationsleiste angezeigt</value>
+  </data>
+  <data name="Watermark will be placed at the right bottom corner of the image" xml:space="preserve">
+    <value>Das Wasserzeichen wird in der unteren rechten Ecke des Bildes platziert</value>
+  </data>
+  <data name="Save the origin image as a backup while adding watermark" xml:space="preserve">
+    <value>Speichern Sie das Originalbild als Backup, wenn Sie ein Wasserzeichen hinzufügen</value>
+  </data>
+  <data name="CDN endpoint" xml:space="preserve">
+    <value>CDN Endpunkt</value>
+  </data>
+  <data name="Add watermark only when image pixcel (HxW) is greater than this value." xml:space="preserve">
+    <value>Wasserzeichen werden nur hinzugefügt, wenn die Bildpixel (HxB) größer als dieser Wert sind.</value>
+  </data>
+  <data name="Transparency value (0-255)." xml:space="preserve">
+    <value>Transparenzwert (0-255)</value>
+  </data>
+  <data name="Watermark skip pixel threshold" xml:space="preserve">
+    <value>Überspringen des Schwellenwerts für Wasserzeichenpixel</value>
+  </data>
+  <data name="Enable Webmention" xml:space="preserve">
+    <value>Webmention aktivieren</value>
+  </data>
+  <data name="Enable OPML" xml:space="preserve">
+    <value>Aktivieren von OPML</value>
+  </data>
+  <data name="Foot JavaScript" xml:space="preserve">
+    <value>Schwanz JavaScript</value>
+  </data>
+  <data name="Using a third party script may cause your website to be blocked by some browsers or ad blockers, it can have security risks too. Please use with caution." xml:space="preserve">
+    <value>Die Verwendung von Skripten von Drittanbietern kann dazu führen, dass Ihre Website von bestimmten Browsern oder Werbeblockern blockiert wird, und dies kann auch ein Sicherheitsrisiko darstellen. Mit Vorsicht verwenden.</value>
+  </data>
+  <data name="Server Time Zone" xml:space="preserve">
+    <value>Zeitzone des Servers</value>
+  </data>
+  <data name="Azure App Service" xml:space="preserve">
+    <value>Azure App Service</value>
+  </data>
+  <data name="Azure Front Door" xml:space="preserve">
+    <value>Azure Front Door  </value>
+  </data>
+  <data name="Legal Infomation" xml:space="preserve">
+    <value>Rechtliche Hinweise</value>
+  </data>
+  <data name="Report an issue" xml:space="preserve">
+    <value>Ein Problem melden</value>
+  </data>
+  <data name="Forwarded Headers" xml:space="preserve">
+    <value>Kopfzeile weiterleiten</value>
+  </data>
+  <data name="Client IP Address" xml:space="preserve">
+    <value>Client-IP-Adresse</value>
+  </data>
+  <data name="Filter" xml:space="preserve">
+    <value>sieben</value>
+  </data>
+  <data name="Clear menus" xml:space="preserve">
+    <value>Löschen Sie das Menü</value>
+  </data>
+  <data name="Example code" xml:space="preserve">
+    <value>Beispielcode</value>
+  </data>
+  <data name="Example" xml:space="preserve">
+    <value>Beispiel</value>
+  </data>
+  <data name="Enable custom menus" xml:space="preserve">
+    <value>Benutzerdefinierte Menüs aktivieren</value>
+  </data>
+  <data name="Change Password" xml:space="preserve">
+    <value>Ändern Sie Ihr Passwort</value>
+  </data>
+  <data name="Unpublish Post" xml:space="preserve">
+    <value>Veröffentlichung des Artikels aufheben</value>
+  </data>
+  <data name="Unpublishing this post will remove it from the public site and turn it into a draft. This will have impact on SEO. Please confirm." xml:space="preserve">
+    <value>Wenn Sie die Veröffentlichung dieses Artikels aufheben, wird er von der öffentlichen Website entfernt und in einen Entwurf umgewandelt. Dies wird sich auf die Suchmaschinenoptimierung auswirken. Bitte bestätigen Sie.</value>
+  </data>
+  <data name="Confirm" xml:space="preserve">
+    <value>Bestätigen</value>
+  </data>
+  <data name="Enable Social Links" xml:space="preserve">
+    <value>Social Linking aktivieren</value>
+  </data>
+  <data name="Social Links" xml:space="preserve">
+    <value>Soziale Verknüpfungen</value>
+  </data>
+  <data name="System Themes" xml:space="preserve">
+    <value>System-Theme</value>
+  </data>
+  <data name="User Themes" xml:space="preserve">
+    <value>Benutzer-Theme</value>
+  </data>
+  <data name="No user themes found, create one to get started." xml:space="preserve">
+    <value>Kein Benutzerthema gefunden, erstellen Sie eines, um loszulegen.</value>
+  </data>
+  <data name="You have reached the maximum number of user themes." xml:space="preserve">
+    <value>Sie haben die maximale Anzahl an Benutzerthemen erreicht.</value>
+  </data>
+  <data name="Appearance" xml:space="preserve">
+    <value>Aussehen</value>
+  </data>
+  <data name="Accent Color" xml:space="preserve">
+    <value>Farbe der Akzente</value>
+  </data>
+  <data name="Posts list" xml:space="preserve">
+    <value>Liste der Artikel</value>
+  </data>
+  <data name="Reading posts" xml:space="preserve">
+    <value>Artikel lesen</value>
+  </data>
+  <data name="This post is scheduled to be published. Are you sure you want to publish it now?" xml:space="preserve">
+    <value>Die Veröffentlichung dieses Beitrags ist geplant. Sind Sie sicher, dass Sie es jetzt veröffentlichen möchten?</value>
+  </data>
+  <data name="Scheduled" xml:space="preserve">
+    <value>Plan</value>
+  </data>
+  <data name="Postpone" xml:space="preserve">
+    <value>verschieben</value>
+  </data>
+  <data name="Publish Now" xml:space="preserve">
+    <value>Jetzt veröffentlichen</value>
+  </data>
+  <data name="Scheduled for" xml:space="preserve">
+    <value>Geplant am</value>
+  </data>
+  <data name="Publish Post" xml:space="preserve">
+    <value>Veröffentlichen eines Beitrags</value>
+  </data>
+  <data name="No" xml:space="preserve">
+    <value>nicht</value>
+  </data>
+  <data name="Yes" xml:space="preserve">
+    <value>sein</value>
+  </data>
+  <data name="Unpublish" xml:space="preserve">
+    <value>Veröffentlichung aufheben</value>
+  </data>
+</root>

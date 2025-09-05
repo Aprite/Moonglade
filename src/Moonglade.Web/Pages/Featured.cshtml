@@ -1,14 +1,20 @@
 ﻿@page "/archive/featured"
-@model Moonglade.Web.Pages.FeaturedModel
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using Moonglade.Core.PostFeature
+@using Moonglade.Web.PagedList
 
-<h3>
+@{
+    ViewBag.TitlePrefix = "Featured Posts";
+    ViewBag.BodyClass = "body-featured-list bg-gray-1";
+}
+
+<h3 class="mb-4">
     @SharedLocalizer["Featured Posts"]
 </h3>
-<hr />
 
-@if (Model.Posts.Any())
+@if (Posts.Count > 0)
 {
-    <partial name="_PostList" model="Model.Posts" />
+    <partial name="_PostList" model="Posts" />
 }
 else
 {
@@ -17,4 +23,17 @@ else
     </div>
 }
 
-<partial name="_LightSwitch" />
+@functions
+{
+    public BasePagedList<PostDigest> Posts { get; set; }
+
+    public async Task OnGet(int p = 1)
+    {
+        var pagesize = BlogConfig.ContentSettings.PostListPageSize;
+        var posts = await QueryMediator.QueryAsync(new ListFeaturedQuery(pagesize, p));
+        var count = await QueryMediator.QueryAsync(new CountPostQuery(CountType.Featured));
+
+        var list = new BasePagedList<PostDigest>(posts, p, pagesize, count);
+        Posts = list;
+    }
+}

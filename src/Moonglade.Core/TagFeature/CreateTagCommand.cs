@@ -1,25 +1,23 @@
-﻿using Moonglade.Data.Spec;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
 using Moonglade.Utils;
 
 namespace Moonglade.Core.TagFeature;
 
-public record CreateTagCommand(string Name) : IRequest<Tag>;
+public record CreateTagCommand(string Name) : ICommand<TagEntity>;
 
-public class CreateTagCommandHandler : IRequestHandler<CreateTagCommand, Tag>
+public class CreateTagCommandHandler(
+    MoongladeRepository<TagEntity> repo,
+    ILogger<CreateTagCommandHandler> logger) : ICommandHandler<CreateTagCommand, TagEntity>
 {
-    private readonly IRepository<TagEntity> _repo;
-
-    public CreateTagCommandHandler(IRepository<TagEntity> repo) => _repo = repo;
-
-    public async Task<Tag> Handle(CreateTagCommand request, CancellationToken ct)
+    public async Task<TagEntity> HandleAsync(CreateTagCommand request, CancellationToken ct)
     {
-        if (!Tag.ValidateName(request.Name)) return null;
+        var normalizedName = BlogTagHelper.NormalizeName(request.Name, BlogTagHelper.TagNormalizationDictionary);
 
-        var normalizedName = Tag.NormalizeName(request.Name, Helper.TagNormalizationDictionary);
-        if (await _repo.AnyAsync(t => t.NormalizedName == normalizedName, ct))
-        {
-            return await _repo.FirstOrDefaultAsync(new TagSpec(normalizedName), Tag.EntitySelector);
-        }
+        var existingTag = await repo.FirstOrDefaultAsync(new TagByNormalizedNameSpec(normalizedName), ct);
+        if (null != existingTag) return existingTag;
 
         var newTag = new TagEntity
         {
@@ -27,12 +25,9 @@ public class CreateTagCommandHandler : IRequestHandler<CreateTagCommand, Tag>
             NormalizedName = normalizedName
         };
 
-        var tag = await _repo.AddAsync(newTag, ct);
+        await repo.AddAsync(newTag, ct);
+        logger.LogInformation("Tag created: {TagName}", request.Name);
 
-        return new()
-        {
-            DisplayName = tag.DisplayName,
-            NormalizedName = tag.NormalizedName
-        };
+        return newTag;
     }
 }

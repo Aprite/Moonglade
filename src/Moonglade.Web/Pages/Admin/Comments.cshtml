@@ -1,72 +1,17 @@
 ﻿@page "/admin/comments"
 @using Moonglade.Utils
-@using X.PagedList.Mvc.Core
-@using X.PagedList.Web.Common
-@model Moonglade.Web.Pages.Admin.CommentsModel
+@using Moonglade.Web.PagedList
+@using System.ComponentModel.DataAnnotations
 @{
-    ViewBag.Title = "Manage Comments";
+    ViewBag.Title = "Comments";
 }
 @Html.AntiForgeryToken()
 
-@section scripts{
-    <script type="module">
-        import * as utils from '/js/app/utils.module.js'
-
-        $(".btn-delete").click(function() {
-            var cid = $(this).data("commentid");
-            callApi('/api/comment', 'DELETE', [cid],
-                (success) => {
-                    document.querySelector(`#panel-comment-${cid}`).remove();
-                });
-        });
-
-        $(".btn-reply").click(function() {
-            var cid = $(this).data("commentid");
-            $(`#panel-comment-${cid} .reply-ui`).show();
-        });
-
-        $(".btn-reply-post").click(function() {
-            var cid = $(this).data("commentid");
-            var replyContent = $(`#replycontent-${cid}`).val();
-
-            callApi(`/api/comment/${cid}/reply`, 'POST', replyContent,
-                async (resp) => {
-                    var data = await resp.json();
-                    $(`#panel-comment-${data.commentId} .reply-ui`).hide();
-                    $(`#panel-comment-${data.commentId} .reply-list`).prepend(
-                        `<hr /><div class="reply-container"><div><strong>Reply</strong><span class="pull-right text-muted">${data.replyTimeUtc
-                        }</span></div><p>${data.replyContentHtml}</p></div>`);
-                });
-        });
-
-        $(".btn-approve").click(function() {
-            callApi(`/api/comment/${$(this).data("commentid")}/approval/toggle`, 'PUT', {},
-                async (resp) => {
-                    var data = await resp.json();
-                    $(`#panel-comment-${data} .btn-approve`).toggleClass('btn-outline-success');
-                    $(`#panel-comment-${data} .btn-approve`).toggleClass('btn-success');
-                });
-        });
-
-        window.deleteSelectedComments = function() {
-            var cids = [];
-            $('.chk-cid:checked').each(function () {
-                cids.push($(this).data('cid'));
-            });
-
-            callApi('/api/comment', 'DELETE', cids,
-                (success) => {
-                    $.each(cids, function (index, value) {
-                        document.querySelector(`#panel-comment-${value}`).remove();
-                    });
-                });
-        }
-
-        utils.formatUtcTime();
-    </script>
+@section scripts {
+    <script type="module" src="~/js/app/admin.comments.mjs" asp-append-version="true"></script>
 }
 
-    @section head{
+@section head {
     <style>
         .mdrendered-comment-content img {
             max-width: 720px;
@@ -78,15 +23,23 @@
         }
     </style>
 }
-
-    <div class="admin-toolbar ps-4 pe-4 pt-2 pb-2 border-bottom mb-3 shadow-sm">
+@section admintoolbar {
+    <div class="admin-toolbar pb-2 border-bottom mb-3">
         <a href="javascript:window.deleteSelectedComments();" class="btn btn-outline-danger btn-delete-selected">
             <i class="bi-trash"></i> @SharedLocalizer["Delete selected"]
         </a>
     </div>
+}
 
-    <div class="ps-4 pe-4">
-        @if (Model.CommentDetailedItems.Count == 0)
+<div>
+    <form method="post">
+        <div class="d-flex search-box mb-3">
+            <input type="search" aria-label="Search" asp-for="SearchTerm" class="form-control" placeholder="Search user name or email" />
+            <button class="btn btn-light btn-search my-sm-0" type="submit"><i class="bi-search text-dark"></i></button>
+        </div>
+    </form>
+
+    @if (CommentDetailedItems.Count == 0)
     {
         <div class="alert alert-info">
             @SharedLocalizer["No Comments"]
@@ -94,9 +47,9 @@
     }
     else
     {
-        foreach (var item in Model.CommentDetailedItems)
+        foreach (var item in CommentDetailedItems)
         {
-            <div id="panel-comment-@item.Id" class="mb-4 row g-1">
+            <div id="panel-comment-@item.Id" class="admin-comment-entry p-3 mb-3 rounded-3 shadow-sm border row g-1">
                 <div class="form-check col-auto">
                     <input type="checkbox" class="form-check-input chk-cid" id="comment-item-chk-@item.Id" data-cid="@item.Id" />
                     <label class="form-check-label" for="comment-item-chk-@item.Id"></label>
@@ -122,7 +75,7 @@
                     <small class="text-muted">
                         <span>
                             <time data-utc-label="@item.CreateTimeUtc.ToString("u")">@item.CreateTimeUtc</time>
-                        </span> 
+                        </span>
                         <span class="text-muted d-none d-sm-inline">(@item.IpAddress)</span>
                     </small>
 
@@ -135,7 +88,7 @@
                                   placeholder="Content" type="text"></textarea>
                             </div>
 
-                            <a class="btn btn-outline-success btn-reply-post" href="#" data-commentid="@item.Id">
+                            <a class="btn btn-sm btn-outline-accent btn-reply-post" href="#" data-commentid="@item.Id">
                                 @SharedLocalizer["Reply"]
                             </a>
                         </form>
@@ -158,7 +111,7 @@
 
                 <div class="col-auto">
                     <a href="javascript:;" class="btn btn-sm @(item.IsApproved ? "btn-success" : "btn-outline-success") btn-approve" data-commentid="@item.Id">
-                        <i class="bi-star-fill"></i>
+                        <i class="bi-check2"></i>
                     </a>
                     <button class="btn btn-sm btn-outline-accent btn-reply" data-commentid="@item.Id">
                         <i class="bi-reply-fill"></i>
@@ -168,16 +121,39 @@
                     </button>
                 </div>
             </div>
-
-            <hr />
         }
     }
 
-    @Html.PagedListPager(Model.CommentDetailedItems, page => $"?pageIndex={page}", new PagedListRenderOptions
+
+    @Html.PagedListPager(CommentDetailedItems, page => $"?pageIndex={page}&searchTerm={SearchTerm}", new()
     {
-    LiElementClasses = new[] { "page-item" },
-    PageClasses = new[] { "page-link" },
-    UlElementClasses = new[] { "pagination justify-content-end" },
-    DisplayEllipsesWhenNotShowingAllPageNumbers = false
+        UlElementClasses = ["pagination mt-3"]
     })
 </div>
+
+@functions
+{
+    public BasePagedList<CommentDetailedItem> CommentDetailedItems { get; set; }
+
+    private const int PageSize = 5;
+
+    [BindProperty]
+    [MaxLength(32)]
+    public string SearchTerm { get; set; }
+
+    public async Task OnPost() => await GetComments(1);
+
+    public async Task OnGet(int pageIndex = 1, string searchTerm = null)
+    {
+        if (!string.IsNullOrWhiteSpace(searchTerm)) SearchTerm = searchTerm;
+
+        await GetComments(pageIndex);
+    }
+
+    public async Task GetComments(int pageIndex)
+    {
+        var comments = await QueryMediator.QueryAsync(new ListCommentsQuery(PageSize, pageIndex, SearchTerm));
+        var count = await QueryMediator.QueryAsync(new CountCommentsQuery());
+        CommentDetailedItems = new(comments, pageIndex, PageSize, count);
+    }
+}

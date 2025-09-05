@@ -1,25 +1,23 @@
-﻿using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
+﻿using LiteBus.Commands.Abstractions;
+using Moonglade.Data;
+using Moonglade.Data.Entities;
 
 namespace Moonglade.Auth;
 
-public record LogSuccessLoginCommand(Guid Id, string IpAddress) : IRequest;
+public record LogSuccessLoginCommand(string IpAddress, string UserAgent, string DeviceFingerprint) : ICommand;
 
-public class LogSuccessLoginCommandHandler : AsyncRequestHandler<LogSuccessLoginCommand>
+public class LogSuccessLoginCommandHandler(MoongladeRepository<LoginHistoryEntity> repo) : ICommandHandler<LogSuccessLoginCommand>
 {
-    private readonly IRepository<LocalAccountEntity> _repo;
-    public LogSuccessLoginCommandHandler(IRepository<LocalAccountEntity> repo) => _repo = repo;
-
-    protected override async Task Handle(LogSuccessLoginCommand request, CancellationToken ct)
+    public async Task HandleAsync(LogSuccessLoginCommand request, CancellationToken ct)
     {
-        var (id, ipAddress) = request;
-
-        var entity = await _repo.GetAsync(id, ct);
-        if (entity is not null)
+        var entity = new LoginHistoryEntity
         {
-            entity.LastLoginIp = ipAddress.Trim();
-            entity.LastLoginTimeUtc = DateTime.UtcNow;
-            await _repo.UpdateAsync(entity, ct);
-        }
+            LoginIp = request.IpAddress.Trim(),
+            LoginTimeUtc = DateTime.UtcNow,
+            LoginUserAgent = request.UserAgent.Trim(),
+            DeviceFingerprint = request.DeviceFingerprint.Trim()
+        };
+
+        await repo.AddAsync(entity, ct);
     }
 }

@@ -4,7 +4,7 @@ namespace Moonglade.ImageStorage;
 
 public class ImageStorageSettings
 {
-    public string[] AllowedExtensions { get; set; }
+    public int CacheMinutes { get; set; }
 
     public string Provider { get; set; }
 
@@ -13,6 +13,4 @@ public class ImageStorageSettings
     public AzureStorageSettings AzureStorageSettings { get; set; }
 
     public MinioStorageSettings MinioStorageSettings { get; set; }
-
-    public QiniuStorageSettings QiniuStorageSettings { get; set; }
 }

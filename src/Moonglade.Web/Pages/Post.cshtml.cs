@@ -1,30 +1,38 @@
+using LiteBus.Commands.Abstractions;
+using LiteBus.Queries.Abstractions;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Moonglade.Core.PostFeature;
+using Moonglade.Data.Entities;
 using Moonglade.Pingback;
 
 namespace Moonglade.Web.Pages;
 
 [AddPingbackHeader("pingback")]
-public class PostModel : PageModel
+public class PostModel(IConfiguration configuration, IQueryMediator queryMediator, ICommandMediator commandMediator) : PageModel
 {
-    private readonly IMediator _mediator;
+    public PostEntity Post { get; set; }
 
-    public Post Post { get; set; }
+    public PostViewEntity PostView { get; set; }
 
-    public PostModel(IMediator mediator) => _mediator = mediator;
+    public bool IsViewCountEnabled { get; } = configuration.GetValue<bool>("Post:EnableViewCount");
 
     public async Task<IActionResult> OnGetAsync(int year, int month, int day, string slug)
     {
-        if (year > DateTime.UtcNow.Year || month is < 1 or > 12 || string.IsNullOrWhiteSpace(slug)) return NotFound();
+        if (year > DateTime.UtcNow.Year || string.IsNullOrWhiteSpace(slug)) return NotFound();
 
-        var slugInfo = new PostSlug(year, month, day, slug);
-        var post = await _mediator.Send(new GetPostBySlugQuery(slugInfo));
+        var post = await queryMediator.QueryAsync(new GetPostBySlugQuery(year, month, day, slug));
 
         if (post is null) return NotFound();
 
-        ViewData["TitlePrefix"] = $"{post.Title}";
-
         Post = post;
+        ViewData["TitlePrefix"] = $"{Post.Title}";
+
+        if (IsViewCountEnabled)
+        {
+            await commandMediator.SendAsync(new AddRequestCountCommand(post.Id));
+            PostView = await queryMediator.QueryAsync(new GetPostViewQuery(post.Id));
+        }
+
         return Page();
     }
 }

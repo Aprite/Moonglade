@@ -21,17 +21,16 @@ public class PostEntity
     public bool IsFeedIncluded { get; set; }
     public DateTime? PubDateUtc { get; set; }
     public DateTime? LastModifiedUtc { get; set; }
-    public bool IsPublished { get; set; }
+    public DateTime? ScheduledPublishTimeUtc { get; set; }
     public bool IsDeleted { get; set; }
-    public bool IsOriginal { get; set; }
-    public string OriginLink { get; set; }
+    public bool IsOutdated { get; set; }
     public string HeroImageUrl { get; set; }
-    public string InlineCss { get; set; }
     public bool IsFeatured { get; set; }
-    public int HashCheckSum { get; set; }
+    public string RouteLink { get; set; }
+    public string PostStatus { get; set; }
+    public string Keywords { get; set; }
 
-    public virtual PostExtensionEntity PostExtension { get; set; }
-    public virtual ICollection<CommentEntity> Comments { get; set; }
-    public virtual ICollection<PostCategoryEntity> PostCategory { get; set; }
-    public virtual ICollection<TagEntity> Tags { get; set; }
+    public ICollection<CommentEntity> Comments { get; set; }
+    public ICollection<PostCategoryEntity> PostCategory { get; set; }
+    public ICollection<TagEntity> Tags { get; set; }
 }

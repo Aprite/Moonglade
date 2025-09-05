@@ -1,4 +1,5 @@
 using Edi.Captcha;
+using LiteBus.Commands.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
@@ -9,24 +10,13 @@ using System.Security.Claims;
 
 namespace Moonglade.Web.Pages;
 
-public class SignInModel : PageModel
-{
-    private readonly AuthenticationSettings _authenticationSettings;
-    private readonly IMediator _mediator;
-    private readonly ILogger<SignInModel> _logger;
-    private readonly ISessionBasedCaptcha _captcha;
-
-    public SignInModel(
-        IOptions<AuthenticationSettings> authSettings,
-        IMediator mediator,
+public class SignInModel(IOptions<AuthenticationSettings> authSettings,
+        ICommandMediator commandMediator,
         ILogger<SignInModel> logger,
         ISessionBasedCaptcha captcha)
-    {
-        _mediator = mediator;
-        _logger = logger;
-        _captcha = captcha;
-        _authenticationSettings = authSettings.Value;
-    }
+    : PageModel
+{
+    private readonly AuthenticationSettings _authenticationSettings = authSettings.Value;
 
     [BindProperty]
     [Required]
@@ -40,7 +30,7 @@ public class SignInModel : PageModel
     [Display(Name = "Password")]
     [DataType(DataType.Password)]
     [MinLength(8), MaxLength(32)]
-    [RegularExpression(@"^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9._~!@#$^&*]{8,}$")]
+    [RegularExpression("^(?=.*[a-zA-Z])(?=.*[0-9])[A-Za-z0-9._~!@#$^&*]{8,}$")]
     public string Password { get; set; }
 
     [BindProperty]
@@ -52,7 +42,7 @@ public class SignInModel : PageModel
     {
         switch (_authenticationSettings.Provider)
         {
-            case AuthenticationProvider.AzureAD:
+            case AuthenticationProvider.EntraID:
                 return Challenge(
                     new AuthenticationProperties { RedirectUri = "/" },
                     OpenIdConnectDefaults.AuthenticationScheme);
@@ -71,31 +61,37 @@ public class SignInModel : PageModel
     {
         try
         {
-            if (!_captcha.Validate(CaptchaCode, HttpContext.Session))
+            if (!captcha.Validate(CaptchaCode, HttpContext.Session))
             {
                 ModelState.AddModelError(nameof(CaptchaCode), "Wrong Captcha Code");
             }
 
+            // Check User-Agent
+            var ua = Request.Headers["User-Agent"].ToString();
+            if (string.IsNullOrWhiteSpace(ua))
+            {
+                return Unauthorized();
+            }
+
             if (ModelState.IsValid)
             {
-                var uid = await _mediator.Send(new ValidateLoginCommand(Username, Password));
-                if (uid != Guid.Empty)
+                var isValid = await commandMediator.SendAsync(new ValidateLoginCommand(Username, Password));
+                if (isValid)
                 {
                     var claims = new List<Claim>
                     {
                         new (ClaimTypes.Name, Username),
-                        new (ClaimTypes.Role, "Administrator"),
-                        new ("uid", uid.ToString())
+                        new (ClaimTypes.Role, "Administrator")
                     };
                     var ci = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                     var p = new ClaimsPrincipal(ci);
 
                     await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, p);
-                    await _mediator.Send(new LogSuccessLoginCommand(uid, Helper.GetClientIP(HttpContext)));
+                    await commandMediator.SendAsync(new LogSuccessLoginCommand(ClientIPHelper.GetClientIP(HttpContext), ua, "TODO"));
 
                     var successMessage = $@"Authentication success for local account ""{Username}""";
 
-                    _logger.LogInformation(successMessage);
+                    logger.LogInformation(successMessage);
 
                     return RedirectToPage("/Admin/Post");
                 }
@@ -105,7 +101,7 @@ public class SignInModel : PageModel
 
             var failMessage = $@"Authentication failed for local account ""{Username}""";
 
-            _logger.LogWarning(failMessage);
+            logger.LogWarning(failMessage);
 
             Response.StatusCode = StatusCodes.Status400BadRequest;
             ModelState.AddModelError(string.Empty, "Bad Request.");
@@ -113,7 +109,7 @@ public class SignInModel : PageModel
         }
         catch (Exception e)
         {
-            _logger.LogWarning($@"Authentication failed for local account ""{Username}""");
+            logger.LogWarning($@"Authentication failed for local account ""{Username}""");
 
             ModelState.AddModelError(string.Empty, e.Message);
             return Page();

@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace Moonglade.Configuration;
 
@@ -9,14 +10,16 @@ public class AdvancedSettings : IBlogSettings
     [MaxLength(1024)]
     public string RobotsTxtContent { get; set; }
 
-    [Display(Name = "Enable Pingback send")]
-    public bool EnablePingbackSend { get; set; } = true;
+    [Display(Name = "Foot JavaScript")]
+    [DataType(DataType.MultilineText)]
+    [MaxLength(2048)]
+    public string FootScripts { get; set; }
 
-    [Display(Name = "Enable Pingback receive")]
-    public bool EnablePingbackReceive { get; set; } = true;
+    [Display(Name = "Enable Pingback")]
+    public bool EnablePingback { get; set; } = true;
 
-    [Display(Name = "Enable MetaWeblog API")]
-    public bool EnableMetaWeblog { get; set; } = true;
+    [Display(Name = "Enable Webmention")]
+    public bool EnableWebmention { get; set; } = true;
 
     [Display(Name = "Enable OpenSearch")]
     public bool EnableOpenSearch { get; set; } = true;
@@ -30,15 +33,9 @@ public class AdvancedSettings : IBlogSettings
     [Display(Name = "Enable Site Map")]
     public bool EnableSiteMap { get; set; } = true;
 
-    [MinLength(8), MaxLength(16)]
-    [Display(Name = "MetaWeblog password")]
-    public string MetaWeblogPassword { get; set; }
-
     [Display(Name = "Show warning when clicking external links")]
     public bool WarnExternalLink { get; set; }
 
-    [Display(Name = "Allow javascript in pages")]
-    public bool AllowScriptsInPage { get; set; }
-
-    public string MetaWeblogPasswordHash { get; set; }
+    [JsonIgnore]
+    public static AdvancedSettings DefaultValue => new();
 }

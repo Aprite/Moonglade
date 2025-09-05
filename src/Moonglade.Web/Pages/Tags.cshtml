@@ -1,16 +1,15 @@
 ﻿@page "/tags"
 @using System.Web
 @using Moonglade.Core.TagFeature
-@inject IMediator Mediator
 @{
     ViewBag.TitlePrefix = "Tags";
-    var tags = await Mediator.Send(new GetTagCountListQuery());
+    ViewBag.BodyClass = "body-tags-index bg-gray-1";
+    var tags = await QueryMediator.QueryAsync(new GetTagCountListQuery());
 }
 
 @functions {
-    private static string Weight(double weightPercent)
-    {
-        var weight = weightPercent switch
+    private static string GetWeightClass(double weightPercent) =>
+        weightPercent switch
         {
             >= 99 => "danger",
             >= 70 => "success",
@@ -18,40 +17,64 @@
             >= 20 => "secondary",
             _ => "outline-secondary"
         };
-        return weight;
+
+    private static string FormatDisplayName(string displayName) =>
+        displayName?.Replace("-", " ") ?? string.Empty;
+}
+
+@section scripts {
+    <script type="module" src="~/js/app/tags.mjs" asp-append-version="true"></script>
+}
+
+<div class="tags-page">
+    <h2 class="page-heading mb-4">
+        @SharedLocalizer["Tags"]
+    </h2>
+
+    @if (tags?.Any() == true)
+    {
+        var tagMax = tags.Max(p => p.PostCount);
+        var sortedTags = tags.Where(t => t.PostCount > 0).OrderBy(t => t.Tag.DisplayName).ToList();
+
+        <div class="mb-3">
+            <input id="tagFilter"
+                   type="text"
+                   class="form-control"
+                   maxlength="32"
+                   placeholder="@SharedLocalizer["Filter tags..."]"
+                   role="search"
+                   aria-label="@SharedLocalizer["Filter tags"]">
+        </div>
+
+        <ul class="list-unstyled ul-tags" role="list">
+            @foreach (var tagItem in sortedTags)
+            {
+                var weightPercent = (double)tagItem.PostCount / tagMax * 100;
+                var weightClass = GetWeightClass(weightPercent);
+                var displayName = FormatDisplayName(tagItem.Tag.DisplayName);
+                var normalizedName = tagItem.Tag.NormalizedName?.ToLowerInvariant();
+
+                <li class="d-inline-block mb-2 me-2">
+                    <a asp-page="/TagList"
+                       asp-route-normalizedName="@normalizedName"
+                       class="btn btn-sm btn-@weightClass"
+                       title="@string.Format(SharedLocalizer["{0} posts"], tagItem.PostCount)"
+                       aria-label="@string.Format(SharedLocalizer["View posts tagged with {0}"], displayName)">
+                        @displayName
+                    </a>
+                </li>
+            }
+        </ul>
+
+        <div class="mt-3 text-muted small">
+            @string.Format(SharedLocalizer["Showing {0} tags"], sortedTags.Count)
+        </div>
     }
-}
-
-<h3>
-    @SharedLocalizer["Tags"]
-</h3>
-<hr />
-
-@if (tags.Any())
-{
-    var tagMax = tags.Select(p => p.Value).Max();
-
-    <ul class="list-unstyled ul-tags">
-        @foreach (var tag in tags.OrderBy(t => t.Key.DisplayName))
-        {
-            var weightPercent = tag.Value * 1.0 / tagMax * 100;
-            var weight = Weight(weightPercent);
-
-            <li class="d-inline-block mb-2 me-2">
-                <a asp-page="/TagList"
-                   asp-route-normalizedName="@HttpUtility.UrlDecode(tag.Key.NormalizedName.ToLower())"
-                   class="btn btn-sm btn-@weight" title="@(tag.Value)">
-                    @tag.Key.DisplayName.Replace("-", " ")
-                </a>
-            </li>
-        }
-    </ul>
-}
-else
-{
-    <div class="alert alert-info">
-        @SharedLocalizer["No Tags"]
-    </div>
-}
-
-<partial name="_LightSwitch" />
+    else
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+            @SharedLocalizer["No Tags"]
+        </div>
+    }
+</div>

@@ -1,25 +1,27 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
-using Moonglade.Data.Spec;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Comments;
 
-public record ToggleApprovalCommand(Guid[] CommentIds) : IRequest;
+public record ToggleApprovalCommand(Guid[] CommentIds) : ICommand;
 
-public class ToggleApprovalCommandHandler : AsyncRequestHandler<ToggleApprovalCommand>
+public class ToggleApprovalCommandHandler(
+    MoongladeRepository<CommentEntity> repo,
+    ILogger<ToggleApprovalCommandHandler> logger) : ICommandHandler<ToggleApprovalCommand>
 {
-    private readonly IRepository<CommentEntity> _repo;
-    public ToggleApprovalCommandHandler(IRepository<CommentEntity> repo) => _repo = repo;
-
-    protected override async Task Handle(ToggleApprovalCommand request, CancellationToken ct)
+    public async Task HandleAsync(ToggleApprovalCommand request, CancellationToken ct)
     {
-        var spec = new CommentSpec(request.CommentIds);
-        var comments = await _repo.ListAsync(spec);
+        var spec = new CommentByIdsSepc(request.CommentIds);
+        var comments = await repo.ListAsync(spec, ct);
         foreach (var cmt in comments)
         {
             cmt.IsApproved = !cmt.IsApproved;
-            await _repo.UpdateAsync(cmt, ct);
+            await repo.UpdateAsync(cmt, ct);
         }
+
+        logger.LogInformation("Toggled approval status for {Count} comment(s)", comments.Count);
     }
 }

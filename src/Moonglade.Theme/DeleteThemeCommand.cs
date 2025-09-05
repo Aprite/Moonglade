@@ -1,25 +1,20 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
 using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
 
 namespace Moonglade.Theme;
 
-public record DeleteThemeCommand(int Id) : IRequest<OperationCode>;
+public record DeleteThemeCommand(int Id) : ICommand<OperationCode>;
 
-public class DeleteThemeCommandHandler : IRequestHandler<DeleteThemeCommand, OperationCode>
+public class DeleteThemeCommandHandler(MoongladeRepository<BlogThemeEntity> repo) : ICommandHandler<DeleteThemeCommand, OperationCode>
 {
-    private readonly IRepository<BlogThemeEntity> _repo;
-
-    public DeleteThemeCommandHandler(IRepository<BlogThemeEntity> repo) => _repo = repo;
-
-    public async Task<OperationCode> Handle(DeleteThemeCommand request, CancellationToken ct)
+    public async Task<OperationCode> HandleAsync(DeleteThemeCommand request, CancellationToken ct)
     {
-        var theme = await _repo.GetAsync(request.Id, ct);
+        var theme = await repo.GetByIdAsync(request.Id, ct);
         if (null == theme) return OperationCode.ObjectNotFound;
         if (theme.ThemeType == ThemeType.System) return OperationCode.Canceled;
 
-        await _repo.DeleteAsync(request.Id, ct);
+        await repo.DeleteAsync(theme, ct);
         return OperationCode.Done;
     }
 }

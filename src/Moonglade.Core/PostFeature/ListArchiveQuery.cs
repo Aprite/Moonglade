@@ -1,18 +1,17 @@
-﻿using Moonglade.Data.Spec;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Core.PostFeature;
 
-public record ListArchiveQuery(int Year, int? Month = null) : IRequest<IReadOnlyList<PostDigest>>;
+public record ListArchiveQuery(int Year, int? Month = null) : IQuery<List<PostDigest>>;
 
-public class ListArchiveQueryHandler : IRequestHandler<ListArchiveQuery, IReadOnlyList<PostDigest>>
+public class ListArchiveQueryHandler(MoongladeRepository<PostEntity> repo) : IQueryHandler<ListArchiveQuery, List<PostDigest>>
 {
-    private readonly IRepository<PostEntity> _repo;
-    public ListArchiveQueryHandler(IRepository<PostEntity> repo) => _repo = repo;
-
-    public Task<IReadOnlyList<PostDigest>> Handle(ListArchiveQuery request, CancellationToken ct)
+    public Task<List<PostDigest>> HandleAsync(ListArchiveQuery request, CancellationToken ct)
     {
-        var spec = new PostSpec(request.Year, request.Month.GetValueOrDefault());
-        var list = _repo.SelectAsync(spec, PostDigest.EntitySelector);
+        var spec = new PostByYearMonthSpec(request.Year, request.Month.GetValueOrDefault());
+        var list = repo.SelectAsync(spec, PostDigest.EntitySelector, ct);
         return list;
     }
 }

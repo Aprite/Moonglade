@@ -1,29 +1,92 @@
-﻿@page "/archive/{year:int:length(4)}/{month:int:range(1,12)?}"
-@model Moonglade.Web.Pages.ArchiveListModel
+﻿@page "/post/{year:int:length(4)}/{month:int:range(1,12)?}"
+@using Microsoft.AspNetCore.Mvc.TagHelpers
+@using Moonglade.Core.PostFeature
+@using System.Globalization
 @{
-    ViewBag.TitlePrefix = $"All Posts in {Model.ArchiveInfo}";
+    ViewBag.TitlePrefix = $"Posts in {ArchiveInfo}";
+    ViewBag.BodyClass = "body-archive-list bg-gray-1";
 }
 
-<h3>
+<h2 class="page-heading mb-4">
     @ViewBag.TitlePrefix
-</h3>
-<hr />
+</h2>
+
 <div>
-    @if (!Model.Posts.Any())
+    @if (!Posts.Any())
     {
-        <div class="alert alert-warning">
-            @SharedLocalizer["No Posts"]
+        <div class="text-muted text-center">
+            - @SharedLocalizer["No Posts"] -
         </div>
     }
     else
     {
-        foreach (var item in Model.Posts.OrderByDescending(s => s.PubDateUtc))
+        @foreach (var item in Posts)
         {
             <partial name="_PostListEntry" model="item" />
-            <div class="mb-4 d-none d-md-block"></div>
-            <hr class="d-none d-md-block" />
         }
     }
 </div>
 
-<partial name="_LightSwitch" />
+@functions
+{
+    [BindProperty]
+    public List<PostDigest> Posts { get; set; } = new();
+
+    [BindProperty]
+    public string ArchiveInfo { get; set; } = string.Empty;
+
+    public async Task<IActionResult> OnGetAsync(int year, int? month)
+    {
+        // Validate year range more appropriately
+        var currentYear = DateTime.UtcNow.Year;
+        if (year < 2000 || year > currentYear)
+        {
+            return BadRequest($"Year must be between 2000 and {currentYear}");
+        }
+
+        // Month validation is already handled by route constraint, but add safety check
+        if (month.HasValue && (month < 1 || month > 12))
+        {
+            return BadRequest("Month must be between 1 and 12");
+        }
+
+        List<PostDigest> model;
+
+        if (month.HasValue)
+        {
+            // Validate the date is constructible
+            if (!IsValidDate(year, month.Value))
+            {
+                return BadRequest("Invalid date specified");
+            }
+
+            // {year}/{month}
+            ArchiveInfo = new DateTime(year, month.Value, 1).ToString("MMMM yyyy", CultureInfo.InvariantCulture);
+            model = await QueryMediator.QueryAsync(new ListArchiveQuery(year, month));
+        }
+        else
+        {
+            // {year}
+            ArchiveInfo = year.ToString(CultureInfo.InvariantCulture);
+            model = await QueryMediator.QueryAsync(new ListArchiveQuery(year));
+        }
+
+        // Sort at query level if possible, otherwise sort here
+        Posts = model?.OrderByDescending(p => p.PubDateUtc).ToList() ?? new List<PostDigest>();
+
+        return Page();
+    }
+
+    private static bool IsValidDate(int year, int month)
+    {
+        try
+        {
+            _ = new DateTime(year, month, 1);
+            return true;
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return false;
+        }
+    }
+}

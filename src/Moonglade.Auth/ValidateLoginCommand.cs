@@ -1,38 +1,31 @@
-﻿using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Configuration;
 using Moonglade.Utils;
 
 namespace Moonglade.Auth;
 
-public record ValidateLoginCommand(string Username, string InputPassword) : IRequest<Guid>;
+public record ValidateLoginCommand(string Username, string InputPassword) : ICommand<bool>;
 
-public class ValidateLoginCommandHandler : IRequestHandler<ValidateLoginCommand, Guid>
+public class ValidateLoginCommandHandler(
+    IBlogConfig config,
+    ILogger<ValidateLoginCommandHandler> logger
+    ) : ICommandHandler<ValidateLoginCommand, bool>
 {
-    private readonly IRepository<LocalAccountEntity> _repo;
-
-    public ValidateLoginCommandHandler(IRepository<LocalAccountEntity> repo) => _repo = repo;
-
-    public async Task<Guid> Handle(ValidateLoginCommand request, CancellationToken ct)
+    public Task<bool> HandleAsync(ValidateLoginCommand request, CancellationToken ct)
     {
-        var account = await _repo.GetAsync(p => p.Username == request.Username);
-        if (account is null) return Guid.Empty;
+        var account = config.LocalAccountSettings;
 
-        var valid = account.PasswordHash == (string.IsNullOrWhiteSpace(account.PasswordSalt)
-            ? Helper.HashPassword(request.InputPassword.Trim())
-            : Helper.HashPassword2(request.InputPassword.Trim(), account.PasswordSalt));
+        if (account is null) return Task.FromResult(false);
+        if (account.Username != request.Username) return Task.FromResult(false);
 
-        // migrate old account to salt
-        if (valid && string.IsNullOrWhiteSpace(account.PasswordSalt))
+        var valid = account.PasswordHash == SecurityHelper.HashPassword(request.InputPassword.Trim(), account.PasswordSalt);
+
+        if (!valid)
         {
-            var salt = Helper.GenerateSalt();
-            var newHash = Helper.HashPassword2(request.InputPassword.Trim(), salt);
-
-            account.PasswordSalt = salt;
-            account.PasswordHash = newHash;
-
-            await _repo.UpdateAsync(account, ct);
+            logger.LogWarning("Login failed for user {Username}", request.Username);
         }
 
-        return valid ? account.Id : Guid.Empty;
+        return Task.FromResult(valid);
     }
 }

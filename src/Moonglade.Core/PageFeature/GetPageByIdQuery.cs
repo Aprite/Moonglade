@@ -1,19 +1,11 @@
-﻿namespace Moonglade.Core.PageFeature;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
 
-public record GetPageByIdQuery(Guid Id) : IRequest<BlogPage>;
+namespace Moonglade.Core.PageFeature;
 
-public class GetPageByIdQueryHandler : IRequestHandler<GetPageByIdQuery, BlogPage>
+public record GetPageByIdQuery(Guid Id) : IQuery<PageEntity>;
+
+public class GetPageByIdQueryHandler(MoongladeRepository<PageEntity> repo) : IQueryHandler<GetPageByIdQuery, PageEntity>
 {
-    private readonly IRepository<PageEntity> _repo;
-
-    public GetPageByIdQueryHandler(IRepository<PageEntity> repo) => _repo = repo;
-
-    public async Task<BlogPage> Handle(GetPageByIdQuery request, CancellationToken ct)
-    {
-        var entity = await _repo.GetAsync(request.Id, ct);
-        if (entity == null) return null;
-
-        var item = new BlogPage(entity);
-        return item;
-    }
+    public Task<PageEntity> HandleAsync(GetPageByIdQuery request, CancellationToken ct) => repo.GetByIdAsync(request.Id, ct);
 }

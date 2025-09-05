@@ -1,51 +1,53 @@
 ﻿using Microsoft.Extensions.Logging;
-using System.Text.RegularExpressions;
+using Moonglade.Utils;
 
 namespace Moonglade.Pingback;
 
-public class PingbackSender : IPingbackSender
+public class PingbackSender(HttpClient httpClient,
+        IPingbackRequestor requestor,
+        ILogger<PingbackSender> logger)
+    : IPingbackSender
 {
-    private readonly HttpClient _httpClient;
-    private readonly IPingbackWebRequest _pingbackWebRequest;
-    private readonly ILogger<PingbackSender> _logger;
-
-    public PingbackSender(
-        HttpClient httpClient,
-        IPingbackWebRequest pingbackWebRequest,
-        ILogger<PingbackSender> logger = null)
-    {
-        _httpClient = httpClient;
-        _pingbackWebRequest = pingbackWebRequest;
-        _logger = logger;
-    }
-
     public async Task TrySendPingAsync(string postUrl, string postContent)
     {
         try
         {
             var uri = new Uri(postUrl);
+
+            if (uri.IsLocalhostUrl())
+            {
+                logger.LogWarning("Source URL is localhost, skipping.");
+                return;
+            }
+
             var content = postContent.ToUpperInvariant();
             if (content.Contains("HTTP://") || content.Contains("HTTPS://"))
             {
-                _logger?.LogInformation("URL is detected in post content, trying to send ping requests.");
+                logger.LogInformation("URL is detected in post content, trying to send ping requests.");
 
-                foreach (var url in GetUrlsFromContent(postContent))
+                foreach (var url in UrlHelper.GetUrlsFromContent(postContent))
                 {
-                    _logger?.LogInformation("Pinging URL: " + url);
+                    if (url.IsLocalhostUrl())
+                    {
+                        logger.LogWarning("Target URL is localhost, skipping.");
+                        continue;
+                    }
+
+                    logger.LogInformation("Pinging URL: " + url);
                     try
                     {
                         await SendAsync(uri, url);
                     }
                     catch (Exception e)
                     {
-                        _logger?.LogError(e, "SendAsync Ping Error.");
+                        logger.LogError(e, "SendAsync Ping Error.");
                     }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, $"{nameof(TrySendPingAsync)}({postUrl})");
+            logger.LogError(ex, $"{nameof(TrySendPingAsync)}({postUrl})");
         }
     }
 
@@ -58,59 +60,45 @@ public class PingbackSender : IPingbackSender
 
         try
         {
-            var response = await _httpClient.GetAsync(targetUrl);
+            var response = await httpClient.GetAsync(targetUrl);
 
             var (key, value) = response.Headers.FirstOrDefault(
                 h => h.Key.ToLower() == "x-pingback" || h.Key.ToLower() == "pingback");
 
             if (key is null || value is null)
             {
-                _logger?.LogInformation($"Pingback endpoint is not found for URL '{targetUrl}', ping request is terminated.");
+                logger.LogInformation($"Pingback endpoint is not found for URL '{targetUrl}', ping request is terminated.");
                 return;
             }
 
-            var pingUrl = value.FirstOrDefault();
-            if (pingUrl is not null)
+            var endpoint = value.FirstOrDefault();
+            if (endpoint is not null)
             {
-                _logger?.LogInformation($"Found Ping service URL '{pingUrl}' on target '{sourceUrl}'");
+                logger.LogInformation($"Found Ping service URL '{endpoint}' on target '{targetUrl}'");
 
-                bool successUrlCreation = Uri.TryCreate(pingUrl, UriKind.Absolute, out var url);
+                bool successUrlCreation = Uri.TryCreate(endpoint, UriKind.Absolute, out var url);
                 if (successUrlCreation)
                 {
-                    var pResponse = await _pingbackWebRequest.Send(sourceUrl, targetUrl, url);
+                    var pResponse = await requestor.Send(sourceUrl, targetUrl, url);
+
+                    if (!pResponse.IsSuccessStatusCode)
+                    {
+                        logger.LogError($"Ping request failed: {pResponse.StatusCode}");
+                    }
+                    else
+                    {
+                        logger.LogInformation($"Ping request successful: {pResponse.StatusCode}");
+                    }
                 }
                 else
                 {
-                    _logger?.LogInformation($"Invliad Ping service URL '{pingUrl}'");
+                    logger.LogInformation($"Invliad Ping service URL '{endpoint}'");
                 }
             }
         }
         catch (Exception e)
         {
-            _logger?.LogError(e, $"{nameof(SendAsync)}({sourceUrl},{targetUrl})");
+            logger.LogError(e, $"{nameof(SendAsync)}({sourceUrl},{targetUrl})");
         }
-    }
-
-    private static readonly Regex UrlsRegex = new(
-        @"<a.*?href=[""'](?<url>.*?)[""'].*?>(?<name>.*?)</a>", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
-    private static IEnumerable<Uri> GetUrlsFromContent(string content)
-    {
-        if (string.IsNullOrWhiteSpace(content))
-        {
-            throw new ArgumentNullException(content);
-        }
-
-        var urlsList = new List<Uri>();
-        foreach (var url in
-            UrlsRegex.Matches(content).Select(myMatch => myMatch.Groups["url"].ToString().Trim()))
-        {
-            if (Uri.TryCreate(url, UriKind.Absolute, out var uri))
-            {
-                urlsList.Add(uri);
-            }
-        }
-
-        return urlsList;
     }
 }

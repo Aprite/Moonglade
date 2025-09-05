@@ -1,12 +1,29 @@
-﻿namespace Moonglade.Core.PageFeature;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 
-public record DeletePageCommand(Guid Id) : IRequest;
+namespace Moonglade.Core.PageFeature;
 
-public class DeletePageCommandHandler : AsyncRequestHandler<DeletePageCommand>
+public record DeletePageCommand(Guid Id) : ICommand<OperationCode>;
+
+public class DeletePageCommandHandler(
+    MoongladeRepository<PageEntity> repo,
+    ICommandMediator commandMediator,
+    ILogger<DeletePageCommandHandler> logger) : ICommandHandler<DeletePageCommand, OperationCode>
 {
-    private readonly IRepository<PageEntity> _repo;
-    public DeletePageCommandHandler(IRepository<PageEntity> repo) => _repo = repo;
+    public async Task<OperationCode> HandleAsync(DeletePageCommand request, CancellationToken ct)
+    {
+        var page = await repo.GetByIdAsync(request.Id, ct);
+        if (page == null) return OperationCode.ObjectNotFound;
 
-    protected override async Task Handle(DeletePageCommand request, CancellationToken ct) =>
-        await _repo.DeleteAsync(request.Id, ct);
+        if (!string.IsNullOrWhiteSpace(page.CssId))
+        {
+            await commandMediator.SendAsync(new DeleteStyleSheetCommand(new(page.CssId)), ct);
+        }
+
+        await repo.DeleteAsync(page, ct);
+
+        logger.LogInformation("Deleted page: {PageId}", request.Id);
+        return OperationCode.Done;
+    }
 }

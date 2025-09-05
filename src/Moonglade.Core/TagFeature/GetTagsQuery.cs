@@ -1,12 +1,11 @@
-﻿namespace Moonglade.Core.TagFeature;
+﻿using LiteBus.Queries.Abstractions;
+using Moonglade.Data;
 
-public record GetTagsQuery : IRequest<IReadOnlyList<Tag>>;
+namespace Moonglade.Core.TagFeature;
 
-public class GetTagsQueryHandler : IRequestHandler<GetTagsQuery, IReadOnlyList<Tag>>
+public record GetTagsQuery : IQuery<List<TagEntity>>;
+
+public class GetTagsQueryHandler(MoongladeRepository<TagEntity> repo) : IQueryHandler<GetTagsQuery, List<TagEntity>>
 {
-    private readonly IRepository<TagEntity> _repo;
-
-    public GetTagsQueryHandler(IRepository<TagEntity> repo) => _repo = repo;
-
-    public Task<IReadOnlyList<Tag>> Handle(GetTagsQuery request, CancellationToken ct) => _repo.SelectAsync(Tag.EntitySelector, ct);
+    public Task<List<TagEntity>> HandleAsync(GetTagsQuery request, CancellationToken ct) => repo.ListAsync(ct);
 }

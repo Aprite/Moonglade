@@ -1,23 +1,21 @@
-﻿using Microsoft.AspNetCore.Mvc.RazorPages;
+﻿using LiteBus.Queries.Abstractions;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Moonglade.Core.PostFeature;
-using Moonglade.Data.Spec;
+using Moonglade.Data.Specifications;
+using Moonglade.Web.PagedList;
 using System.ComponentModel.DataAnnotations;
-using X.PagedList;
 
 namespace Moonglade.Web.Pages.Admin;
 
-public class PostModel : PageModel
+public class PostModel(IQueryMediator queryMediator) : PageModel
 {
-    private readonly IMediator _mediator;
-    private const int PageSize = 7;
+    private const int PageSize = 4;
 
     [BindProperty]
     [MaxLength(32)]
     public string SearchTerm { get; set; }
 
-    public StaticPagedList<PostSegment> PostSegments { get; set; }
-
-    public PostModel(IMediator mediator) => _mediator = mediator;
+    public BasePagedList<PostSegment> PostSegments { get; set; }
 
     public async Task OnPost() => await GetPosts(1);
 
@@ -30,7 +28,7 @@ public class PostModel : PageModel
 
     private async Task GetPosts(int pageIndex)
     {
-        var (posts, totalRows) = await _mediator.Send(new ListPostSegmentQuery(PostStatus.Published, (pageIndex - 1) * PageSize, PageSize, SearchTerm));
+        var (posts, totalRows) = await queryMediator.QueryAsync(new ListPostSegmentQuery(PostStatus.Published, (pageIndex - 1) * PageSize, PageSize, SearchTerm));
         PostSegments = new(posts, pageIndex, PageSize, totalRows);
     }
 }

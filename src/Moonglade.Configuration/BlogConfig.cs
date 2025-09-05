@@ -1,47 +1,86 @@
-﻿namespace Moonglade.Configuration;
+﻿
+namespace Moonglade.Configuration;
 
-public interface IBlogSettings
-{
-}
+public interface IBlogSettings;
 
 public interface IBlogConfig
 {
     GeneralSettings GeneralSettings { get; set; }
     ContentSettings ContentSettings { get; set; }
+    CommentSettings CommentSettings { get; set; }
     NotificationSettings NotificationSettings { get; set; }
     FeedSettings FeedSettings { get; set; }
     ImageSettings ImageSettings { get; set; }
     AdvancedSettings AdvancedSettings { get; set; }
-    CustomStyleSheetSettings CustomStyleSheetSettings { get; set; }
-    void LoadFromConfig(IDictionary<string, string> config);
+    AppearanceSettings AppearanceSettings { get; set; }
+    CustomMenuSettings CustomMenuSettings { get; set; }
+    LocalAccountSettings LocalAccountSettings { get; set; }
+    SocialLinkSettings SocialLinkSettings { get; set; }
+    SystemManifestSettings SystemManifestSettings { get; set; }
+
+    IEnumerable<string> LoadFromConfig(IDictionary<string, string> config);
     KeyValuePair<string, string> UpdateAsync<T>(T blogSettings) where T : IBlogSettings;
 }
 
 public class BlogConfig : IBlogConfig
 {
-    public GeneralSettings GeneralSettings { get; set; }
+    public GeneralSettings GeneralSettings { get; set; } = new();
+    public ContentSettings ContentSettings { get; set; } = new();
+    public CommentSettings CommentSettings { get; set; } = new();
+    public NotificationSettings NotificationSettings { get; set; } = new();
+    public FeedSettings FeedSettings { get; set; } = new();
+    public ImageSettings ImageSettings { get; set; } = new();
+    public AdvancedSettings AdvancedSettings { get; set; } = new();
+    public AppearanceSettings AppearanceSettings { get; set; } = new();
+    public CustomMenuSettings CustomMenuSettings { get; set; } = new();
+    public LocalAccountSettings LocalAccountSettings { get; set; } = new();
+    public SocialLinkSettings SocialLinkSettings { get; set; } = new();
+    public SystemManifestSettings SystemManifestSettings { get; set; } = new();
 
-    public ContentSettings ContentSettings { get; set; }
+    private readonly List<string> _keysToInit = [];
 
-    public NotificationSettings NotificationSettings { get; set; }
-
-    public FeedSettings FeedSettings { get; set; }
-
-    public ImageSettings ImageSettings { get; set; }
-
-    public AdvancedSettings AdvancedSettings { get; set; }
-
-    public CustomStyleSheetSettings CustomStyleSheetSettings { get; set; }
-
-    public void LoadFromConfig(IDictionary<string, string> config)
+    public IEnumerable<string> LoadFromConfig(IDictionary<string, string> config)
     {
-        GeneralSettings = config[nameof(GeneralSettings)].FromJson<GeneralSettings>();
-        ContentSettings = config[nameof(ContentSettings)].FromJson<ContentSettings>();
-        NotificationSettings = config[nameof(NotificationSettings)].FromJson<NotificationSettings>();
-        FeedSettings = config[nameof(FeedSettings)].FromJson<FeedSettings>();
-        ImageSettings = config[nameof(ImageSettings)].FromJson<ImageSettings>();
-        AdvancedSettings = config[nameof(AdvancedSettings)].FromJson<AdvancedSettings>();
-        CustomStyleSheetSettings = config[nameof(CustomStyleSheetSettings)].FromJson<CustomStyleSheetSettings>();
+        var properties = GetType().GetProperties()
+            .Where(p => typeof(IBlogSettings).IsAssignableFrom(p.PropertyType));
+
+        foreach (var prop in properties)
+        {
+            var currentValue = prop.GetValue(this);
+            var defaultValueProp = prop.PropertyType.GetProperty("DefaultValue");
+
+            if (defaultValueProp == null || !defaultValueProp.CanRead)
+            {
+                throw new InvalidOperationException($"Property {prop.Name} does not have a DefaultValue property or it is not readable.");
+            }
+
+            var defaultValue = defaultValueProp?.GetValue(currentValue);
+
+            var assignedValue = AssignValueForConfigItem((IBlogSettings)defaultValue, config, prop.Name, prop.PropertyType);
+            prop.SetValue(this, assignedValue);
+        }
+
+        return _keysToInit.AsEnumerable();
+    }
+
+    private IBlogSettings AssignValueForConfigItem(IBlogSettings defaultValue, IDictionary<string, string> config, string name, Type type)
+    {
+        if (config.TryGetValue(name, out var value))
+        {
+            try
+            {
+                // Assuming you have a FromJson extension method
+                var method = typeof(JsonExtensions).GetMethod("FromJson").MakeGenericMethod(type);
+                return (IBlogSettings)method.Invoke(null, [value]);
+            }
+            catch
+            {
+                // Handle deserialization error if needed
+            }
+        }
+
+        _keysToInit.Add(name);
+        return defaultValue;
     }
 
     public KeyValuePair<string, string> UpdateAsync<T>(T blogSettings) where T : IBlogSettings
@@ -51,7 +90,7 @@ public class BlogConfig : IBlogConfig
 
         // update singleton itself
         var prop = GetType().GetProperty(name);
-        if (prop != null) prop.SetValue(this, blogSettings);
+        prop?.SetValue(this, blogSettings);
 
         return new(name, json);
     }

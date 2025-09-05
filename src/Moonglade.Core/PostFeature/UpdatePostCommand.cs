@@ -1,68 +1,114 @@
-using Microsoft.EntityFrameworkCore;
+using Edi.CacheAside.InMemory;
+using LiteBus.Commands.Abstractions;
 using Microsoft.Extensions.Configuration;
-using Moonglade.Caching;
+using Microsoft.Extensions.Logging;
 using Moonglade.Configuration;
-using Moonglade.Core.TagFeature;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
 using Moonglade.Utils;
 
 namespace Moonglade.Core.PostFeature;
 
-public record UpdatePostCommand(Guid Id, PostEditModel Payload) : IRequest<PostEntity>;
-public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, PostEntity>
+public record UpdatePostCommand(Guid Id, PostEditModel Payload) : ICommand<PostEntity>;
+public class UpdatePostCommandHandler(
+    MoongladeRepository<TagEntity> tagRepo,
+    MoongladeRepository<PostEntity> postRepo,
+    ICacheAside cache,
+    IBlogConfig blogConfig,
+    IConfiguration configuration,
+    ILogger<UpdatePostCommandHandler> logger) : ICommandHandler<UpdatePostCommand, PostEntity>
 {
-    private readonly IRepository<PostCategoryEntity> _pcRepository;
-    private readonly IRepository<PostTagEntity> _ptRepository;
-    private readonly IRepository<TagEntity> _tagRepo;
-    private readonly IRepository<PostEntity> _postRepo;
-    private readonly IBlogCache _cache;
-    private readonly IBlogConfig _blogConfig;
-    private readonly IConfiguration _configuration;
-    private readonly bool _useMySqlWorkaround;
-
-    public UpdatePostCommandHandler(
-        IRepository<PostCategoryEntity> pcRepository,
-        IRepository<PostTagEntity> ptRepository,
-        IRepository<TagEntity> tagRepo,
-        IRepository<PostEntity> postRepo,
-        IBlogCache cache,
-        IBlogConfig blogConfig, IConfiguration configuration)
+    public async Task<PostEntity> HandleAsync(UpdatePostCommand request, CancellationToken ct)
     {
-        _ptRepository = ptRepository;
-        _pcRepository = pcRepository;
-        _tagRepo = tagRepo;
-        _postRepo = postRepo;
-        _cache = cache;
-        _blogConfig = blogConfig;
-        _configuration = configuration;
+        var utcNow = DateTime.UtcNow;
+        var (postId, postEditModel) = request;
+        var post = await postRepo.FirstOrDefaultAsync(new PostSpec(postId), ct) ?? throw new InvalidOperationException($"Post {postId} is not found.");
 
-        string dbType = configuration.GetConnectionString("DatabaseType");
-        _useMySqlWorkaround = dbType!.ToLower().Trim() == "mysql";
+        UpdatePostDetails(post, postEditModel, utcNow);
+
+        await UpdateTags(post, postEditModel.Tags, ct);
+        UpdateCats(post, postEditModel.SelectedCatIds);
+
+        await postRepo.UpdateAsync(post, ct);
+
+        cache.Remove(BlogCachePartition.Post.ToString(), post.RouteLink);
+
+        logger.LogInformation("Post updated with ID: {PostId}", post.Id);
+        return post;
     }
 
-    public async Task<PostEntity> Handle(UpdatePostCommand request, CancellationToken ct)
+    private async Task UpdateTags(PostEntity post, string tagString, CancellationToken ct)
     {
-        var (guid, postEditModel) = request;
-        var post = await _postRepo.GetAsync(guid, ct);
-        if (null == post)
+        // 1. Add new tags to tag lib
+        var tags = string.IsNullOrWhiteSpace(tagString) ?
+            [] :
+            tagString.Split(',').ToArray();
+
+        foreach (var item in tags)
         {
-            throw new InvalidOperationException($"Post {guid} is not found.");
+            if (!await tagRepo.AnyAsync(new TagByDisplayNameSpec(item), ct))
+            {
+                await tagRepo.AddAsync(new()
+                {
+                    DisplayName = item,
+                    NormalizedName = BlogTagHelper.NormalizeName(item, BlogTagHelper.TagNormalizationDictionary)
+                }, ct);
+            }
         }
 
+        post.Tags.Clear();
+        if (tags.Length != 0)
+        {
+            foreach (var tagName in tags)
+            {
+                if (!BlogTagHelper.IsValidTagName(tagName))
+                {
+                    continue;
+                }
+
+                var tag = await tagRepo.FirstOrDefaultAsync(new TagByDisplayNameSpec(tagName), ct);
+                if (tag is not null) post.Tags.Add(tag);
+            }
+        }
+    }
+
+    private void UpdatePostDetails(PostEntity post, PostEditModel postEditModel, DateTime utcNow)
+    {
         post.CommentEnabled = postEditModel.EnableComment;
         post.PostContent = postEditModel.EditorContent;
-        post.ContentAbstract = ContentProcessor.GetPostAbstract(
-            string.IsNullOrEmpty(postEditModel.Abstract) ? postEditModel.EditorContent : postEditModel.Abstract.Trim(),
-            _blogConfig.ContentSettings.PostAbstractWords,
-            _configuration.GetSection("Editor").Get<EditorChoice>() == EditorChoice.Markdown);
+        post.ContentAbstract = string.IsNullOrEmpty(postEditModel.Abstract)
+            ? ContentProcessor.GetPostAbstract(
+                postEditModel.EditorContent,
+                blogConfig.ContentSettings.PostAbstractWords,
+                configuration.GetValue<EditorChoice>("Post:Editor") == EditorChoice.Markdown)
+            : postEditModel.Abstract.Trim();
 
-        if (postEditModel.IsPublished && !post.IsPublished)
+        // Only publish the post if it was not yet published
+        // Otherwise, updating existing post will result in changing publish date and break the slug URL
+        if (post.PostStatus != PostStatusConstants.Published &&
+            postEditModel.PostStatus == PostStatusConstants.Published)
         {
-            post.IsPublished = true;
-            post.PubDateUtc = DateTime.UtcNow;
+            post.PostStatus = PostStatusConstants.Published;
+            post.PubDateUtc = utcNow;
+        }
+
+        if (postEditModel.PostStatus == PostStatusConstants.Scheduled)
+        {
+            post.PostStatus = PostStatusConstants.Scheduled;
+            post.ScheduledPublishTimeUtc = postEditModel.ScheduledPublishTime;
+        }
+
+        // Back to draft for unscheduled posts
+        if (postEditModel.PostStatus == PostStatusConstants.Draft)
+        {
+            post.PostStatus = PostStatusConstants.Draft;
+            post.PubDateUtc = null;
+            post.ScheduledPublishTimeUtc = null;
+            post.RouteLink = null;
         }
 
         // #325: Allow changing publish date for published posts
-        if (postEditModel.PublishDate is not null && post.PubDateUtc.HasValue)
+        if (postEditModel.ChangePublishDate && postEditModel.PublishDate is not null && post.PubDateUtc.HasValue)
         {
             var tod = post.PubDateUtc.Value.TimeOfDay;
             var adjustedDate = postEditModel.PublishDate.Value;
@@ -72,71 +118,22 @@ public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, PostE
         post.Author = postEditModel.Author?.Trim();
         post.Slug = postEditModel.Slug.ToLower().Trim();
         post.Title = postEditModel.Title.Trim();
-        post.LastModifiedUtc = DateTime.UtcNow;
+        post.LastModifiedUtc = utcNow;
         post.IsFeedIncluded = postEditModel.FeedIncluded;
         post.ContentLanguageCode = postEditModel.LanguageCode;
         post.IsFeatured = postEditModel.Featured;
-        post.IsOriginal = string.IsNullOrWhiteSpace(request.Payload.OriginLink);
-        post.OriginLink = string.IsNullOrWhiteSpace(postEditModel.OriginLink) ? null : Helper.SterilizeLink(postEditModel.OriginLink);
-        post.HeroImageUrl = string.IsNullOrWhiteSpace(postEditModel.HeroImageUrl) ? null : Helper.SterilizeLink(postEditModel.HeroImageUrl);
-        post.InlineCss = postEditModel.InlineCss;
+        post.HeroImageUrl = string.IsNullOrWhiteSpace(postEditModel.HeroImageUrl) ? null : SecurityHelper.SterilizeLink(postEditModel.HeroImageUrl);
+        post.IsOutdated = postEditModel.IsOutdated;
+        post.RouteLink = UrlHelper.GenerateRouteLink(post.PubDateUtc.GetValueOrDefault(), postEditModel.Slug);
+        post.Keywords = ContentProcessor.GetKeywords(postEditModel.Keywords);
+    }
 
-        // compute hash
-        var input = $"{post.Slug}#{post.PubDateUtc.GetValueOrDefault():yyyyMMdd}";
-        var checkSum = Helper.ComputeCheckSum(input);
-        post.HashCheckSum = checkSum;
-
-        // 1. Add new tags to tag lib
-        var tags = string.IsNullOrWhiteSpace(postEditModel.Tags) ?
-            Array.Empty<string>() :
-            postEditModel.Tags.Split(',').ToArray();
-
-        foreach (var item in tags)
-        {
-            if (!await _tagRepo.AnyAsync(p => p.DisplayName == item, ct))
-            {
-                await _tagRepo.AddAsync(new()
-                {
-                    DisplayName = item,
-                    NormalizedName = Tag.NormalizeName(item, Helper.TagNormalizationDictionary)
-                }, ct);
-            }
-        }
-
-        // 2. update tags
-        if (_useMySqlWorkaround)
-        {
-            var oldTags = await _ptRepository.AsQueryable().Where(pc => pc.PostId == post.Id).ToListAsync(cancellationToken: ct);
-            await _ptRepository.DeleteAsync(oldTags, ct);
-        }
-
-        post.Tags.Clear();
-        if (tags.Any())
-        {
-            foreach (var tagName in tags)
-            {
-                if (!Tag.ValidateName(tagName))
-                {
-                    continue;
-                }
-
-                var tag = await _tagRepo.GetAsync(t => t.DisplayName == tagName);
-                if (tag is not null) post.Tags.Add(tag);
-            }
-        }
-
-        // 3. update categories
-        if (_useMySqlWorkaround)
-        {
-            var oldpcs = await _pcRepository.AsQueryable().Where(pc => pc.PostId == post.Id)
-                .ToListAsync(cancellationToken: ct);
-            await _pcRepository.DeleteAsync(oldpcs, ct);
-        }
-
+    private static void UpdateCats(PostEntity post, Guid[] catIds)
+    {
         post.PostCategory.Clear();
-        if (postEditModel.SelectedCatIds.Any())
+        if (catIds.Length != 0)
         {
-            foreach (var cid in postEditModel.SelectedCatIds)
+            foreach (var cid in catIds)
             {
                 post.PostCategory.Add(new()
                 {
@@ -145,10 +142,5 @@ public class UpdatePostCommandHandler : IRequestHandler<UpdatePostCommand, PostE
                 });
             }
         }
-
-        await _postRepo.UpdateAsync(post, ct);
-
-        _cache.Remove(CacheDivision.Post, guid.ToString());
-        return post;
     }
 }

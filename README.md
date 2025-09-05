@@ -1,205 +1,194 @@
-# Moonglade Blog
+# 🌙 Moonglade Blog
 
-[![Build Status](https://dev.azure.com/ediwang/Edi-GitHub/_apis/build/status/EdiWang.Moonglade?branchName=master)](https://dev.azure.com/ediwang/Moonglade%20DevOps/_build/latest?definitionId=68&branchName=master) 
-[![Docker Linux x64](https://github.com/EdiWang/Moonglade/actions/workflows/docker.yml/badge.svg)](https://github.com/EdiWang/Moonglade/actions/workflows/docker.yml)
-![.NET Build Linux](https://github.com/EdiWang/Moonglade/workflows/.NET%20Build%20Linux/badge.svg) 
+**Moonglade** is a personal blogging platform built for developers, optimized for seamless deployment on [**Microsoft Azure**](https://azure.microsoft.com/en-us/). It features essential blogging tools: posts, comments, categories, tags, archives, and pages.
 
-The [.NET](https://dotnet.microsoft.com/) blog system of [edi.wang](https://edi.wang) that runs on [**Microsoft Azure**](https://azure.microsoft.com/en-us/). Designed for developers, enabling most common blogging features including posts, comments, categories, archive, tags and pages.
+## 🚀 Deployment
 
-## 📦 Deployment
+> This blogging system must not be used to serve users in mainland China or to publish content prohibited by Chinese law or any applicable regulations.
 
-- It is recommended to use stable code from [Release](https://github.com/EdiWang/Moonglade/releases) rather than master branch.
+- **Stable Code:** Always use the [Release](https://github.com/EdiWang/Moonglade/releases) branch. Avoid deploying from `master`.
+- **Security:** Enable **HTTPS** and **HTTP/2** on your web server for optimal security and performance.
+- **Deployment Options:** While Azure is recommended, Moonglade can run on any cloud provider or on-premises.
 
-- It is recommended to enable HTTP/2 support on your web server.
+### Full Azure Deployment
 
-### ☁ Full Deploy on Azure (Recommend)
+This mirrors how [edi.wang](https://edi.wang) is deployed, utilizing a variety of Azure services for maximum speed and security. **No automated script is provided**—manual resource creation is required.
 
-This is the way https://edi.wang is deployed, by taking advantage of as many Azure services as possible, the blog can run very fast and secure.
+![Azure Architecture](https://cdn.edi.wang/web-assets/ediwang-azure-arch-visio-oct2024.svg)
 
-This diagram shows a full Azure deployment for Moonglade for reference.
+### Quick Azure Deploy (App Service on Linux)
 
-![image](https://ediwang.cdn.moonglade.blog/web-assets/ediwang-azure-arch-visio-nov2022.png)
+Get started in 10 minutes with minimal Azure resources using our [automated deployment script](https://github.com/EdiWang/Moonglade/wiki/Quick-Deploy-on-Azure).
 
-### 🐋 Quick Deploy on Azure
+## 🛠️ Development
 
-Use automated deployment script to get your Moonglade up and running in 10 minutes, follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Deploy-on-Azure)
+| Tools                      | Alternatives                                                                                       |
+|----------------------------|----------------------------------------------------------------------------------------------------|
+| [Visual Studio 2022](https://visualstudio.microsoft.com/) | [VS Code](https://code.visualstudio.com/) + [.NET 8.0 SDK](http://dot.net)           |
+| [SQL Server 2022](https://www.microsoft.com/en-us/sql-server/sql-server-2022) | [LocalDB](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb?view=sql-server-ver16&WT.mc_id=AZ-MVP-5002809), PostgreSQL, or MySQL |
 
-### 🐧 Quick Deploy on Linux without Docker
+### Database Setup
 
-To quickly get it running on a new Linux machine without Docker, follow instructions [here](https://github.com/EdiWang/Moonglade/wiki/Quick-Install-on-Linux-Machine). You can watch video tutorial [here](https://anduins-site.player.aiur.site/moonglade-install.mp4).
+> **Tip:** SQL Server Express (free) is sufficient for most production uses.
 
-## 🐵 Development
+| Database         | Example Connection String (`appsettings.json > ConnectionStrings > MoongladeDatabase`)         |
+|------------------|----------------------------------------------------------------------------------------------|
+| SQL Server       | `Server=(local);Database=moonglade;Trusted_Connection=True;`                                  |
+| MySQL            | `Server=localhost;Port=3306;Database=moonglade;Uid=root;Pwd=***;`                             |
+| PostgreSQL       | `User ID=***;Password=***;Host=localhost;Port=5432;Database=moonglade;Pooling=true;`          |
 
-Tools | Alternative
---- | ---
-[Visual Studio 2022 v17.4+](https://visualstudio.microsoft.com/) | [Visual Studio Code](https://code.visualstudio.com/) with [.NET 7.0 SDK](http://dot.net)
-[SQL Server 2022](https://www.microsoft.com/en-us/sql-server/sql-server-2022) | [SQL Server LocalDB](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/sql-server-express-localdb?view=sql-server-ver16&WT.mc_id=AZ-MVP-5002809), PostgreSQL or MySQL 
+Change `ConnectionStrings:DatabaseProvider` in `appsettings.json` to match your database type.` 
 
-### 💾 Setup Database
+- SQL Server: `SqlServer`
+- MySQL: `MySql`
+- PostgreSQL: `PostgreSql`
 
-Moonglade supports three types of database. You can choose from SQL Server, PostgreSQL or MySQL.
+### Build & Run
 
-#### SQL Server
+1. Build and run `./src/Moonglade.sln`
+2. Access your blog:
+    - **Home:** `https://localhost:17251`
+    - **Admin:** `https://localhost:17251/admin`
+      - Default username: `admin`
+      - Default password: `admin123`
 
-Create a SQL Server 2022 database, e.g. ```moonglade```
+## ⚙️ Configuration
 
-Set the `MoongladeDatabase` to your database connection string in `appsettings.Development.json`
+> Most settings are managed in `appsettings.json`. For blog settings, use the `/admin/settings` UI.
 
-```json
-"MoongladeDatabase": "Server=(localdb)\\MSSQLLocalDB;Database=moonglade;Trusted_Connection=True;"
-```
+### Authentication
 
-#### MySQL
+- By default: Local accounts (manage via `/admin/settings/account`)
+- **Microsoft Entra ID** (Azure AD) supported. [Setup guide](https://github.com/EdiWang/Moonglade/wiki/Use-Microsoft-Entra-ID-Authentication)
 
-Set `DatabaseType` to `MySql`
+### Image Storage
 
-```json
-"DatabaseType": "MySql"
-```
+Configure the `ImageStorage` section in `appsettings.json` to choose where blog images are stored.
 
-Set the `MoongladeDatabase` to your database connection string in `appsettings.Development.json`
+#### **Azure Blob Storage** (Recommended)
 
-```json
-"MoongladeDatabase": "Server=localhost;Port=3306;Database=moonglade;Uid=root;Pwd=******;"
-```
-
-#### PostgreSql
-
-Set `DatabaseType` to `PostgreSql`
-
-```json
-"DatabaseType": "PostgreSql"
-```
-
-Set the `MoongladeDatabase` to your database connection string in `appsettings.Development.json`
-
-```json
-"MoongladeDatabase": "User ID=****;Password=****;Host=localhost;Port=5432;Database=****;Pooling=true;"
-```
-
-### 🔨 Build Source
-
-Build and run `./src/Moonglade.sln`
-- Admin: `https://localhost:1055/admin`
-- Default username: `admin`
-- Default password: `admin123`
-
-## ⚙ Configuration
-
-> This section discuss system settings in **appsettings.[env].json**. For blog settings, please use "/admin/settings" UI.
-
-**For production, it is strongly recommended to use Environment Variables over appsetting.json file.**
-
-### 🛡 Authentication
-
-#### [Azure Active Directory](https://azure.microsoft.com/en-us/services/active-directory/)
-
-See [Wiki document](https://github.com/EdiWang/Moonglade/wiki/Use-Azure-Active-Directory-Authentication)
-
-#### Local Account (Alternative)
-
-Set `Authentication:Provider` to `"Local"`. You can manage accounts in `/admin/settings/account`
-
-### 🖼 Image Storage
-`ImageStorage` controls how blog post images are stored.
-
-#### [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) (Preferred)
-
-You need to create an [**Azure Blob Storage**](https://azure.microsoft.com/en-us/services/storage/blobs/) with **container level permission**. 
+Create an [Azure Blob Storage](https://azure.microsoft.com/en-us/services/storage/blobs/) container with appropriate permissions:
 
 ```json
 {
-  "Provider": "azurestorage"
+  "Provider": "azurestorage",
   "AzureStorageSettings": {
-    "ConnectionString": "YOUR CONNECTION STRING",
-    "ContainerName": "YOUR CONTAINER NAME"
+    "ConnectionString": "YOUR_CONNECTION_STRING",
+    "ContainerName": "YOUR_CONTAINER_NAME"
+  }
+}
+```
+- Enable CDN in admin settings for faster image delivery.
+
+#### **MinIO Blob Storage**
+
+Set up a [MinIO Server](https://docs.min.io/):
+
+```json
+{
+  "Provider": "miniostorage",
+  "MinioStorageSettings": {
+    "EndPoint": "localhost:9600",
+    "AccessKey": "YOUR_ACCESS_KEY",
+    "SecretKey": "YOUR_SECRET_KEY",
+    "BucketName": "YOUR_BUCKET_NAME",
+    "WithSSL": false
   }
 }
 ```
 
-When configured the image storage to use Azure Blob, you can take advantage of CDN for your image resources. Just enable CDN in admin settings, the blog will get images from CDN.
+#### **File System** (Not recommended)
 
-#### [Minio Blob Storage](https://min.io/) (Free)
-
-You need to hava an [**Minio Server**](https://docs.min.io/). 
-
-```json
-"Provider": "miniostorage"
-"MinioStorageSettings": {
-  "EndPoint": "Minio Server Endpoint(eg:localhost:9600)",
-  "AccessKey": "Your Access Key",
-  "SecretKey": "Your Secret Key",
-  "BucketName": "Your BucketName",
-  "WithSSL": false
-}
-```
-
-#### [Qiniu Blob Storage](https://qiniu.com/) (Almost free)
-
-You need to hava an Qiniu cloud account, and use [Kodo](https://www.qiniu.com/products/kodo) storage service. 
-
-```json
-"Provider": "qiniustorage"
-"QiniuStorageSettings": {
-  "EndPoint": "Your Custom Domain",
-  "AccessKey": "Your Access Key",
-  "SecretKey": "Your Secret Key",
-  "BucketName": "Your BucketName",
-  "WithSSL": false
-}
-```
-
-#### File System (Not Recommended)
-
-You can also choose File System for image storage if you don't have a cloud option.
-
+Windows:
 ```json
 {
   "Provider": "filesystem",
   "FileSystemPath": "C:\\UploadedImages"
 }
 ```
+Linux:
+```json
+{
+  "Provider": "filesystem",
+  "FileSystemPath": "/app/images"
+}
+```
 
-### 🤬 Comment Moderator
+When using the file system, ensure the path exists and has appropriate permissions. If the path does not exist, Moonglade will attempt to create it. 
 
-- [Comment Moderator Settings](https://github.com/EdiWang/Moonglade/wiki/Comment-Moderator-Settings)
+Leave the `FileSystemPath` empty to use the default path (`~/home/moonglade/images` on Linux or `%UserProfile%\moonglade\images` on Windows).
 
-### 📧 Email Notification
+### Comment Moderation
 
-If you need email notification for new comments, new replies and pingbacks, you have to setup the [Moonglade.Notification Azure Function](https://github.com/EdiWang/Moonglade.Notification) first, and then enable notification in admin portal.
+#### Local Moderation Provider
 
-### 🔩 Others
+For basic keyword filtering, use the built-in local provider:
+
+```json
+"ContentModerator": {
+  "Provider": "Local",
+  "LocalKeywords": "fuck|shit",
+  "ApiEndpoint": "",
+  "ApiKey": ""
+}
+```
+
+#### Azure Content Moderator
+
+Setup [Moonglade.ContentSecurity Azure Function](https://github.com/EdiWang/Moonglade.ContentSecurity):
+
+```json
+"ContentModerator": {
+  "Provider": "Azure",
+  "ApiEndpoint": "<Your Azure Function Endpoint>",
+  "ApiKey": "<Your Azure Function Key>"
+}
+```
+
+### Email Notifications
+
+For notifications on new comments, replies, webmentions, and pingbacks, use [Moonglade.Email Azure Function](https://github.com/EdiWang/Moonglade.Email):
+
+```json
+"Email": {
+  "ApiEndpoint": "",
+  "ApiKey": ""
+}
+```
+Enable notifications in the admin portal.
+
+### More Settings
 
 - [System Settings](https://github.com/EdiWang/Moonglade/wiki/System-Settings)
-- [Security Headers (CSP, XSS, etc.)](https://github.com/EdiWang/Moonglade/wiki/Security-Headers-(CSP,-XSS,-etc.))
+- [Security HTTP Headers](https://github.com/EdiWang/Moonglade/wiki/Security-Headers)
 
-## 🎉 Blog Protocols or Standards
+## 📡 Protocols & Standards
 
-- [X] RSS
-- [X] Atom
-- [X] OPML
-- [X] Open Search
-- [X] Pingback
-- [X] Reader View
-- [X] FOAF
-- [X] RSD
-- [X] MetaWeblog (Basic Support)
-- [ ] BlogML - Under triage
-- [ ] APML - Not planned
-- [ ] Trackback - Not planned
+| Name         | Feature       | Status      | Endpoint        |
+|--------------|---------------|-------------|-----------------|
+| RSS          | Subscription  | Supported   | `/rss`          |
+| Atom         | Subscription  | Supported   | `/atom`         |
+| OPML         | Subscription  | Supported   | `/opml`         |
+| Open Search  | Search        | Supported   | `/opensearch`   |
+| Pingback     | Social        | Supported   | `/pingback`     |
+| Webmention   | Social        | Supported   | `/webmention`   |
+| Reader View  | Reader Mode   | Supported   | N/A             |
+| FOAF         | Social        | Supported   | `/foaf.xml`     |
+| IndexNow     | SEO           | Supported   | N/A             |
+| RSD          | Discovery     | Deprecated  | N/A             |
+| MetaWeblog   | Blogging      | Deprecated  | N/A             |
+| Dublin Core  | SEO           | Basic       | N/A             |
 
-## 🐼 Example Blogs
+## Health Check
 
-There are a few individuals already setup thier blogs using Moonglade on Azure (Global or China), Alibaba Cloud, Tencent Cloud, etc.
+To ensure your Moonglade instance is running, you can use the health check endpoint:
 
-- [Anduin Xue](https://anduin.aiursoft.com/)
-- [zchwei](https://zchwei.com/)
-- [yycoding](https://www.yycoding.xyz/)
-- [51azure](https://www.51azure.cloud/)
-- [Zhuangkh](https://zhuangkh.com/)
-- [HueiFeng](https://blog.stackable.cn/)
-- [Leslie Wang](https://lesliewxj.com/)
-- [AllenMasters](https://allenmasters.com)
-- [Hao's House](https://haxu.dev/)
+```
+GET /ping
+```
 
-*Just Submit PR or issue if you want your blog to be listed here*
+This endpoint returns a simple JSON response indicating the status of your Moonglade instance. e.g.
+
+```json
+{"appVersion":"14.26.0-beta.1 (49011f)","environmentTags":["azure-west-us"],"geoMatch":[]}
+```

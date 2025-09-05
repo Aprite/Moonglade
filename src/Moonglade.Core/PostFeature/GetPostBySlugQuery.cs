@@ -1,54 +1,26 @@
-﻿using Microsoft.Extensions.Configuration;
-using Moonglade.Caching;
-using Moonglade.Data.Spec;
-using Moonglade.Utils;
+﻿using Edi.CacheAside.InMemory;
+using LiteBus.Queries.Abstractions;
+using Microsoft.Extensions.Configuration;
+using Moonglade.Data;
+using Moonglade.Data.Specifications;
 
 namespace Moonglade.Core.PostFeature;
 
-public record GetPostBySlugQuery(PostSlug Slug) : IRequest<Post>;
+public record GetPostBySlugQuery(int Year, int Month, int Day, string Slug) : IQuery<PostEntity>;
 
-public class GetPostBySlugQueryHandler : IRequestHandler<GetPostBySlugQuery, Post>
+public class GetPostBySlugQueryHandler(MoongladeRepository<PostEntity> repo, ICacheAside cache, IConfiguration configuration)
+    : IQueryHandler<GetPostBySlugQuery, PostEntity>
 {
-    private readonly IRepository<PostEntity> _repo;
-    private readonly IBlogCache _cache;
-    private readonly IConfiguration _configuration;
-
-    public GetPostBySlugQueryHandler(IRepository<PostEntity> repo, IBlogCache cache, IConfiguration configuration)
+    public async Task<PostEntity> HandleAsync(GetPostBySlugQuery request, CancellationToken ct)
     {
-        _repo = repo;
-        _cache = cache;
-        _configuration = configuration;
-    }
+        var routeLink = $"{request.Year}/{request.Month}/{request.Day}/{request.Slug}".ToLower();
+        var spec = new PostByRouteLinkSpec(routeLink);
 
-    public async Task<Post> Handle(GetPostBySlugQuery request, CancellationToken ct)
-    {
-        var date = new DateTime(request.Slug.Year, request.Slug.Month, request.Slug.Day);
-
-        // Try to find by checksum
-        var slugCheckSum = Helper.ComputeCheckSum($"{request.Slug.Slug}#{date:yyyyMMdd}");
-        ISpecification<PostEntity> spec = new PostSpec(slugCheckSum);
-
-        var pid = await _repo.FirstOrDefaultAsync(spec, p => p.Id);
-        if (pid == Guid.Empty)
+        var psm = await cache.GetOrCreateAsync(BlogCachePartition.Post.ToString(), $"{routeLink}", async entry =>
         {
-            // Post does not have a checksum, fall back to old method
-            spec = new PostSpec(date, request.Slug.Slug);
-            pid = await _repo.FirstOrDefaultAsync(spec, x => x.Id);
+            entry.SlidingExpiration = TimeSpan.FromMinutes(int.Parse(configuration["Post:CacheMinutes"]!));
 
-            if (pid == Guid.Empty) return null;
-
-            // Post is found, fill it's checksum so that next time the query can be run against checksum
-            var p = await _repo.GetAsync(pid, ct);
-            p.HashCheckSum = slugCheckSum;
-
-            await _repo.UpdateAsync(p, ct);
-        }
-
-        var psm = await _cache.GetOrCreateAsync(CacheDivision.Post, $"{pid}", async entry =>
-        {
-            entry.SlidingExpiration = TimeSpan.FromMinutes(int.Parse(_configuration["CacheSlidingExpirationMinutes:Post"]!));
-
-            var post = await _repo.FirstOrDefaultAsync(spec, Post.EntitySelector);
+            var post = await repo.FirstOrDefaultAsync(spec, ct);
             return post;
         });
 

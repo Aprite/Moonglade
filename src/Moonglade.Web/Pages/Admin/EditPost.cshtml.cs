@@ -1,38 +1,32 @@
+using LiteBus.Queries.Abstractions;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Moonglade.Core.CategoryFeature;
 using Moonglade.Core.PostFeature;
 
 namespace Moonglade.Web.Pages.Admin;
 
-public class EditPostModel : PageModel
+public class EditPostModel(IQueryMediator queryMediator, IBlogConfig blogConfig) : PageModel
 {
-    private readonly IMediator _mediator;
-    private readonly ITimeZoneResolver _timeZoneResolver;
-
-    public PostEditModel ViewModel { get; set; }
-    public List<CategoryCheckBox> CategoryList { get; set; }
-
-    public EditPostModel(IMediator mediator, ITimeZoneResolver timeZoneResolver)
+    public PostEditModel ViewModel { get; set; } = new()
     {
-        _mediator = mediator;
-        _timeZoneResolver = timeZoneResolver;
-        ViewModel = new()
-        {
-            IsPublished = false,
-            Featured = false,
-            EnableComment = true,
-            FeedIncluded = true
-        };
-    }
+        IsOutdated = false,
+        PostStatus = PostStatusConstants.Draft,
+        Featured = false,
+        EnableComment = true,
+        FeedIncluded = true
+    };
+
+    public List<CategoryCheckBox> CategoryList { get; set; }
 
     public async Task<IActionResult> OnGetAsync(Guid? id)
     {
+        var cats = await queryMediator.QueryAsync(new ListCategoriesQuery());
+
         if (id is null)
         {
-            var cats1 = await _mediator.Send(new GetCategoriesQuery());
-            if (cats1.Count > 0)
+            if (cats.Count > 0)
             {
-                var cbCatList = cats1.Select(p =>
+                var cbCatList = cats.Select(p =>
                     new CategoryCheckBox
                     {
                         Id = p.Id,
@@ -40,20 +34,22 @@ public class EditPostModel : PageModel
                         IsChecked = false
                     });
 
-                CategoryList = cbCatList.ToList();
+                CategoryList = [.. cbCatList];
             }
+
+            ViewModel.Author = blogConfig.GeneralSettings.OwnerName;
 
             return Page();
         }
 
-        var post = await _mediator.Send(new GetPostByIdQuery(id.Value));
+        var post = await queryMediator.QueryAsync(new GetPostByIdQuery(id.Value));
         if (null == post) return NotFound();
 
         ViewModel = new()
         {
             PostId = post.Id,
-            IsPublished = post.IsPublished,
-            EditorContent = post.RawPostContent,
+            PostStatus = post.PostStatus.ToLower().Trim(),
+            EditorContent = post.PostContent,
             Author = post.Author,
             Slug = post.Slug,
             Title = post.Title,
@@ -61,15 +57,20 @@ public class EditPostModel : PageModel
             FeedIncluded = post.IsFeedIncluded,
             LanguageCode = post.ContentLanguageCode,
             Abstract = post.ContentAbstract.Replace("\u00A0\u2026", string.Empty),
-            Featured = post.Featured,
-            OriginLink = post.OriginLink,
+            Featured = post.IsFeatured,
             HeroImageUrl = post.HeroImageUrl,
-            InlineCss = post.InlineCss
+            IsOutdated = post.IsOutdated,
+            LastModifiedUtc = post.LastModifiedUtc?.ToString("u")
         };
 
         if (post.PubDateUtc is not null)
         {
-            ViewModel.PublishDate = _timeZoneResolver.ToTimeZone(post.PubDateUtc.GetValueOrDefault());
+            ViewModel.PublishDate = post.PubDateUtc.GetValueOrDefault();
+        }
+
+        if (post.ScheduledPublishTimeUtc != null)
+        {
+            ViewModel.ScheduledPublishTimeUtc = post.ScheduledPublishTimeUtc.Value;
         }
 
         var tagStr = post.Tags
@@ -79,17 +80,16 @@ public class EditPostModel : PageModel
         tagStr = tagStr.TrimEnd(',');
         ViewModel.Tags = tagStr;
 
-        var cats2 = await _mediator.Send(new GetCategoriesQuery());
-        if (cats2.Count > 0)
+        if (cats.Count > 0)
         {
-            var cbCatList = cats2.Select(p =>
+            var cbCatList = cats.Select(p =>
                 new CategoryCheckBox
                 {
                     Id = p.Id,
                     DisplayText = p.DisplayName,
-                    IsChecked = post.Categories.Any(q => q.Id == p.Id)
+                    IsChecked = post.PostCategory.Any(q => q.CategoryId == p.Id)
                 });
-            CategoryList = cbCatList.ToList();
+            CategoryList = [.. cbCatList];
         }
 
         return Page();

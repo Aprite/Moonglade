@@ -5,264 +5,172 @@
 @inject IConfiguration Configuration
 
 @{
-    ViewBag.Title = "Manage Posts";
+    ViewBag.Title = "Edit Post";
+    var ec = Configuration.GetValue<EditorChoice>("Post:Editor");
+    var wsm = Model.ViewModel.WarnSlugModification;
 
     var cultureItems = LocOptions.Value.SupportedUICultures
         .Select(c => new { Value = c.Name, c.NativeName });
 
     var langList = cultureItems
     .Select(t => new SelectListItem
-            {
-                Text = t.NativeName,
-                Value = t.Value.ToLower()
-            });
+    {
+        Text = t.NativeName,
+        Value = t.Value.ToLower()
+    });
 }
 
-@section scripts{
-    <script src="~/lib/tagify/tagify.min.js"></script>
+@section meta {
+    <meta name="editor-choice" content="@(Configuration.GetValue<EditorChoice>("Post:Editor").ToString().ToLower())" />
+    <meta name="warn-slug-modification" content="@Model.ViewModel.WarnSlugModification.ToString().ToLower()" />
+}
+
+@section scripts {
+    <script src="~/lib/tagify/tagify.js"></script>
     <script src="~/js/3rd/bs-custom-file-input.min.js"></script>
-    @{
-        var ec = Configuration.GetSection("Editor").Get<EditorChoice>();
-        switch (ec)
-        {
-            case EditorChoice.Html:
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/6.2.0/tinymce.min.js" integrity="sha512-tofxIFo8lTkPN/ggZgV89daDZkgh1DunsMYBq41usfs3HbxMRVHWFAjSi/MXrT+Vw5XElng9vAfMmOWdLg0YbA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-                break;
-            case EditorChoice.Markdown:
-                <script src="https://unpkg.com/simplemde@1.11.2/dist/simplemde.min.js"></script>
-                <script src="~/js/3rd/inline-attachment.js"></script>
-                <script src="~/js/3rd/codemirror-4.inline-attachment.js"></script>
-                <link id="css-simplemde" href="https://unpkg.com/simplemde@1.11.2/dist/simplemde.min.css" rel="stylesheet"/>
-                break;
-        }
+    @switch (ec)
+    {
+        case EditorChoice.Html:
+            <script src="~/lib/tinymce/tinymce.min.js" asp-append-version="true"></script>
+            break;
+        case EditorChoice.Markdown:
+            <partial name="_MonacoLoaderScript" />
+            <script src="~/js/3rd/inline-attachment.js"></script>
+            <script src="~/js/3rd/monaco.inline-attachment.js"></script>
+            break;
     }
 
-    <script type="module">
-        import * as utils from '/js/app/utils.module.js'
-        import * as editor from '/js/app/admin.editor.module.js'
-
-        var btnSubmitPost = '#btn-save';
-        var isPreviewRequired = false;
-
-        $(function() {
-            editor.initEvents();
-            var editorMode = '@ec';
-            if (editorMode == '@nameof(EditorChoice.Html)') {
-                editor.loadTinyMCE(".post-content-textarea");
-            }
-            if (editorMode == '@nameof(EditorChoice.Markdown)') {
-                editor.loadMdEditor(".post-content-textarea");
-            }
-
-            editor.keepAlive();
-        });
-
-        $(window).bind('keydown',
-            function(event) {
-                if (event.ctrlKey || event.metaKey) {
-                    switch (String.fromCharCode(event.which).toLowerCase()) {
-                        case 's':
-                            event.preventDefault();
-                            $("#btn-save").trigger('click');
-                            break;
-                    }
-                }
-            });
-
-        var heroImageModal = new bootstrap.Modal(document.getElementById('heroImageModal'));
-
-        window.ajaxImageUpload = function(oFormElement) {
-            const formData = new FormData(oFormElement);
-
-            fetch(oFormElement.action,
-                {
-                    method: 'POST',
-                    body: formData
-                }).then(async (response) => {
-                    if (!response.ok) {
-                        blogToast.error('API Boom');
-                        console.error(err);
-                    } else {
-                        var data = await response.json();
-                        document.querySelector('#ViewModel_HeroImageUrl').value = data.location;
-                    }
-                }).then(response => {
-                    document.querySelector('#form-hero-image').reset();
-                    heroImageModal.hide();
-                }).catch(err => {
-                    blogToast.error(err);
-                    console.error(err);
-                });
-        }
-
-        function handlePostSubmit(event) {
-            event.preventDefault();
-
-            isPreviewRequired = event.submitter.id == 'btn-preview';
-
-            const data = new FormData(event.target);
-            const value = Object.fromEntries(data.entries());
-
-            const content = value["ViewModel.EditorContent"];
-            if (!content) {
-                blogToast.error('Please enter content.');
-                return;
-            }
-
-            var selectedCatIds = data.getAll('SelectedCatIds');
-            if (selectedCatIds.length == 0) {
-                blogToast.error('Please select at least 1 category.');
-                return;
-            }
-
-            value["SelectedCatIds"] = selectedCatIds;
-            const newValue = utils.toMagicJson(value);
-
-            document.querySelector(btnSubmitPost).classList.add('disabled');
-            document.querySelector(btnSubmitPost).setAttribute('disabled', 'disabled');
-
-            callApi(event.currentTarget.action,
-                'POST',
-                newValue,
-                async (resp) => {
-                    var respJson = await resp.json();
-                    if (respJson.postId) {
-                        $('input[name="ViewModel.PostId"]').val(respJson.postId);
-                        blogToast.success('Post saved successfully.');
-
-                        if (isPreviewRequired) {
-                            isPreviewRequired = false;
-                            window.open(`/post/preview/${respJson.postId}`);
-                        }
-                    }
-                }, function(resp) {
-                    document.querySelector(btnSubmitPost).classList.remove('disabled');
-                    document.querySelector(btnSubmitPost).removeAttribute('disabled');
-                });
-        }
-
-        const form = document.querySelector('.post-edit-form');
-        form.addEventListener('submit', handlePostSubmit);
-    </script>
+    <script type="module" src="~/js/app/admin.editpost.mjs" asp-append-version="true"></script>
 }
 
-@section head{
-    <link href="~/lib/tagify/tagify.min.css" rel="stylesheet" />
+@section head {
+    <link href="~/lib/tagify/tagify.css" rel="stylesheet" />
+    <style>
+        .tagify {
+            width: 100% !important;
+        }
+
+        .monaco-target {
+            min-height: calc(100vh - 370px);
+        }
+    </style>
 }
 
-    <div class="p-4">
-
-        <form class="post-edit-form" asp-controller="Post" asp-action="CreateOrEdit">
-            <input type="hidden" asp-for="ViewModel.PostId" />
-            <input type="hidden" asp-for="ViewModel.IsPublished" />
-            <div class="row">
-                <div class="col-md-9 col-xl-10">
-                    <input type="text" asp-for="ViewModel.Title" class="form-control form-control-lg" placeholder="@SharedLocalizer["Title"]" required maxlength="128" />
-                    <div class="mt-1">
-                        <div class="row g-1">
-                            <div class="col">
-                                <div class="input-group input-group-sm">
-                                    <label class="input-group-text" asp-for="ViewModel.Slug">
-                                        <i class="bi-link-45deg"></i>
-                                    </label>
-                                    <input type="text" asp-for="ViewModel.Slug" class="form-control form-control-sm" placeholder="Slug" spellcheck="false" required pattern="[a-z0-9\-]+" maxlength="128" />
-                                </div>
-                            </div>
-                            <div class="col-md-auto">
-                                <div class="input-group input-group-sm mb-2">
-                                    <label class="input-group-text" asp-for="ViewModel.Author"></label>
-                                    <input type="text" class="form-control form-control-sm" spellcheck="false" asp-for="ViewModel.Author" />
-                                </div>
-                            </div>
-                            <div class="col-md-auto">
-                                <div class="input-group input-group-sm mb-2">
-                                    <label class="input-group-text" asp-for="ViewModel.LanguageCode">
-                                        <i class="bi-globe"></i>
-                                    </label>
-                                    <select class="form-select" asp-for="ViewModel.LanguageCode" asp-items="@langList"></select>
-                                </div>
+<div>
+    <form class="post-edit-form" asp-controller="Post" asp-action="CreateOrEdit">
+        <input type="hidden" asp-for="ViewModel.PostId" />
+        <input type="hidden" asp-for="ViewModel.PostStatus" />
+        <input type="hidden" asp-for="ViewModel.LastModifiedUtc" />
+        <div class="row g-2">
+            <div class="col-md-9 col-xl-10">
+                <input type="text" asp-for="ViewModel.Title" class="form-control form-control-lg" placeholder="@SharedLocalizer["Title"]" required maxlength="128" />
+                <div class="mt-1">
+                    <div class="row g-1">
+                        <div class="col">
+                            <div class="input-group input-group-sm">
+                                <label class="input-group-text" asp-for="ViewModel.Slug">
+                                    <i class="bi-link-45deg"></i>
+                                </label>
+                                <input type="text" asp-for="ViewModel.Slug" class="form-control form-control-sm" placeholder="Slug" spellcheck="false" required pattern="[a-z0-9\-]+" maxlength="128" readonly="@wsm" />
+                                @if (wsm)
+                                {
+                                    <a class="btn btn-warning btn-sm btn-modify-slug">Modify</a>
+                                }
                             </div>
                         </div>
-                    </div>
-
-                    <textarea asp-for="ViewModel.EditorContent" class="post-content-textarea"></textarea>
-
-                    <div class="mt-1">
-                        <input type="text" asp-for="ViewModel.Tags" placeholder="@SharedLocalizer["Tags"]" />
-                    </div>
-                    <div class="mt-1">
-                        <div class="form-floating">
-                            <textarea asp-for="ViewModel.Abstract"
-                                  placeholder="@SharedLocalizer["Abstract"]"
-                                  class="form-control form-control-sm"
-                                  data-bs-toggle="tooltip"
-                                  data-placement="top"
-                                  maxlength="400"
-                                  title="@SharedLocalizer["The first {0} character(s) will be used as abstract if you leave this field blank.", BlogConfig.ContentSettings.PostAbstractWords]"
-                                  style="height: 90px"></textarea>
-                            <label for="ViewModel_Abstract">@SharedLocalizer["Abstract"]</label>
+                        <div class="col-md-auto">
+                            <div class="input-group input-group-sm mb-2">
+                                <label class="input-group-text" asp-for="ViewModel.Author"></label>
+                                <input type="text" class="form-control form-control-sm" spellcheck="false" asp-for="ViewModel.Author" />
+                            </div>
+                        </div>
+                        <div class="col-md-auto">
+                            <div class="input-group input-group-sm mb-2">
+                                <label class="input-group-text" asp-for="ViewModel.LanguageCode">
+                                    <i class="bi-globe"></i>
+                                </label>
+                                <select class="form-select" asp-for="ViewModel.LanguageCode" asp-items="@langList"></select>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 col-xl-2">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <i class="bi-clipboard-check me-1"></i>
-                            @SharedLocalizer["Options"]
+
+                @if (ec == EditorChoice.Html)
+                {
+                    <textarea asp-for="ViewModel.EditorContent" class="post-content-textarea"></textarea>
+                }
+                else
+                {
+                    <div id="markdown-content-editor" class="monaco-target overflow-y-hidden">
+                    </div>
+                    <textarea asp-for="ViewModel.EditorContent" class="post-content-textarea d-none"></textarea>
+                    <div class="md-editor-image-upload-area text-center border-secondary-subtle p-3 mt-1">
+                        Drag &amp; Drop / Paste image here to upload.
+                    </div>
+                }
+
+                <div class="mt-1 admin-taginput-container">
+                    <input type="text" asp-for="ViewModel.Tags" placeholder="@SharedLocalizer["Tags"]" />
+                </div>
+                <div class="mt-1">
+                    <div class="form-floating">
+                        <textarea asp-for="ViewModel.Abstract"
+                                  placeholder="@SharedLocalizer["Abstract"]"
+                                  class="form-control form-control-sm"
+                                  maxlength="1024"
+                                  title="@SharedLocalizer["The first {0} character(s) will be used as abstract if you leave this field blank.", BlogConfig.ContentSettings.PostAbstractWords]"
+                                  style="height: 90px"></textarea>
+                        <label for="ViewModel_Abstract">@SharedLocalizer["Abstract"]</label>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 col-xl-2">
+                <div class="card mb-3">
+                    <div class="card-body">
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="EnableComment" value="true" class="form-check-input" @(Model.ViewModel.EnableComment ? "checked" : null)>
+                            <label asp-for="ViewModel.EnableComment" class="form-check-label"></label>
                         </div>
-                        <div class="card-body">
-                            <div class="form-check form-switch mb-2">
-                                <input type="checkbox" name="EnableComment" value="true" class="form-check-input" @(Model.ViewModel.EnableComment ? "checked" : null)>
-                                <label asp-for="ViewModel.EnableComment" class="form-check-label"></label>
-                            </div>
-                            <div class="form-check form-switch mb-2">
-                                <input type="checkbox" name="Featured" value="true" class="form-check-input" @(Model.ViewModel.Featured ? "checked" : null)>
-                                <label asp-for="ViewModel.Featured" class="form-check-label"></label>
-                            </div>
-                            <div class="form-check form-switch">
-                                <input type="checkbox" name="FeedIncluded" value="true" class="form-check-input" @(Model.ViewModel.FeedIncluded ? "checked" : null)>
-                                <label asp-for="ViewModel.FeedIncluded" class="form-check-label"></label>
-                            </div>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="FeedIncluded" value="true" class="form-check-input" @(Model.ViewModel.FeedIncluded ? "checked" : null)>
+                            <label asp-for="ViewModel.FeedIncluded" class="form-check-label"></label>
                         </div>
-                        <div class="card-body border-top">
-                            <div class="form-floating mb-2">
-                                <textarea asp-for="ViewModel.OriginLink" class="form-control form-control-sm" placeholder="@SharedLocalizer["Origin Link"]"></textarea>
-                                <label for="ViewModel_OriginLink">@SharedLocalizer["Origin Link"]</label>
-                            </div>
-                            <div class="form-floating mb-1">
-                                <textarea asp-for="ViewModel.HeroImageUrl"
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="Featured" value="true" class="form-check-input" @(Model.ViewModel.Featured ? "checked" : null)>
+                            <label asp-for="ViewModel.Featured" class="form-check-label"></label>
+                        </div>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" name="IsOutdated" value="true" class="form-check-input" @(Model.ViewModel.IsOutdated ? "checked" : null)>
+                            <label asp-for="ViewModel.IsOutdated" class="form-check-label"></label>
+                        </div>
+                    </div>
+                    <div class="card-body border-top">
+                        <div class="form-floating mb-1">
+                            <textarea asp-for="ViewModel.HeroImageUrl"
                                       class="form-control form-control-sm"
                                       placeholder="@Html.DisplayNameFor(m => m.ViewModel.HeroImageUrl)"></textarea>
-                                <label class="form-label" asp-for="ViewModel.HeroImageUrl"></label>
-                            </div>
-                            <div>
-                                <a class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#heroImageModal">
-                                    <i class="bi-upload"></i>
-                                    @SharedLocalizer["Upload Image"]
-                                </a>
-                            </div>
-                            <div class="mt-2">
-                                <a class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#inlineCssModal">
-                                    <i class="bi-brush"></i>
-                                    @SharedLocalizer["Inline CSS"]
-                                </a>
-                            </div>
-
-                            @if (Model.ViewModel.PostId != Guid.Empty)
-                        {
-                            <div class="mt-2">
-                                <a class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#changePublishDateModal">
-                                    <i class="bi-clock-history"></i>
-                                    @SharedLocalizer["Change Publish Date"]
-                                </a>
-                            </div>
-                        }
+                            <label class="form-label" asp-for="ViewModel.HeroImageUrl"></label>
+                        </div>
+                        <div>
+                            <a class="btn btn-sm btn-outline-secondary w-100" data-bs-toggle="modal" data-bs-target="#heroImageModal">
+                                <i class="bi-upload"></i>
+                                @SharedLocalizer["Upload Image"]
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body border-top">
+                        <div class="form-floating">
+                            <textarea asp-for="ViewModel.Keywords"
+                                      class="form-control form-control-sm"
+                                      placeholder="@Html.DisplayNameFor(m => m.ViewModel.Keywords)"></textarea>
+                            <label class="form-label" asp-for="ViewModel.Keywords"></label>
+                        </div>
                     </div>
                     <div class="card-body border-top">
                         <h6 class="card-subtitle mb-3 text-muted">
                             <i class="bi-folder2 me-1"></i>
                             @SharedLocalizer["Categories"]
-                            
+
                             <a asp-page="./Category" target="_blank" class="float-end">
                                 <i class="bi-box-arrow-up-right"></i>
                             </a>
@@ -277,11 +185,11 @@
                                         <li>
                                             <div class="form-check">
                                                 <input type="checkbox"
-                                               id="category-@cat.Id"
-                                               name="SelectedCatIds"
-                                               value="@cat.Id"
-                                               class="form-check-input"
-                                               @(cat.IsChecked ? "checked" : null)>
+                                                       id="category-@cat.Id"
+                                                       name="SelectedCatIds"
+                                                       value="@cat.Id"
+                                                       class="form-check-input"
+                                                       @(cat.IsChecked ? "checked" : null)>
 
                                                 <label for="category-@cat.Id" class="form-check-label">
                                                     @cat.DisplayText
@@ -294,95 +202,73 @@
                         }
                     </div>
                 </div>
+
+                @if (Model.ViewModel.PostId != Guid.Empty)
+                {
+                    <div class="text-center mb-2">
+                        <a class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#changePublishDateModal">
+                            <i class="bi-clock-history"></i>
+                            @SharedLocalizer["Change Publish Date"]
+                        </a>
+                    </div>
+                }
             </div>
         </div>
 
         <div class="mt-3">
-            <button type="submit" class="btn btn-accent ediblogeditor-save" id="btn-save">
-                @SharedLocalizer["Save"]
+            <button type="submit" class="btn btn-outline-accent ediblogeditor-save" id="btn-save">
+                @if (Model.ViewModel.PostStatus == PostStatusConstants.Draft)
+                {
+                    @SharedLocalizer["Save"]
+                }
+
+                @if (Model.ViewModel.PostStatus == PostStatusConstants.Published ||
+                     Model.ViewModel.PostStatus == PostStatusConstants.Scheduled)
+                {
+                    @SharedLocalizer["Update"]
+                }
             </button>
-            @if (!Model.ViewModel.IsPublished)
+
+            @if (Model.ViewModel.PostStatus == PostStatusConstants.Published)
             {
-                <button type="submit" class="btn btn-outline-accent ediblogeditor-publish" id="btn-publish">
-                    @SharedLocalizer["Publish"]
-                </button>
-                <button class="btn btn-outline-success ediblogeditor-preview" id="btn-preview">
-                    @SharedLocalizer["Preview"]
-                </button>
+                <a class="unpublish-link btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#unpublishPostModal">@SharedLocalizer["Unpublish"]</a>
             }
+
+            @if (Model.ViewModel.PostStatus != PostStatusConstants.Published)
+            {
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-outline-accent ediblogeditor-publish" id="btn-publish">
+                        @SharedLocalizer["Publish"]
+                    </button>
+                    <button type="button" class="btn btn-outline-accent dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li>
+                            <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#schedulePublishModal">
+                                <i class="bi-clock"></i>
+                                Schedule Publish Time
+                            </a>
+                        </li>
+                        <li>
+                            <button class="btn btn-link dropdown-item ediblogeditor-preview" id="btn-preview">
+                                <i class="bi-eye"></i>
+                                @SharedLocalizer["Preview"]
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            }
+
             <a asp-page="./Post" class="btn btn-outline-secondary">@SharedLocalizer["Cancel"]</a>
+
+            <div class="schedule-info d-inline-block text-muted ms-4"></div>
         </div>
 
-        <div class="modal fade" id="changePublishDateModal" tabindex="-1" role="dialog" aria-labelledby="changePublishDateModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="changePublishDateModalLabel">@SharedLocalizer["Change Publish Date"]</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="alert alert-warning">@SharedLocalizer["Changing publish date will modify the URL of the post, and may cause unexpected results like breaking links on third parties that were pointing to this post. Please check the checkbox below if you confirm."]</div>
-                        <div class="mb-2">
-                            <input type="checkbox" name="ChangePublishDate" value="true" class="form-check-input" @(Model.ViewModel.ChangePublishDate ? "checked" : null)>
-                            <label asp-for="ViewModel.ChangePublishDate"></label>
-                        </div>
-
-                        <div class="mb-2">
-                            <label asp-for="ViewModel.PublishDate"></label>
-                            <input asp-for="ViewModel.PublishDate" class="form-control" />
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@SharedLocalizer["Cancel"]</button>
-                        <button type="button" class="btn btn-danger" data-bs-dismiss="modal">@SharedLocalizer["Continue"]</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade" id="inlineCssModal" tabindex="-1" role="dialog" aria-labelledby="inlineCssModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="inlineCssModalLabel">@SharedLocalizer["Inline CSS"]</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="mb-2">
-                            <textarea asp-for="ViewModel.InlineCss" class="form-control textarea-code h-300px"></textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@SharedLocalizer["Cancel"]</button>
-                        <button type="button" class="btn btn-accent" data-bs-dismiss="modal">@SharedLocalizer["OK"]</button>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <partial name="_EditPostPublishDateModal" />
+        <partial name="_SchedulePublishModal" />
     </form>
 
-    <form id="form-hero-image" action="/image?skipWatermark=true"
-          enctype="multipart/form-data" onsubmit="ajaxImageUpload(this);return false;"
-          method="post">
-        <div class="modal fade" id="heroImageModal" tabindex="-1" role="dialog" aria-labelledby="heroImageModalLabel" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="heroImageModalLabel">@SharedLocalizer["Upload Image"]</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">
-                        </button>
-                    </div>
-                    <div class="modal-body text-center">
-                        <input type="file" accept="image/png, image/jpeg" class="form-control" id="heroImageFile" name="file">
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">@SharedLocalizer["Cancel"]</button>
-                        <button type="submit" class="btn btn-accent"><i class="bi-upload"></i> @SharedLocalizer["Upload"]</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </form>
+    <partial name="_EditPostHeroImage" />
+    <partial name="_UnpublishPostModal" />
 </div>

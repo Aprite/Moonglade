@@ -1,36 +1,36 @@
-﻿using Moonglade.Caching;
+﻿using Edi.CacheAside.InMemory;
+using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 
 namespace Moonglade.Core.PostFeature;
 
-public record DeletePostCommand(Guid Id, bool SoftDelete = false) : IRequest;
+public record DeletePostCommand(Guid Id, bool SoftDelete = false) : ICommand;
 
-public class DeletePostCommandHandler : AsyncRequestHandler<DeletePostCommand>
+public class DeletePostCommandHandler(
+    MoongladeRepository<PostEntity> repo,
+    ICacheAside cache,
+    ILogger<DeletePostCommandHandler> logger
+    ) : ICommandHandler<DeletePostCommand>
 {
-    private readonly IRepository<PostEntity> _repo;
-    private readonly IBlogCache _cache;
-
-    public DeletePostCommandHandler(IRepository<PostEntity> repo, IBlogCache cache)
-    {
-        _repo = repo;
-        _cache = cache;
-    }
-
-    protected override async Task Handle(DeletePostCommand request, CancellationToken ct)
+    public async Task HandleAsync(DeletePostCommand request, CancellationToken ct)
     {
         var (guid, softDelete) = request;
-        var post = await _repo.GetAsync(guid, ct);
+        var post = await repo.GetByIdAsync(guid, ct);
         if (null == post) return;
 
         if (softDelete)
         {
             post.IsDeleted = true;
-            await _repo.UpdateAsync(post, ct);
+            await repo.UpdateAsync(post, ct);
         }
         else
         {
-            await _repo.DeleteAsync(post, ct);
+            await repo.DeleteAsync(post, ct);
         }
 
-        _cache.Remove(CacheDivision.Post, guid.ToString());
+        cache.Remove(BlogCachePartition.Post.ToString(), guid.ToString());
+
+        logger.LogInformation("Post {PostId} deleted", guid);
     }
 }

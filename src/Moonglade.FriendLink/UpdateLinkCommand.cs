@@ -1,35 +1,34 @@
-﻿using MediatR;
+﻿using LiteBus.Commands.Abstractions;
+using Microsoft.Extensions.Logging;
+using Moonglade.Data;
 using Moonglade.Data.Entities;
-using Moonglade.Data.Infrastructure;
 using Moonglade.Utils;
 
 namespace Moonglade.FriendLink;
 
-public class UpdateLinkCommand : AddLinkCommand
+public record UpdateLinkCommand(Guid Id, EditLinkRequest Payload) : ICommand;
+
+public class UpdateLinkCommandHandler(
+    MoongladeRepository<FriendLinkEntity> repo,
+    ILogger<UpdateLinkCommandHandler> logger) : ICommandHandler<UpdateLinkCommand>
 {
-    public Guid Id { get; set; }
-}
-
-public class UpdateLinkCommandHandler : AsyncRequestHandler<UpdateLinkCommand>
-{
-    private readonly IRepository<FriendLinkEntity> _repo;
-
-    public UpdateLinkCommandHandler(IRepository<FriendLinkEntity> repo) => _repo = repo;
-
-    protected override async Task Handle(UpdateLinkCommand request, CancellationToken ct)
+    public async Task HandleAsync(UpdateLinkCommand request, CancellationToken ct)
     {
-        if (!Uri.IsWellFormedUriString(request.LinkUrl, UriKind.Absolute))
+        if (!Uri.IsWellFormedUriString(request.Payload.LinkUrl, UriKind.Absolute))
         {
-            throw new InvalidOperationException($"{nameof(request.LinkUrl)} is not a valid url.");
+            throw new InvalidOperationException($"{nameof(request.Payload.LinkUrl)} is not a valid url.");
         }
 
-        var link = await _repo.GetAsync(request.Id, ct);
+        var link = await repo.GetByIdAsync(request.Id, ct);
         if (link is not null)
         {
-            link.Title = request.Title;
-            link.LinkUrl = Helper.SterilizeLink(request.LinkUrl);
+            link.Title = request.Payload.Title;
+            link.LinkUrl = SecurityHelper.SterilizeLink(request.Payload.LinkUrl);
+            link.Rank = request.Payload.Rank;
 
-            await _repo.UpdateAsync(link, ct);
+            await repo.UpdateAsync(link, ct);
         }
+
+        logger.LogInformation("Updated link: {LinkId}", request.Id);
     }
 }

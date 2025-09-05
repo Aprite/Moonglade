@@ -1,13 +1,13 @@
-﻿using MediatR;
+﻿using LiteBus.Queries.Abstractions;
 using Microsoft.AspNetCore.Http;
 using Moonglade.Configuration;
 using Moonglade.Utils;
 
 namespace Moonglade.Syndication;
 
-public record GetRssStringQuery(string CategoryName = null) : IRequest<string>;
+public record GetRssStringQuery(string CategoryName = null) : IQuery<string>;
 
-public class GetRssStringQueryHandler : IRequestHandler<GetRssStringQuery, string>
+public class GetRssStringQueryHandler : IQueryHandler<GetRssStringQuery, string>
 {
     private readonly ISyndicationDataSource _sdds;
     private readonly FeedGenerator _feedGenerator;
@@ -16,19 +16,19 @@ public class GetRssStringQueryHandler : IRequestHandler<GetRssStringQuery, strin
     {
         _sdds = sdds;
 
-        var acc = httpContextAccessor;
-        var baseUrl = $"{acc.HttpContext.Request.Scheme}://{acc.HttpContext.Request.Host}";
+        var baseUrl = $"{httpContextAccessor.HttpContext!.Request.Scheme}://{httpContextAccessor.HttpContext.Request.Host}";
 
         _feedGenerator = new(
             baseUrl,
             blogConfig.GeneralSettings.SiteTitle,
             blogConfig.GeneralSettings.Description,
             Helper.FormatCopyright2Html(blogConfig.GeneralSettings.Copyright).Replace("&copy;", "©"),
-            $"Moonglade v{Helper.AppVersion}",
-            baseUrl);
+            $"Moonglade v{VersionHelper.AppVersion}",
+            baseUrl,
+            blogConfig.GeneralSettings.DefaultLanguageCode);
     }
 
-    public async Task<string> Handle(GetRssStringQuery request, CancellationToken ct)
+    public async Task<string> HandleAsync(GetRssStringQuery request, CancellationToken ct)
     {
         var data = await _sdds.GetFeedDataAsync(request.CategoryName);
         if (data is null) return null;

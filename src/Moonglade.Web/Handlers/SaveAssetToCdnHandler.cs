@@ -1,37 +1,48 @@
-﻿namespace Moonglade.Web.Handlers;
+﻿using LiteBus.Commands.Abstractions;
+using LiteBus.Events.Abstractions;
 
-public class SaveAssetToCdnHandler : INotificationHandler<SaveAssetCommand>
+namespace Moonglade.Web.Handlers;
+
+public class SaveAssetToCdnHandler(
+    ILogger<SaveAssetToCdnHandler> logger,
+    IBlogImageStorage imageStorage,
+    IBlogConfig blogConfig,
+    ICommandMediator commandMediator) : IEventHandler<SaveAssetEvent>
 {
-    private readonly IBlogImageStorage _imageStorage;
-    private readonly IBlogConfig _blogConfig;
-    private readonly IMediator _mediator;
-
-    public SaveAssetToCdnHandler(IBlogImageStorage imageStorage, IBlogConfig blogConfig, IMediator mediator)
+    public async Task HandleAsync(SaveAssetEvent request, CancellationToken ct)
     {
-        _imageStorage = imageStorage;
-        _blogConfig = blogConfig;
-        _mediator = mediator;
-    }
+        // Only process avatar asset
+        if (request.AssetId != AssetId.AvatarBase64)
+            return;
 
-    public async Task Handle(SaveAssetCommand request, CancellationToken ct)
-    {
-        // Currently only avatar
-        var (assetId, assetBase64) = request;
+        if (!blogConfig.ImageSettings.EnableCDNRedirect)
+            return;
 
-        if (assetId != AssetId.AvatarBase64) return;
-
-        if (_blogConfig.ImageSettings.EnableCDNRedirect)
+        if (string.IsNullOrWhiteSpace(request.AssetBase64))
         {
-            var fileName = $"avatar-{AssetId.AvatarBase64.ToString("N")[..6]}.png";
-            await _imageStorage.DeleteAsync(fileName);
-            fileName = await _imageStorage.InsertAsync(fileName, Convert.FromBase64String(assetBase64));
-
-            var random = new Random();
-            _blogConfig.GeneralSettings.AvatarUrl =
-                _blogConfig.ImageSettings.CDNEndpoint.CombineUrl(fileName) + $"?{random.Next(100, 999)}";   //refresh local cache
-
-            var kvp = _blogConfig.UpdateAsync(_blogConfig.GeneralSettings);
-            await _mediator.Send(new UpdateConfigurationCommand(kvp.Key, kvp.Value), ct);
+            logger.LogWarning("AssetBase64 is null or empty.");
+            return;
         }
+
+        // Generate avatar file name based on AssetId
+        var fileName = $"avatar-{AssetId.AvatarBase64.ToString("N")[..6]}.png";
+
+        // Delete the old avatar file if exists
+        await imageStorage.DeleteAsync(fileName);
+
+        // Save the new avatar image
+        var imageBytes = Convert.FromBase64String(request.AssetBase64);
+        fileName = await imageStorage.InsertAsync(fileName, imageBytes);
+
+        // Update the CDN URL with cache-busting query
+        var cacheBuster = Random.Shared.Next(100, 999);
+        var cdnUrl = $"{blogConfig.ImageSettings.CDNEndpoint.CombineUrl(fileName)}?{cacheBuster}";
+        blogConfig.GeneralSettings.AvatarUrl = cdnUrl;
+
+        // Persist the new configuration
+        var (key, value) = blogConfig.UpdateAsync(blogConfig.GeneralSettings);
+        await commandMediator.SendAsync(new UpdateConfigurationCommand(key, value), ct);
+
+        logger.LogInformation("Avatar updated and saved to CDN. URL: {AvatarUrl}", cdnUrl);
     }
 }

@@ -1,6 +1,6 @@
-﻿using Microsoft.SyndicationFeed;
-using Microsoft.SyndicationFeed.Atom;
-using Microsoft.SyndicationFeed.Rss;
+﻿using Edi.SyndicationFeed.ReaderWriter;
+using Edi.SyndicationFeed.ReaderWriter.Atom;
+using Edi.SyndicationFeed.ReaderWriter.Rss;
 using System.Text;
 using System.Xml;
 
@@ -10,10 +10,10 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
 {
     public FeedGenerator()
     {
-        FeedItemCollection = new List<FeedEntry>();
+        FeedItemCollection = [];
     }
 
-    public FeedGenerator(string hostUrl, string headTitle, string headDescription, string copyright, string generator, string trackBackUrl)
+    public FeedGenerator(string hostUrl, string headTitle, string headDescription, string copyright, string generator, string trackBackUrl, string language)
     {
         HostUrl = hostUrl;
         HeadTitle = headTitle;
@@ -21,8 +21,9 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
         Copyright = copyright;
         Generator = generator;
         TrackBackUrl = trackBackUrl;
+        Language = language;
 
-        FeedItemCollection = new List<FeedEntry>();
+        FeedItemCollection = [];
     }
 
     #region Properties
@@ -35,6 +36,7 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
     public string Generator { get; set; }
     public string TrackBackUrl { get; set; }
     public string GeneratorVersion { get; set; }
+    public string Language { get; set; }
 
     #endregion
 
@@ -53,6 +55,7 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
             await writer.WritePubDate(DateTimeOffset.UtcNow);
             await writer.WriteCopyright(Copyright);
             await writer.WriteGenerator(Generator);
+            await writer.WriteLanguage(new(Language));
 
             foreach (var item in feed)
             {
@@ -95,7 +98,7 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
         return xml;
     }
 
-    private static IEnumerable<SyndicationItem> GetItemCollection(IEnumerable<FeedEntry> itemCollection)
+    private static List<SyndicationItem> GetItemCollection(IEnumerable<FeedEntry> itemCollection)
     {
         var synItemCollection = new List<SyndicationItem>();
         if (null == itemCollection) return synItemCollection;
@@ -112,7 +115,10 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
                 Published = item.PubDateUtc.ToUniversalTime()
             };
 
-            sItem.AddLink(new SyndicationLink(new(item.Link)));
+            sItem.AddLink(new SyndicationLink(new(item.Link))
+            {
+                Hreflang = item.LangCode?.ToLowerInvariant()
+            });
 
             // add author
             if (!string.IsNullOrWhiteSpace(item.Author) && !string.IsNullOrWhiteSpace(item.AuthorEmail))
@@ -134,12 +140,7 @@ public class FeedGenerator : IFeedGenerator, IRssGenerator, IAtomGenerator
     }
 }
 
-public class StringWriterWithEncoding : StringWriter
+public class StringWriterWithEncoding(Encoding encoding) : StringWriter
 {
-    public StringWriterWithEncoding(Encoding encoding)
-    {
-        Encoding = encoding;
-    }
-
-    public override Encoding Encoding { get; }
+    public override Encoding Encoding { get; } = encoding;
 }

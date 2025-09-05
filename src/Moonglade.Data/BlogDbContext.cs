@@ -18,16 +18,15 @@ public class BlogDbContext : DbContext
     public virtual DbSet<CommentReplyEntity> CommentReply { get; set; }
     public virtual DbSet<PostEntity> Post { get; set; }
     public virtual DbSet<PostCategoryEntity> PostCategory { get; set; }
-    public virtual DbSet<PostExtensionEntity> PostExtension { get; set; }
     public virtual DbSet<PostTagEntity> PostTag { get; set; }
+    public virtual DbSet<PostViewEntity> PostView { get; set; }
     public virtual DbSet<TagEntity> Tag { get; set; }
     public virtual DbSet<FriendLinkEntity> FriendLink { get; set; }
     public virtual DbSet<PageEntity> CustomPage { get; set; }
-    public virtual DbSet<MenuEntity> Menu { get; set; }
-    public virtual DbSet<SubMenuEntity> SubMenu { get; set; }
-    public virtual DbSet<LocalAccountEntity> LocalAccount { get; set; }
-    public virtual DbSet<PingbackEntity> Pingback { get; set; }
+    public virtual DbSet<LoginHistoryEntity> LoginHistory { get; set; }
+    public virtual DbSet<MentionEntity> Mention { get; set; }
     public virtual DbSet<BlogThemeEntity> BlogTheme { get; set; }
+    public virtual DbSet<StyleSheetEntity> StyleSheet { get; set; }
     public virtual DbSet<BlogAssetEntity> BlogAsset { get; set; }
     public virtual DbSet<BlogConfigurationEntity> BlogConfiguration { get; set; }
 
@@ -35,11 +34,7 @@ public class BlogDbContext : DbContext
     {
         // base.OnModelCreating(modelBuilder);
         modelBuilder.ApplyConfiguration(new CategoryConfiguration());
-        modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new FriendLinkConfiguration());
-        modelBuilder.ApplyConfiguration(new MenuConfiguration());
-        modelBuilder.ApplyConfiguration(new SubMenuConfiguration());
-        modelBuilder.ApplyConfiguration(new BlogConfigurationConfiguration());
 
         modelBuilder
             .Entity<PostEntity>()
@@ -61,22 +56,21 @@ public static class BlogDbContextExtension
 {
     public static async Task ClearAllData(this BlogDbContext context)
     {
-        context.PostTag.RemoveRange();
-        context.PostCategory.RemoveRange();
-        context.CommentReply.RemoveRange();
-        context.Category.RemoveRange();
-        context.Tag.RemoveRange();
-        context.Comment.RemoveRange();
-        context.FriendLink.RemoveRange();
-        context.Pingback.RemoveRange();
-        context.PostExtension.RemoveRange();
-        context.Post.RemoveRange();
-        context.Menu.RemoveRange();
-        context.BlogConfiguration.RemoveRange();
-        context.BlogAsset.RemoveRange();
-        context.BlogTheme.RemoveRange();
-        context.LocalAccount.RemoveRange();
-
-        await context.SaveChangesAsync();
+        await context.PostView.ExecuteDeleteAsync();
+        await context.CommentReply.ExecuteDeleteAsync();
+        await context.Comment.ExecuteDeleteAsync();
+        await context.PostTag.ExecuteDeleteAsync();
+        await context.PostCategory.ExecuteDeleteAsync();
+        await context.Post.ExecuteDeleteAsync();
+        await context.Category.ExecuteDeleteAsync();
+        await context.Tag.ExecuteDeleteAsync();
+        await context.FriendLink.ExecuteDeleteAsync();
+        await context.Mention.ExecuteDeleteAsync();
+        await context.BlogConfiguration.ExecuteDeleteAsync();
+        await context.BlogAsset.ExecuteDeleteAsync();
+        await context.BlogTheme.ExecuteDeleteAsync();
+        await context.StyleSheet.ExecuteDeleteAsync();
+        await context.LoginHistory.ExecuteDeleteAsync();
+        await context.CustomPage.ExecuteDeleteAsync();
     }
 }

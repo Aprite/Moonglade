@@ -7,11 +7,12 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddPingback(this IServiceCollection services)
     {
-        services.AddHttpClient<IPingSourceInspector, PingSourceInspector>()
-            .ConfigureHttpClient(p => p.Timeout = TimeSpan.FromSeconds(30));
-        services.AddHttpClient<IPingbackWebRequest, PingbackWebRequest>();
+        services.AddHttpClient<IPingbackRequestor, PingbackRequestor>()
+                .AddStandardResilienceHandler();
+
         services.AddHttpClient<IPingbackSender, PingbackSender>()
-            .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { Credentials = CredentialCache.DefaultNetworkCredentials });
+                .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler { Credentials = CredentialCache.DefaultNetworkCredentials })
+                .AddStandardResilienceHandler();
 
         return services;
     }

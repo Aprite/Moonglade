@@ -1,45 +1,31 @@
 ﻿@page "/admin/page"
 @using Moonglade.Core.PageFeature
-@inject IMediator Mediator
 @{
-    ViewBag.Title = "Manage Pages";
-    var pageSegments = await Mediator.Send(new ListPageSegmentQuery());
+    ViewBag.Title = "Pages";
+    var pageSegments = await QueryMediator.QueryAsync(new ListPageSegmentsQuery());
 }
 
-@section scripts{
-<script>
-    function deletePage(pageid) {
-        callApi(`/api/page/${pageid}`,
-            'DELETE',
-            {},
-            (resp) => {
-                document.querySelector(`#card-${pageid}`).remove();
-                blogToast.success('Page deleted');
-            });
-    }
-
-    function deleteConfirm(pageid) {
-        var cfm = confirm("Delete Confirmation?");
-        if (cfm) deletePage(pageid);
-    }
-</script>
+@section scripts {
+    <script type="module" src="~/js/app/admin.blogpage.mjs" asp-append-version="true"></script>
 }
 
-<div class="admin-toolbar ps-4 pe-4 pt-2 pb-2 border-bottom mb-3 shadow-sm">
-    <a class="btn btn-outline-accent" asp-page="./EditPage">
-        <i class="bi-plus-lg"></i>
-        @SharedLocalizer["New"]
-    </a>
-    
-    <a asp-action="ExportDownload" asp-controller="DataPorting" asp-route-type="Pages" class="btn btn-outline-accent" target="_blank">
-        <i class="bi-upload"></i>
-        @SharedLocalizer["Export"]
-    </a>
-</div>
+@section admintoolbar {
+    <div class="admin-toolbar pb-2 border-bottom mb-3">
+        <a class="btn btn-outline-accent" asp-page="./EditPage">
+            <i class="bi-plus-lg"></i>
+            @SharedLocalizer["New"]
+        </a>
+
+        <a asp-action="ExportDownload" asp-controller="DataPorting" asp-route-type="Pages" class="btn btn-outline-accent" target="_blank">
+            <i class="bi-upload"></i>
+            @SharedLocalizer["Export"]
+        </a>
+    </div>
+}
 
 @if (pageSegments.Any())
 {
-    <div class="ps-4 pe-4">
+    <div>
         @Html.AntiForgeryToken()
 
         <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
@@ -60,7 +46,7 @@
                             <a class="btn btn-outline-accent btn-sm btn-edit" asp-page="./EditPage" asp-route-id="@item.Id">
                                 <i class="bi-pen"></i>
                             </a>
-                            <a class="btn btn-outline-danger btn-sm btn-delete" href="javascript:deleteConfirm('@item.Id');">
+                            <a class="btn btn-outline-danger btn-sm btn-delete" data-pageId="@item.Id">
                                 <i class="bi-trash"></i>
                             </a>
                         </div>

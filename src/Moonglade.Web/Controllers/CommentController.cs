@@ -1,5 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc.ModelBinding;
-using Moonglade.Notification.Client;
+﻿using LiteBus.Commands.Abstractions;
+using LiteBus.Events.Abstractions;
+using Microsoft.AspNetCore.Mvc.ModelBinding;
+using Moonglade.Email.Client;
+using Moonglade.Moderation;
 using Moonglade.Web.Attributes;
 using System.ComponentModel.DataAnnotations;
 
@@ -9,134 +12,216 @@ namespace Moonglade.Web.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [CommentProviderGate]
-public class CommentController : ControllerBase
-{
-    private readonly IMediator _mediator;
-    private readonly IBlogConfig _blogConfig;
-    private readonly ILogger<CommentController> _logger;
-
-    public CommentController(
-        IMediator mediator,
+public class CommentController(
+        IEventMediator eventMediator,
+        ICommandMediator commandMediator,
+        IModeratorService moderator,
         IBlogConfig blogConfig,
-        ILogger<CommentController> logger)
-    {
-        _mediator = mediator;
-        _blogConfig = blogConfig;
-        _logger = logger;
-    }
-
+        ILogger<CommentController> logger) : ControllerBase
+{
     [HttpPost("{postId:guid}")]
     [AllowAnonymous]
     [ServiceFilter(typeof(ValidateCaptcha))]
     [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ModelStateDictionary), StatusCodes.Status409Conflict)]
+    [ProducesResponseType<ModelStateDictionary>(StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create([NotEmpty] Guid postId, CommentRequest request)
     {
-        if (!string.IsNullOrWhiteSpace(request.Email) && !Helper.IsValidEmailAddress(request.Email))
+        // Early validation checks
+        var validationResult = ValidateCommentRequest(request);
+        if (validationResult != null) return validationResult;
+
+        if (!blogConfig.CommentSettings.EnableComments)
         {
-            ModelState.AddModelError(nameof(request.Email), "Invalid Email address.");
-            return BadRequest(ModelState.CombineErrorMessages());
+            return Forbid();
         }
 
-        if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
+        // Apply word filtering
+        var filterResult = await ApplyWordFilteringAsync(request);
+        if (filterResult != null) return filterResult;
 
-        var ip = (bool)HttpContext.Items["DNT"]! ? "N/A" : Helper.GetClientIP(HttpContext);
-        var item = await _mediator.Send(new CreateCommentCommand(postId, request, ip));
+        var ip = ClientIPHelper.GetClientIP(HttpContext);
+        var item = await commandMediator.SendAsync(new CreateCommentCommand(postId, request, ip));
 
-        if (item is null)
+        if (item == null)
         {
-            ModelState.AddModelError(nameof(request.Content), "Your comment contains bad bad word.");
+            ModelState.AddModelError(nameof(postId), "Comment is closed for this post.");
             return Conflict(ModelState);
         }
 
-        if (_blogConfig.NotificationSettings.SendEmailOnNewComment)
+        try
         {
-            try
-            {
-                await _mediator.Publish(new CommentNotification(
-                    item.Username,
-                    item.Email,
-                    item.IpAddress,
-                    item.PostTitle,
-                    item.CommentContent));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, e.Message);
-            }
+            await SendNewCommentNotificationAsync(item);
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't block the response
+            logger.LogError(ex, "Failed to send new comment notification for post {PostId}", postId);
         }
 
-        if (_blogConfig.ContentSettings.RequireCommentReview)
+        return Ok(new
         {
-            return Created("moonglade://empty", item);
-        }
-
-        return Ok();
+            blogConfig.CommentSettings.RequireCommentReview
+        });
     }
 
     [HttpPut("{commentId:guid}/approval/toggle")]
-    [ProducesResponseType(typeof(Guid), StatusCodes.Status200OK)]
+    [ProducesResponseType<Guid>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Approval([NotEmpty] Guid commentId)
     {
-        await _mediator.Send(new ToggleApprovalCommand(new[] { commentId }));
-        return Ok(commentId);
+        try
+        {
+            await commandMediator.SendAsync(new ToggleApprovalCommand([commentId]));
+            return Ok(commentId);
+        }
+        catch (ArgumentException)
+        {
+            return NotFound($"Comment with ID {commentId} not found.");
+        }
     }
 
     [HttpDelete]
-    [ProducesResponseType(typeof(Guid[]), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<Guid[]>(StatusCodes.Status200OK)]
+    [ProducesResponseType<string>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete([FromBody][MinLength(1)] Guid[] commentIds)
     {
-        await _mediator.Send(new DeleteCommentsCommand(commentIds));
-        return Ok(commentIds);
+        try
+        {
+            await commandMediator.SendAsync(new DeleteCommentsCommand(commentIds));
+            return Ok(commentIds);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(ex.Message);
+        }
     }
 
     [HttpPost("{commentId:guid}/reply")]
-    [ProducesResponseType(typeof(CommentReply), StatusCodes.Status200OK)]
+    [ProducesResponseType<CommentReply>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Reply(
         [NotEmpty] Guid commentId,
-        [Required][FromBody] string replyContent,
-        LinkGenerator linkGenerator)
+        [Required][FromBody] string replyContent)
     {
-        if (!_blogConfig.ContentSettings.EnableComments) return Forbid();
-
-        var reply = await _mediator.Send(new ReplyCommentCommand(commentId, replyContent));
-        if (_blogConfig.NotificationSettings.SendEmailOnCommentReply && !string.IsNullOrWhiteSpace(reply.Email))
+        if (string.IsNullOrWhiteSpace(replyContent))
         {
-            var postLink = GetPostUrl(linkGenerator, reply.PubDateUtc, reply.Slug);
-
-            try
-            {
-                await _mediator.Publish(new CommentReplyNotification(
-                    reply.Email,
-                    reply.CommentContent,
-                    reply.Title,
-                    reply.ReplyContentHtml,
-                    postLink));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, e.Message);
-            }
+            return BadRequest("Reply content cannot be empty.");
         }
 
-        return Ok(reply);
+        if (!blogConfig.CommentSettings.EnableComments)
+            return Forbid();
+
+        try
+        {
+            var reply = await commandMediator.SendAsync(new ReplyCommentCommand(commentId, replyContent));
+
+            // Send email notification (fire-and-forget)
+            _ = Task.Run(async () => await SendReplyNotificationAsync(reply));
+
+            return Ok(reply);
+        }
+        catch (ArgumentException)
+        {
+            return NotFound($"Comment with ID {commentId} not found.");
+        }
     }
 
-    private string GetPostUrl(LinkGenerator linkGenerator, DateTime pubDate, string slug)
+    #region Private Methods
+
+    private IActionResult ValidateCommentRequest(CommentRequest request)
     {
-        var link = linkGenerator.GetUriByPage(HttpContext, "/Post", null,
-            new
-            {
-                year = pubDate.Year,
-                month = pubDate.Month,
-                day = pubDate.Day,
-                slug
-            });
-        return link;
+        if (!string.IsNullOrWhiteSpace(request.Email) && !Helper.IsValidEmailAddress(request.Email))
+        {
+            ModelState.AddModelError(nameof(request.Email), "Invalid email address.");
+            return BadRequest(ModelState.GetCombinedErrorMessage());
+        }
+
+        return null;
     }
+
+    private async Task<IActionResult> ApplyWordFilteringAsync(CommentRequest request)
+    {
+        if (!blogConfig.CommentSettings.EnableWordFilter)
+        {
+            return null;
+        }
+
+        switch (blogConfig.CommentSettings.WordFilterMode)
+        {
+            case WordFilterMode.Mask:
+                request.Username = await moderator.Mask(request.Username);
+                request.Content = await moderator.Mask(request.Content);
+                break;
+
+            case WordFilterMode.Block:
+                if (await moderator.Detect(request.Username, request.Content))
+                {
+                    ModelState.AddModelError(nameof(request.Content), "Your comment contains inappropriate content.");
+                    return Conflict(ModelState);
+                }
+                break;
+        }
+
+        return null;
+    }
+
+    private async Task SendNewCommentNotificationAsync(CommentDetailedItem item)
+    {
+        if (!blogConfig.NotificationSettings.SendEmailOnNewComment)
+        {
+            return;
+        }
+
+        try
+        {
+            await eventMediator.PublishAsync(new CommentEvent(
+                item.Username,
+                item.Email,
+                item.IpAddress,
+                item.PostTitle,
+                item.CommentContent));
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to send new comment notification for comment {CommentId}", item.Id);
+        }
+    }
+
+    private async Task SendReplyNotificationAsync(CommentReply reply)
+    {
+        if (!blogConfig.NotificationSettings.SendEmailOnCommentReply || string.IsNullOrWhiteSpace(reply.Email))
+        {
+            return;
+        }
+
+        var postLink = GetPostUrl(reply.RouteLink);
+
+        try
+        {
+            await eventMediator.PublishAsync(new CommentReplyEvent(
+                reply.Email,
+                reply.CommentContent,
+                reply.Title,
+                reply.ReplyContentHtml,
+                postLink));
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e, "Failed to send reply notification for reply to comment {CommentId}", reply.Email);
+        }
+    }
+
+    private string GetPostUrl(string routeLink)
+    {
+        var baseUri = new Uri(UrlHelper.ResolveRootUrl(HttpContext, null, removeTailSlash: true));
+        var link = new Uri(baseUri, $"post/{routeLink.ToLower()}");
+        return link.ToString();
+    }
+
+    #endregion
 }
